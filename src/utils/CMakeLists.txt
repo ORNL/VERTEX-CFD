@@ -28,6 +28,7 @@ add_library(Utils ${UTILS_SOURCES})
 target_link_libraries(Utils PUBLIC
   MPI::MPI_CXX
   Kokkos::kokkos
+  Phalanx::phalanx
   )
 
 target_include_directories(Utils

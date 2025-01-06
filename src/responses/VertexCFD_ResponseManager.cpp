@@ -210,7 +210,9 @@ void ResponseManager::deactivateAll()
 //---------------------------------------------------------------------------//
 void ResponseManager::evaluateResponses(
     const Teuchos::RCP<Thyra::VectorBase<double>>& x,
-    const Teuchos::RCP<Thyra::VectorBase<double>>& x_dot)
+    const Teuchos::RCP<Thyra::VectorBase<double>>& x_dot,
+    const double t,
+    const double dt)
 {
     const int num_active
         = std::count(_is_active.begin(), _is_active.end(), true);
@@ -224,6 +226,8 @@ void ResponseManager::evaluateResponses(
     auto in_args = model_evaluator->createInArgs();
     auto out_args = model_evaluator->createOutArgs();
 
+    in_args.set_t(t);
+    in_args.set_step_size(dt);
     in_args.set_x(x);
     in_args.set_x_dot(x_dot);
 

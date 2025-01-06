@@ -82,7 +82,9 @@ void GlobalCFL<Scalar>::setNextTimeStep(
 
     // Get minimum time step that ensures CFL <= 1
     _response_manager.evaluateResponses(working_state->getX(),
-                                        working_state->getXDot());
+                                        working_state->getXDot(),
+                                        working_state->getTime(),
+                                        working_state->getTimeStep());
     const double dt_cfl1 = _response_manager.value();
 
     // Compute linear weight based on input parameters
