@@ -115,7 +115,8 @@ void ResponseOutput<Scalar>::outputResponses(
 
     // Evaluate responses.
     const auto state = integrator.getSolutionHistory()->getCurrentState();
-    _response_manager->evaluateResponses(state->getX(), state->getXDot());
+    _response_manager->evaluateResponses(state->getX(), state->getXDot(),
+                                         state->getTime(), state->getTimeStep());
 
     // Outupt the integrated values.
     _ostream << "Scalar Responses:\n";

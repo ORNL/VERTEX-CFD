@@ -211,7 +211,7 @@ void testResponseManager(const int basis_order)
     testScalarParameters<panzer::Traits::Tangent>(true, physics_manager);
 
     auto [x, x_dot] = helper.getSolutionVectors();
-    response_manager.evaluateResponses(x, x_dot);
+    response_manager.evaluateResponses(x, x_dot, 0.0, 0.0);
 
     EXPECT_DOUBLE_EQ(4.0, response_manager.value(0));
     EXPECT_DOUBLE_EQ(6.0, response_manager.value(1));
@@ -282,8 +282,8 @@ TEST(MultipleResponseManagers, NameToIndexBug)
     EXPECT_EQ(1, v_index);
 
     auto [x, x_dot] = helper.getSolutionVectors();
-    rm1.evaluateResponses(x, x_dot);
-    rm2.evaluateResponses(x, x_dot);
+    rm1.evaluateResponses(x, x_dot, 0.0, 0.0);
+    rm2.evaluateResponses(x, x_dot, 0.0, 0.0);
 
     double u_integral = std::numeric_limits<double>::quiet_NaN();
     EXPECT_NO_THROW(u_integral = rm1.value("u integral"));
@@ -322,8 +322,8 @@ TEST(MultipleResponseManagers, NameLookupBug)
     // Evaluate both response managers, which will also set values in the
     // parameter library.
     auto [x, x_dot] = helper.getSolutionVectors();
-    rm1.evaluateResponses(x, x_dot);
-    rm2.evaluateResponses(x, x_dot);
+    rm1.evaluateResponses(x, x_dot, 0.0, 0.0);
+    rm2.evaluateResponses(x, x_dot, 0.0, 0.0);
 
     // With the bug, the "u_integral" parameter gets overwritten and
     // "v_integral" is never set.
