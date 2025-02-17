@@ -7,13 +7,13 @@ usemathjax: true
 
 # Usage
 
-Once installed, VERTEX-CFD relies on two files. The first one is the 'vertexcfd' executable and the second one is the input file for the simulation. After the installation, the executable is located in `INSTALL_PATH/bin/vertexcfd`. The input file is case spesific and there are example case files in `vertex-cfd/examples/inputs`. In this document, the input file located in `vertex-cfd/examples/inputs/incompressible/incompressible_2d_channel.xml` will be used as an example case. 
+Once installed, VERTEX-CFD relies on two files. The first one is the 'vertexcfd' executable and the second one is the input file for the simulation. After the installation, the executable is located in `<PATH TO INSTALLATION LOCATION>/bin/vertexcfd`. The input file is case spesific and there are example case files in `vertex-cfd/examples/inputs`. In this document, the input file located in `vertex-cfd/examples/inputs/incompressible/incompressible_2d_channel.xml` will be used as an example case. 
 
 ## Running a simulation
 In order to run a simulation in serial, vertexcfd can be called directly as:
 
 ```
-INSTALL_PATH/bin/vertexcfd --i=PATH_TO_INPUT_FILE/incompressible_2d_channel.xml
+<PATH TO INSTALLATION LOCATION>/bin/vertexcfd --i=PATH_TO_INPUT_FILE/incompressible_2d_channel.xml
 ```
 To run in parallel, `mpirun` is required. An example script for the SLURM scheduler is below:
 ```
@@ -29,7 +29,7 @@ source PATH_TO_ENVIRONMENT_SCRIPT
 export OMP_PROC_BIND=true
 export OMP_PLACES=threads
 
-mpirun INSTALL_PATH/bin/vertexcfd --i=PATH_TO_INPUT_FILE/incompressible_2d_channel.xml
+mpirun <PATH TO INSTALLATION LOCATION>/bin/vertexcfd --i=<PATH TO INPUT FILE LOCATION>/incompressible_2d_channel.xml
 ```
 Once the simulation starts, the example output should look like:
 ```
