@@ -18,4 +18,4 @@ Contribution to VERTEX-CFD source code follows a strict process to warranty robu
 
 A contributor will then review the PR and add comments to the changes. Make sure to address all comments and to respond to all threads. Once the reviewer approves the PR, the branch will be merged to the main branch.
 
-If you have any questions or comment, please contact of the main contributors listed in the home page.
+If you have any questions or comment, please contact of the main contributors listed in the [home page](../index.md).
