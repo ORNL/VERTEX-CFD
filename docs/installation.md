@@ -275,10 +275,10 @@ BUILD_DIR=`pwd`
 # EDIT: Change this based on your NVCC WRAPPER location
 NVCC_WRAPPER=<PATH TO NVCC WRAPPER DIRECTORY>
 
-# FIXME: update with path to Trilinos source directory
+# EDIT: Change with path to Trilinos source directory
 TRILINOS_SOURCE_DIR=<PATH TO TRILINOS SOURCE DIRECTORY>
 
-# FIXME: point to boost install or use boost from project directory
+# EDIT: Change with path to boost
 BOOST_DIR=<PATH TO BOOST DIRECTORY>
 
 TRILINOS_INSTALL_DIR=<DESIRED TRILINOS INSTALLATION DIRECTORY>
