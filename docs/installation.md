@@ -338,7 +338,7 @@ cmake \
 ${TRILINOS_SOURCE_DIR}
 ```
 
-After that, run the `trilinos-cuda-config.sh` script as:
+As an example, in NERSC Perlmutter system, for `NVCC_WRAPPER`, we used the wrapper available in Sandia National Lab's GitHub page `https://github.com/sandialabs/Albany/blob/master/doc/LandIce/machines/perlmutter/nvcc_wrapper_a100`. After that, run the `trilinos-cuda-config.sh` script as:
 
 ```
 ./trilinos-cuda-config.sh
@@ -353,13 +353,10 @@ make -j install
 After the building and installation, Trilinos-GPU should be ready for VERTEX-CFD-GPU installation.
 
 ### VERTEX-CFD-GPU Installation
-Once the Trilinos-GPU is installed in your system and ready to use, VERTEX-CFD-GPU can be installed. As a reminder for users skipped the Trilinos and VERTEX-CFD-CPU installations, we suggest using a compute node instead of login node for the installation. Otherwise, building has a chance to fail. For the GPU installation, first of all, create an environment script with a `vertex-env-gpu.sh` name to load all the modules required for the installation.
+Once the Trilinos-GPU is installed in your system and ready to use, VERTEX-CFD-GPU can be installed. As a reminder for users skipped the Trilinos and VERTEX-CFD-CPU installations, we suggest using a compute node instead of login node for the installation. Otherwise, building has a chance to fail. For the GPU installation, you will need `trilinos-cuda-env.sh` script one more time. If due to any reason, you had to close the terminal, you need to source it one more time. Otherwise, you can skip to next step without sourcing it. 
 
 ```
-```
-Once you created `vertex-env-gpu.sh` script, source it as follows:
-```
-source vertex-env-gpu.sh
+source <PATH TO>/trilinos-cuda-env.sh
 ```
 Now, you can create a folder for VERTEX-CFD-GPU and clone from GitHub by using:
 ```
@@ -409,7 +406,8 @@ cmake \
     \
     ${SRC}
 ```
-Once the configuration script is ready, run it as follows:
+For those skipped Trilinos installation script, the NVCC_WRAPPER that is used in NERSC Perlmutter system is available in Sandia National Lab's GitHub page `https://github.com/sandialabs/Albany/blob/master/doc/LandIce/machines/perlmutter/nvcc_wrapper_a100`. Once the configuration script is ready, run it as follows:
+
 ```
 ./vertex-configuration-gpu.sh
 ```
