@@ -1,0 +1,4 @@
+DEFAULT TOLERANCE relative 1.E-8 absolute 1.E-7 floor 1.E-14
+COORDINATES absolute 1.E-12
+TIME STEPS absolute 1.E-14
+NODAL VARIABLES absolute 1.E-8

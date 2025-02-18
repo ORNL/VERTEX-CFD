@@ -1,0 +1,552 @@
+import os
+import sys
+import shutil
+import subprocess
+import glob
+import xml.etree.ElementTree as ET
+from collections import namedtuple
+import json
+import math
+import pytest
+import re
+
+##############################################
+############## Global variables ##############
+##############################################
+
+#### User dependent variables ####
+# List objects to store executables and paths
+exec_list_check = []
+path_list_check = []
+
+# Absolute path with exodiff executable (Make sure to use the same Trilinos
+# path as in the CMake file for consistency), and path to Workbench directory
+exodiff_exec = "@EXODIFF_PATH@"
+exec_list_check.append(exodiff_exec)
+
+### Variables that should not be modified ####
+
+# Main working directory
+main_path = os.path.dirname(os.path.realpath(__file__))
+path_list_check.append(main_path)
+parent_main_path = os.path.normpath(os.path.join(main_path, os.pardir))
+
+# Absolute path with mesh files
+mesh_file_path = "examples"
+mesh_file_path = os.path.join(parent_main_path, mesh_file_path)
+path_list_check.append(mesh_file_path)
+
+# Absolute path with input files
+input_file_path = "examples"
+input_file_path = os.path.join(parent_main_path, input_file_path)
+path_list_check.append(input_file_path)
+
+# Absolute path with VertexCFD executable
+vertexcfd_exec = os.path.join(parent_main_path, "src/vertexcfd")
+exec_list_check.append(vertexcfd_exec)
+
+# Declare tuples that is used to substitute values in XML files.
+# Defaults are give right-to-left, so optional entries appear on
+# the right and 'parent' is the only optional entry.
+xml_args_to_replace = namedtuple(
+    'xml_args_to_replace',
+    ('tag', 'attribute', 'attribute_entry', 'new_value', 'parent'),
+    defaults=('', ))
+
+# Check if all executables are valid
+for exec in exec_list_check:
+    if not os.access(exec, os.X_OK):
+        print(f"Error: executable {exec} is not valid.")
+
+# Check if all paths are valid
+for d in path_list_check:
+    if not os.path.exists(d):
+        raise FileNotFoundError(f"{d} folder does not exist!")
+
+# Output variables
+print(
+    "\n\n============================= Global variables ============================="
+)
+print("Mesh file absolute path: ", mesh_file_path)
+print("Input file absolute path: ", input_file_path)
+print("VertexCFD executable absolute path: ", vertexcfd_exec)
+print("Exodiff executable absolute path: ", exodiff_exec)
+print(
+    "=============================================================================\n"
+)
+
+##############################################
+############## Global functions ##############
+##############################################
+
+
+# Search a value in a XML file and return value if found, 'None' else.
+def search_value_through_xml_file(xml, tag, attribute, key_word):
+    # find all tags with key word 'key_word'
+    keyword_list = xml.findall(f'.//{tag}[@{attribute}="{key_word}"]')
+    # Extract all entries and store them in a list to return. If empty,
+    # 'None' is returned.
+    if keyword_list:
+        return [entry.get('value') for entry in keyword_list]
+
+
+# Find all <name> tags with attribute="value" and set new_attribute="new_value".
+# If parent is provided, only find tags within a <ParameterList> with name="parent".
+def modify_xml_tag(xml,
+                   name,
+                   attribute,
+                   value,
+                   new_attribute,
+                   new_value,
+                   parent=''):
+    """
+    Find all <name> tags with attribute="value" and set new_attribute="new_value".
+    If parent is provided, only find tags within a <ParameterList> with name="parent".
+    """
+    if parent:
+        parent = f'ParameterList[@name="{parent}"]/'
+    tags = xml.findall(f'.//{parent}{name}[@{attribute}="{value}"]')
+    if tags:
+        for tag in tags:
+            tag.set(new_attribute, str(new_value))
+    else:
+        raise Exception(f'Tag <{tag}> with {attribute}="{value}" not found.')
+
+
+# Read XML file
+def read_xml_from_file(file_name):
+    return ET.parse(file_name)
+
+
+# Write XML data to a XML file
+def write_xml_to_file(xml, file_name):
+    xml.write(file_name)
+
+
+# To handle restart capabilities: this function will set the `Read Restart File` to True
+# and will add the restart file to the XML input file to read from.
+def read_restart_file(self, xml_args_to_replace_list):
+    restart_dir = "restart"
+    # Look for a `restart_dir` directory in the test directory
+    if not os.path.isdir(restart_dir):
+        msg = "The restart directory {} could not be find in the test directory."
+        sys.exit(msg.format(restart_dir))
+
+    # Check if the `restart_dir` directory contains the restart files needed
+    base = self.input_file.split(".xml")[0]
+    data_file = base + "_read.data"
+    dofmap_file = base + "_read.dofmap"
+    if not os.path.isfile(os.path.join(restart_dir, data_file)):
+        msg = "The restart directory does not contain the restart file {}."
+        sys.exit(msg.format(data_file))
+    if not os.path.isfile(os.path.join(restart_dir, dofmap_file)):
+        msg = "The restart directory does not contain the restart file {}."
+        sys.exit(msg.format(dofmap_file))
+
+    # Set `Read Restart File` to `True`
+    xml_args_to_replace_list.append(
+        xml_args_to_replace('Parameter', 'name', 'Read Restart', 'true'))
+
+    # Append parameters to the list of entries to modify in the XML file
+    data_file_path = os.path.join(restart_dir, data_file)
+    xml_args_to_replace_list.append(
+        xml_args_to_replace('Parameter', 'name', 'Restart Data File Name',
+                            data_file_path))
+
+    dofmap_file_path = os.path.join(restart_dir, dofmap_file)
+    xml_args_to_replace_list.append(
+        xml_args_to_replace('Parameter', 'name', 'Restart DOF Map File Name',
+                            dofmap_file_path))
+
+
+# Generate a input file mesh from a base file XML input file by
+# searching all entries in 'list_old_value' and replacing them with 'list_new_value'.
+def create_xml_file_from_base_file(self,
+                                   base_input_file,
+                                   xml_args_to_replace_list,
+                                   restart=False):
+    # Read base input file
+    new_xml = read_xml_from_file(
+        os.path.join(self.input_file_path, base_input_file))
+
+    # If restart is set to True, add restart entries to `xml_args_to_replace_list`
+    if restart:
+        read_restart_file(self, xml_args_to_replace_list)
+
+    # Loop over different parameters
+    for replacement_args in xml_args_to_replace_list:
+        tag = replacement_args.tag
+        if replacement_args.tag == "Parameter":
+            new_attribute = "value"
+        elif replacement_args.tag == "Parameter name":
+            tag = "Parameter"
+            new_attribute = "name"
+        elif replacement_args.tag == "ParameterList":
+            new_attribute = "name"
+        else:
+            print(
+                "Error: the tag name should be either 'Parameter' "
+                "(to change the value of a parameter entry), "
+                "'Parameter name' (to change the name of a parameter), "
+                "or 'ParameterList' (to change the name of a parameter list).")
+            sys.exit()
+
+        modify_xml_tag(new_xml, tag, replacement_args.attribute,
+                       replacement_args.attribute_entry, new_attribute,
+                       replacement_args.new_value, replacement_args.parent)
+
+    # Write new input file
+    write_xml_to_file(new_xml, self.input_file)
+
+
+# Delete file by name
+def delete_file(self, file_name):
+    if os.path.exists(file_name):
+        try:
+            os.remove(file_name)
+        except OSError as e:
+            print("Error: cannot delete %s : %s" % (file_name, e.strerror))
+            raise e
+    else:
+        print("File %s does not exist in %s." % (file_name, self.test_path))
+
+
+# Copy file to a given path
+def copy_file(file_path, file_name, dest_path):
+    shutil.copy(os.path.join(file_path, file_name), dest_path)
+
+
+# Get input file name, mesh type and mesh file, and output file name
+def setup_input_file(self, copy_xml_file):
+    # Check if working directory contains an 'exodiff_file.txt' file. If not
+    # use the default one.
+    exodiff_file = "exodiff_file.txt"
+    if not (os.path.isfile(exodiff_file)):
+        self.no_exodiff_file = True
+        shutil.copy(os.path.join(self.main_path, exodiff_file), self.test_path)
+    else:
+        self.no_exodiff_file = False
+
+    # Copy XML file to working directory
+    if copy_xml_file:
+        copy_file(self.input_file_path, self.input_file, self.test_path)
+
+    # Read in input file
+    xml = read_xml_from_file(self.input_file)
+
+    # Extract Exodus filenames from XML file
+    self.output_file = search_value_through_xml_file(xml, 'Parameter', 'name',
+                                                     'Exodus Output File')[0]
+
+    mesh_input_type = search_value_through_xml_file(xml, 'Parameter', 'name',
+                                                    'Mesh Input Type')[0]
+    if mesh_input_type == "Inline":
+        self.mesh_file = "Inline"
+    else:
+        self.mesh_file = search_value_through_xml_file(xml, 'Parameter',
+                                                       'name', 'File Name')[0]
+
+    # Copy mesh file to working directory if not Inline mesh type
+    if not self.mesh_file == "Inline":
+        try:
+            shutil.copy(os.path.join(self.mesh_file_path, self.mesh_file),
+                        self.test_path)
+        except OSError as e:
+            print("Error: cannot copy %s : %s" % (self.mesh_file, e.strerror))
+
+
+# Copy files of failed regression tests to an artifact directory
+def copy_file_artifact_directory(self, exodiff_step):
+    print("\n\nMove files to artifact directory:")
+    # Create sub-working directory in the artifact directory
+    test_dir_name = os.path.basename(os.path.normpath(self.test_path))
+    test_dir_name = os.path.join("regression_failures", test_dir_name)
+    fail_test_path = os.path.join(parent_main_path, test_dir_name)
+    os.makedirs(fail_test_path, exist_ok=True)
+    # List of files to move (XML, exodiff_test.txt and Exodus solution files)
+    file_list = [self.input_file, self.output_file]
+    if exodiff_step:
+        file_list.append(self.output_file.rstrip(".exo") + "_diff.exo")
+        file_list.append("exodiff_file.txt")
+    # Copy files to artifact directory
+    for f in file_list:
+        new_f = os.path.join(fail_test_path, f)
+        if os.path.isfile(new_f):
+            os.remove(new_f)
+        old_f = os.path.join(self.test_path, f)
+        if os.path.isfile(old_f):
+            shutil.copy(old_f, new_f)
+            print(f"    Copied file {old_f}.")
+    print("\n\n")
+
+
+# Function to call subprocess run
+def subprocess_run(command):
+    subprocess.run(command, shell=False, stderr=subprocess.STDOUT, check=True)
+
+
+# Run VertexCFD code
+def run_vertexcfd(self, vertexcfd_options, run_serial, run_gpu):
+    # Build command to run VertexCFD (same command for Tpetra and Epetra linear algebra solver)
+    command = ["mpirun"]
+    if not run_gpu:
+        command.append("--map-by")
+        if not run_serial:
+            command.append(os.environ.get("MAP_STRING"))
+        else:
+            command.append("ppr:1:node:pe=1")
+    else:
+        command.extend(["-np", "2"])
+    command.append(self.vertexcfd_exec)
+    command.append("--i=" + self.input_file)
+    # vertexcfd_options is an empty list by default
+    command.extend(vertexcfd_options)
+    # Run VertexCFD
+    try:
+        subprocess_run(command)
+    except Exception:
+        copy_file_artifact_directory(self, exodiff_step=False)
+        raise
+
+
+# Build the exodiff command to be exectuted to compare the gold
+# file and the solution file. It will create a `diff` file if
+# `create_diff` is set to True.
+def build_exodiff_command(self, exodiff_options, create_diff):
+    # Parameters
+    file_name = "exodiff_file.txt"
+    test_output_file = self.output_file
+    gold_output_file = getattr(self, 'gold_file', self.output_file)
+    test_gold_path = os.path.join(self.test_path, "gold")
+    base_file = self.output_file.rstrip(".exo")
+    # Build command to run exodiff
+    command = [self.exodiff_exec]
+    command.extend(exodiff_options)
+    if not create_diff:
+        command.append("-file")
+        command.append(os.path.join(self.test_path, file_name))
+    command.append(os.path.join(self.test_path, test_output_file))
+    command.append(os.path.join(test_gold_path, gold_output_file))
+    if create_diff:
+        command.append(os.path.join(self.test_path, base_file + "_diff.exo"))
+    return command
+
+
+# Run 'exodiff' executable. 'create_diff' adds a third Exodus file
+# to compute the difference between the gold file and the solution file.
+def run_exodiff(self, exodiff_options):
+    # Run exodiff
+    try:
+        # Assemble exodiff command line
+        command = build_exodiff_command(self,
+                                        exodiff_options,
+                                        create_diff=False)
+        subprocess_run(command)
+    except:
+        # Assemble command line to create a `diff` Exodus file from
+        # the `exodiff` executable
+        command = build_exodiff_command(self,
+                                        exodiff_options,
+                                        create_diff=True)
+        try:
+            subprocess_run(command)
+        except:
+            print("Warning: failed to create solution diff file")
+
+        # Copy files to artifact directory and re-raise error
+        copy_file_artifact_directory(self, exodiff_step=True)
+        raise
+
+
+# Clean working directory by deleting input file, output file,
+# mesh file and exodiff file if any.
+def clean_working_directory(self):
+    print("\nClean working directory:")
+    # List of files to remove (always present in working directory)
+    file_list_remove = [self.input_file]
+    file_list_remove.append(self.output_file)
+    # Remove file in 'file_list_remove'
+    for file in file_list_remove:
+        delete_file(self, file)
+
+    # Remove exodiff file
+    if self.no_exodiff_file:
+        exodiff_file = "exodiff_file.txt"
+        delete_file(self, exodiff_file)
+
+    # Remove Exodus file (mesh file) if not Inline mesh type
+    if not self.mesh_file == "Inline":
+        delete_file(self, self.mesh_file)
+
+    # Remove block of files with same format
+    block_list_remove = ['*.data']
+    block_list_remove.append('*.dofmap')
+
+    for block in block_list_remove:
+        file_list = glob.glob(block)
+        for file_name in file_list:
+            delete_file(self, file_name)
+
+
+# Run test by calling all above functions
+def run_test(self,
+             vertexcfd_options,
+             exodiff_options,
+             copy_xml_file=True,
+             run_serial=False,
+             run_gpu=False):
+    # Get input file, mesh file and output file
+    setup_input_file(self, copy_xml_file)
+
+    # Run VertexCFD job
+    run_vertexcfd(self, vertexcfd_options, run_serial, run_gpu)
+
+    # Check against gold file using exodiff. NOTE: 'command' has to be passed
+    # as a string here with shell=True to get it to run.
+    if (exodiff_options is not None):
+        run_exodiff(self, exodiff_options)
+
+
+# Assert two JSON files (output file and gold file)
+def assert_json_files(self, gold_file_path):
+    # Read in output json file
+    with open(self.output_file, "r") as f:
+        json_file = json.loads(f.read())
+
+    # Read in gold json file
+    with open(gold_file_path, "r") as g:
+        gold_json_file = json.loads(g.read())
+
+    # Assert json files
+    assert json_file == gold_json_file
+
+
+# Compute convergence order
+def convergence_order(error1, error2, ncell1, ncell2):
+    return math.log((error1 / error2), (ncell2 / ncell1))
+
+
+# Compare convergence order between reference and vertexcfd result
+def compare_convergence(error1,
+                        error2,
+                        reference,
+                        num1,
+                        num2,
+                        rel_tol=1e-12,
+                        abs_tol=0.0):
+    for p in (1, 2):
+        for err1, err2, ref in zip(error1[p], error2[p], reference[p]):
+            assert ref == pytest.approx(convergence_order(
+                err1, err2, num1, num2),
+                                        rel=rel_tol,
+                                        abs=abs_tol)
+
+
+# Compare error norms between expected value and vertexcfd result
+def compare_error_norms(expected, capfd, rel_tol=1e-12, abs_tol=0.0):
+
+    # Get captured test output for parsing
+    fd_out, fd_err = capfd.readouterr()
+
+    # Let pytest re-capture the output
+    sys.stdout.write(fd_out)
+    sys.stderr.write(fd_err)
+
+    num_expected = len(expected[1])
+
+    # Regular expression for the final integrated error norms header.
+    # This will capture the order of the norm.
+    header_pattern = r'^Final (?:Temporal/)?Spatial Integrated L([12]) Error Norms:'
+    # Regular expression for a single error norm, capturing value.
+    error_pattern = r'\n   \w+ = (.+)'
+    # Combine to capture the expected number of error norms.
+    pattern = re.compile(header_pattern + error_pattern * num_expected,
+                         re.MULTILINE)
+
+    errors = [None] * 3
+    for p, *err in pattern.findall(fd_out):
+        p = int(p)
+        errors[p] = [float(i) for i in err]
+
+    # Compare L1, L2 Error Norm with expected values
+    for p in (1, 2):
+        for err, exp in zip(errors[p], expected[p]):
+            if exp == 0.0:
+                assert err == pytest.approx(exp, abs=1e-12)
+            else:
+                assert err == pytest.approx(exp, rel=rel_tol, abs=abs_tol)
+
+    return errors
+
+
+# Log-log plot of L1/L2 error norms with number of cells
+def error_norm_plot(comp_error, ref_error, comp_ncell, ref_ncell, head_string,
+                    coordinate):
+    import matplotlib.pyplot as plt
+
+    font = {
+        'size': 16,
+    }
+
+    # Plot label function
+    def label(var):
+        return r'$\left\Vert {0} - \overline{{{0}}}\right\Vert^{{p=1,2}}$'.format(
+            var)
+
+    # Reorganize data.
+    L1_comp_error = [row[1] for row in comp_error]
+    L2_comp_error = [row[2] for row in comp_error]
+    L1_ref_error = [row[1] for row in ref_error]
+    L2_ref_error = [row[2] for row in ref_error]
+
+    nvar = len(L1_comp_error[0])
+
+    L1_comp = []
+    L2_comp = []
+    L1_ref = []
+    L2_ref = []
+    for i in range(nvar):
+        L1_comp.append([row[i] for row in L1_comp_error])
+        L2_comp.append([row[i] for row in L2_comp_error])
+        L1_ref.append([row[i] for row in L1_ref_error])
+        L2_ref.append([row[i] for row in L2_ref_error])
+
+    # variale and file names
+    var_name = [0] * nvar
+    file_name = [0] * nvar
+
+    var_name[0] = label(r'\rho')
+    var_name[1] = label(r'\rho E')
+    file_name[0] = 'rho.png'
+    file_name[1] = 'rhoE.png'
+    if coordinate == 'Cartesian':
+        var_name[2] = label(r'\rho U_x')
+        var_name[3] = label(r'\rho U_y')
+        file_name[2] = 'rhoU_x.png'
+        file_name[3] = 'rhoU_y.png'
+        if nvar == 5:
+            var_name[nvar - 1] = label(r'\rho U_z')
+            file_name[nvar - 1] = 'rhoU_z.png'
+    elif coordinate == 'RZ':
+        var_name[2] = label(r'\rho U_r')
+        var_name[3] = label(r'\rho U_z')
+        file_name[2] = 'rhoU_r.png'
+        file_name[3] = 'rhoU_z.png'
+        if nvar == 5:
+            var_name[nvar - 1] = label(r'\rho U_\theta')
+            file_name[nvar - 1] = 'rhoU_theta.png'
+
+    # Plot L1/L2 errors for each variables
+    for i in range(nvar):
+        if (L1_ref[i][0] == 0.0 or L2_ref[i][0] == 0.0):
+            continue
+        plt.loglog(ref_ncell, L1_ref[i], 'ro-', label='L1 ref error')
+        plt.loglog(ref_ncell, L2_ref[i], 'r^-', label='L2 ref error')
+        plt.loglog(comp_ncell, L1_comp[i], 'bo-', label='L1 comp error')
+        plt.loglog(comp_ncell, L2_comp[i], 'b^-', label='L2 comp error')
+        plt.ylabel(var_name[i], fontdict=font)
+        plt.xlabel('N', fontdict=font)
+        plt.xlim([ref_ncell[0] / 2, ref_ncell[-1] * 2])
+        plt.legend(loc='upper right')
+        plt.savefig(head_string + file_name[i])
+        plt.close()

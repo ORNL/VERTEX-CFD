@@ -1,0 +1,153 @@
+# Import Python modules
+import sys
+import glob
+import argparse
+import os
+from os import path
+
+# Description:
+# This Python script implements logic to rename nodal and element variables
+# in Exodus files. The values remain un-changed. The changes in the Exodus
+# files are performed in place. Files to update are to be specified at the
+# command line. See documentation in the Wiki page under Software quality
+# assurance for further details.
+
+# Adding trilinos folder to the system path and import exodus3
+sys.path.insert(
+    0, '@TRILINOS_LIB@')
+import exodus3 as exodus
+
+# Argument parser
+parser = argparse.ArgumentParser(
+    description='Replace field names in Exodus files')
+parser.add_argument('-v',
+                    '--verbose',
+                    action='store_true',
+                    help='more verbose output')
+parser.add_argument('files',
+                    nargs='+',
+                    help='exodus file(s) to modify',
+                    metavar='file')
+parser.add_argument('-n',
+                    '--node',
+                    nargs=2,
+                    action='append',
+                    help='node variable',
+                    metavar=('old-name', 'new-name'))
+parser.add_argument('-e',
+                    '--element',
+                    nargs=2,
+                    action='append',
+                    help='element variable',
+                    metavar=('old-name', 'new-name'))
+args = parser.parse_args()
+
+# Assign variable based on parsed arguments
+nodal_list = args.node
+elem_list = args.element
+if nodal_list is None and elem_list is None:
+    print("\nPlease provide a list of node or element fields to replace.\n")
+    parser.print_help()
+    sys.exit()
+filename_list = args.files
+
+# Collect all Exodus files specified at the command line
+for f in filename_list:
+    if not os.path.isfile(f):
+        sys.exit(f"ERROR: The file '{f}' is not found.")
+
+
+# Verbose function (used when --verbose flag is passed to command line)
+def print_verbose(msg):
+    if args.verbose:
+        print(msg)
+
+
+# Funtion to replace fields
+def replace_field(exo, field_list, field_type):
+    print_verbose(f"\n\tLoop over {field_type} fields to replace:")
+    # Set `exo_put_node` function and field type
+    exo_put_node = lambda: None
+    if field_type == "nodal":
+        exo_put_node = exo.put_node_variable_name
+        field_type = "EX_NODAL"
+    elif field_type == "element":
+        exo_put_node = exo.put_element_variable_name
+        field_type = "EX_ELEM_BLOCK"
+    else:
+        exo.close()
+        sys.exit(
+            f"\t\tError: Current field type '{field_type}' is not supported. Field type options are 'nodal' or 'element'."
+        )
+
+    # Loop over fields to replace
+    exo_field_list = exo.get_variable_names(field_type)
+    field_not_found = []
+    for old_field, new_field in field_list:
+        print_verbose(f"\n\t\t\tField to replace: {old_field}...")
+        found = False
+        # Look for exact match
+        if old_field in exo_field_list:
+            index = exo_field_list.index(old_field) + 1
+            exo_put_node(new_field, index)
+            found = True
+            print_verbose(
+                f"\t\t\t...Field {old_field} found with index {index} and replaced with {new_field}."
+            )
+        if not found:
+            field_not_found.append(old_field)
+            print_verbose(f"\t\t\t...WARNING: field {old_field} not found.")
+    if field_not_found:
+        print_verbose(
+            f"\n\t\tWARNING: List of field(s) not found in the Exodus file {exo.fileName}:"
+        )
+        for old_field in field_not_found:
+            print_verbose(f"\t\t- {old_field}")
+
+    # Return list of fields not found
+    return field_not_found
+
+
+# Loop over file list
+full_report = {}
+sep = 100 * "*"
+for filename in filename_list:
+    print("\n" + sep)
+
+    # Create exodus object from file
+    exo = exodus.exodus(filename, mode='a')
+
+    nodal_field_not_found = None
+    elem_field_not_found = None
+
+    try:
+        # Nodal fields
+        if nodal_list is not None:
+            nodal_field_not_found = replace_field(exo, nodal_list, "nodal")
+
+        # Element fields
+        if elem_list is not None:
+            elem_field_not_found = replace_field(exo, elem_list, "element")
+    finally:
+        # Close exodus object
+        exo.close()
+
+    # Store data in report (dictionary)
+    full_report[filename] = {}
+    if nodal_field_not_found is not None:
+        full_report[filename]["nodal"] = nodal_field_not_found
+    if elem_field_not_found is not None:
+        full_report[filename]["element"] = elem_field_not_found
+
+# Print full report
+print("\n" + sep)
+print("Full report:")
+for filename in filename_list:
+    print(f"\tFile name: {filename}")
+    for key, values in full_report[filename].items():
+        if values:
+            print("\t\t" + key + " variables not updated:")
+            for v in values:
+                print(f"\t\t - {v}")
+        else:
+            print("\t\tall " + key + " variables updated.")
