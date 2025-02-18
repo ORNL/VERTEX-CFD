@@ -16,7 +16,7 @@ An open-source CFD code for multi-physics modeling and simulation with a focus o
 ---
 
 ## Contributing
-We encourage you to contribute to VERTEX-CFD! Please check the guidelines on how to do so.
+We encourage you to contribute to VERTEX-CFD! Please review the [how to contribute](docs/contribution.md) page.
 
 #### Contributors
 - [Marco Delchini](https://www.ornl.gov/staff-profile/marc-olivier-delchini)

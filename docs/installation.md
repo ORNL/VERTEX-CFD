@@ -10,7 +10,7 @@ VERTEX-CFD supports both CPU and GPU solvers. For full CPU and GPU capabilities,
 ## CPU Installation
 VERTEX-CFD is installed on top of Trilinos package. Hence it requires Trilinos installed on the system. If Trilinos is already installed, you can skip to VERTEX-CFD installation. Otherwise, Trilinos installation instructions are given below.
 
-### Trilinos Insllation
+### Trilinos Installation
 Before Trilinos installation, we suggest using a compute node instead of login node as this will be a demanding process. Depending on the CPU configurations, with 32 cores, expect around 4 hours of building/installation time. For the installation, create a install directory and get Spack.
 
 ```
