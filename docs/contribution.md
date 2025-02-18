@@ -8,7 +8,7 @@ usemathjax: true
 # How to contribute to VERTEX-CFD
 
 Contribution to VERTEX-CFD source code follows a strict process to warranty robustness and deployment on HPC platforms. Any change to the GitHub repo must be reviewed by one of the main developers listed in the [home](../index.md) page. If you are willing to contribute to the development of VERTEX-CFD please follow the following steps:
-- Git clone VERTEX-CFD repo and compile the source code.
+- [Git clone VERTEX-CFD repo](https://github.com/ORNL/VERTEX-CFD) and [compile the source code](installation.md).
 - Create a new branch from the main branch.
 - Make changes to the source code.
 - Add/update unit test(s) and/or regression test(s) when needed.
