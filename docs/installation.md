@@ -5,7 +5,7 @@ nav_order: 1
 ---
 
 # Installation
-VERTEX-CFD supports both CPU and GPU solvers. Depending on the CPU/GPU supports, Trilinos needs to be compiled with the proper configurations as VERTEX-CFD relies on the Trilinos installation. For the VERTEX-CFD installation, Trilinos should be available in the system. Installation instructions for both Trilinos and VERTEX-CFD are available. If Trilinos is already built and ready, you can skip to VERTEX-CFD installation instructions. All of the scripts given in this file is also available in `docs/scripts` directory for users convenience. 
+VERTEX-CFD supports both CPU and GPU solvers. Depending on the CPU/GPU supports, Trilinos needs to be compiled with the proper configurations as VERTEX-CFD relies on the Trilinos installation. For the VERTEX-CFD installation, Trilinos should be available in the system. Installation instructions for both Trilinos and VERTEX-CFD are available. If Trilinos is already built and ready, you can skip to VERTEX-CFD installation instructions. All of the scripts given in this file is also available in [docs/scripts](https://github.com/ORNL/VERTEX-CFD/tree/gh-pages/docs/scripts) directory for users convenience. 
 
 ## Trilinos Installation
 Trilinos supports both CPU and GPU if configured accordingly. For the installation with CPU support only, we have spack based procedure which is easier to follow. For GPU, as of now, Trilinos needs to be built manually. For both options we suggest using a compute node instead of login node as this will be a demanding process.
