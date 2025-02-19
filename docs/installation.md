@@ -260,7 +260,7 @@ make -j install
 
 After the building and installation, Trilinos-GPU should be ready for VERTEX-CFD installation.
 
-## VERTEX Installation
+## VERTEX-CFD Installation
 Once the Trilinos is installed in your system and ready to use, VERTEX-CFD can be installed. First of all, you can create a folder for VERTEX-CFD and clone from GitHub by using:
 ```
 mkdir VERTEX-CFD
