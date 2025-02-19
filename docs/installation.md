@@ -111,7 +111,7 @@ Trilinos can be called by loading the module as shown below. The folder names ma
 module use /<SPACK INSTALL LOCATION>/share/spack/modules/linux-centos7-haswell/
 module load trilinos/16.0.0-gcc-13.2.0-qzebvtj
 ```
-Trilinos and its dependencies are required to compile [VERTEX-CFD](#vertexcfd).
+Trilinos and its dependencies are required to compile [VERTEX-CFD](##vertex-cfd-nstallation).
 
 ### Trilinos-GPU Installation
 VERTEX-CFD-GPU installation is not, as of now, supported by the Spack. Hence, it will be required to compile Trilinos with the GPU support manually. For the Trilinos-GPU installation, first step is to clone Trilinos from the GitHub repo and checkout to `Trilinos-16-0-0` as follows:
@@ -261,7 +261,7 @@ make -j install
 
 After the building and installation, Trilinos-GPU should be ready for VERTEX-CFD installation.
 
-<a id="vertexcfd"></a>
+
 ## VERTEX-CFD Installation
 
 Once the Trilinos is installed in your system and ready to use, VERTEX-CFD can be installed. First of all, you can create a folder for VERTEX-CFD and clone from GitHub by using:
