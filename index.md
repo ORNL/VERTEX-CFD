@@ -26,6 +26,7 @@ We encourage you to contribute to VERTEX-CFD! Please review the [how to contribu
 - [Jason W. DeGraw](https://www.ornl.gov/staff-profile/jason-w-degraw)
 - [Doug Stefanski](https://www.ornl.gov/staff-profile/douglas-l-stefanski)
 - [Filipe L. Brandao](https://www.ornl.gov/staff-profile/filipe-leite-brandao)
+- [Ryan Savery](https://impact.ornl.gov/en/persons/ryan-savery)
 
 ## Citing
 If you use VERTEX-CFD in your work, please cite the Zenodo DOI [![DOI](DOI_NUMBER)](DOI_NUMBER) of the version you used as a software citation:
