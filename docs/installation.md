@@ -435,10 +435,10 @@ For other scheduler, such as PBS, you can convert the SLURM submission script. T
         191 - VertexCFD_GeometryPrimitives_test_OPENMP_np_192_nt_1 (Failed)
         202 - VertexCFD_WriteMatrix_test_OPENMP_np_192_nt_1 (Failed)       
 ```
-Please note that there are several tests that are used on the continious integration (CI) and they fail on any other system. This is the reason of the failed tests and it is expected to fail on those tests.
+Note: several unit tests rely on restart files that are not compatible across architecture. The above list of tests is expected to fail outside of the continuous integration pipelines.
 
 ## Regression Tests
-VERTEX-CFD uses regression tests to make sure the new capabilities are not introducing bugs/errors to the old capabilities. In order to run regression tests, you can use the below submission script written for SLURM scheduler:
+VERTEX-CFD uses regression tests to make sure the new capabilities does not introduce bugs/errors to the source code. In order to run regression tests, you can use the below submission script written for SLURM scheduler:
 
 ```
 #!/bin/bash                                                                                                                         
