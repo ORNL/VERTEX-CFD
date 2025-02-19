@@ -11,7 +11,7 @@ VERTEX-CFD supports both CPU and GPU solvers. Depending on the CPU/GPU supports,
 Trilinos supports both CPU and GPU if configured accordingly. For the installation with CPU support only, we have spack based procedure which is easier to follow. For GPU, as of now, Trilinos needs to be built manually. For both options we suggest using a compute node instead of login node as this will be a demanding process.
 
 ### Trilinos-CPU Installation
-First of all, create a directory and get Spack.
+First of all, create a directory and git clone Spack.
 
 ```
 mkdir trilinos
@@ -19,7 +19,7 @@ cd trilinos/
 git clone -c feature.manyFiles=true --depth=2 https://github.com/spack/spack.git
 ```
 
-Next, create a file named `spack-trilinos16.yaml` which should contain the following configuration for Spack. Pay special attention to `EDIT` marks locations where edits may need to be made depending on machine. Modules already available in your machine can be loaded using the `packages` section. 
+Next, create a file named `spack-trilinos16.yaml` which should contain the following configuration for Spack. Pay special attention to `EDIT` marks locations where edits may need to be made depending on machine. Modules already available in your machine can be loaded using the `packages` section at the end of the file. 
 
 ```
 spack:
@@ -105,12 +105,13 @@ If the session is ended for any reason, the user might need to reactivate the ve
 ```
 spack module tcl refresh
 ```
-Trilinos can be called by loading the module as shown below. The folder names may be different depending on your machine configuration. We suggest finding the current folders instead of copying and pasting. As an example, on CADES in ORNL, they are located in:
+Trilinos can be called by loading the module as shown below. The folder names may be different depending on your machine configuration. We suggest finding the current folders instead of copying and pasting. As an example, on [CADES](https://www.ornl.gov/content/cades) in ORNL, they are located in:
 
 ```
 module use /<SPACK INSTALL LOCATION>/share/spack/modules/linux-centos7-haswell/
 module load trilinos/16.0.0-gcc-13.2.0-qzebvtj
 ```
+Trilinos and its dependencies are required to compile [VERTEX-CFD](#markdown-vertex-cfd-installation).
 
 ### Trilinos-GPU Installation
 VERTEX-CFD-GPU installation is not, as of now, supported by the Spack. Hence, it will be required to compile Trilinos with the GPU support manually. For the Trilinos-GPU installation, first step is to clone Trilinos from the GitHub repo and checkout to `Trilinos-16-0-0` as follows:
@@ -128,7 +129,7 @@ mkdir build
 cd build
 ```
 
-After that, modules required to build Trilinos needs to be loaded. For that, create a file with `trilinos-cuda-env.sh` name. Although the procedure for the module loading changes depend on the machine, as an example, the content of `trilinos-cuda-env.sh` in NERSC Perlmutter is as follows and you can adjust it according to your machine configurations:
+After that, modules required to build Trilinos need to be loaded. To this purpose, create a file with `trilinos-cuda-env.sh` name. Although the procedure for the module loading changes depend on the machine, as an example, the content of `trilinos-cuda-env.sh` in NERSC Perlmutter is as follows and you can adjust it according to your machine configurations:
 
 ```
 #!/bin/bash
@@ -260,7 +261,7 @@ make -j install
 
 After the building and installation, Trilinos-GPU should be ready for VERTEX-CFD installation.
 
-## VERTEX-CFD Installation
+##VERTEX-CFD Installation
 Once the Trilinos is installed in your system and ready to use, VERTEX-CFD can be installed. First of all, you can create a folder for VERTEX-CFD and clone from GitHub by using:
 ```
 mkdir VERTEX-CFD
