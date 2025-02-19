@@ -20,6 +20,8 @@ authors:
     affiliation: 1
   - name: Doug Stefanski
     affiliation: 4
+  - name: Ryan Savery
+    affiliation: 5
   - name: Ryan Glasby
     affiliation: 4
   - name: Stuart Slattery
