@@ -90,7 +90,7 @@ The long-term objectives of the VERTEX-CFD project are to facilitate the additio
 
 Such approach can only be made possible by setting clear requirements and review processes for all developers contributing to the project code: any changes and additions to the source code are reviewed and tested before being merged. VERTEX-CFD software is tested daily on a continuous integration (CI) workflow hosted on the ORNL network. Each new physics is implemented in closure models with unit tests that are run on CPU and GPU nodes.
 
-Physical models and coupling between equations were verified and validated against benchmark problems taken from the published literature: isothermal flows [@Taylor-green-vortex, @10.1115/1.3240731; @Clausen2013], heated flows [@Kuehn_Goldstein_1976; @tritton_1959], transient and steady-state cases, turbulent cases [@nicoud:hal-00910373; @nasa-web], and MHD flows [@SMOLENTSEV201565].
+Physical models and coupling between equations were verified and validated against benchmark problems taken from the published literature: isothermal flows [@Taylor-green-vortex; @10.1115/1.3240731; @Clausen2013], heated flows [@Kuehn_Goldstein_1976; @tritton_1959], transient and steady-state cases, turbulent cases [@nicoud:hal-00910373; @nasa-web], and MHD flows [@SMOLENTSEV201565].
 
 
 # Conclusions and current development activities
@@ -99,19 +99,17 @@ VERTEX-CFD is an open-source CFD solver that relies on a finite element discreti
 
 Development tasks are currently focusing on the following three main activities:
 
-- Implementation of a conjugate heat transfer model
+- Implementation of a conjugate heat transfer model.
 
-- Coupling with TensorFlowLite [@tensorflow2015-whitepaper] for AI&ML applications
+- Coupling with TensorFlowLite [@tensorflow2015-whitepaper] for AI&ML applications.
 
-- Implementation of wall function for RANS models to enable high-Reynolds turbulence models
+- Implementation of wall function for RANS models to enable high-Reynolds turbulence models.
+
+- Optimization of the source code for Frontier supercomputer [@olcf-web].
 
 
 # Acknowledgements
 
-This work was funded by the Laboratory Directed Research and Development (LDRD) program at Oak Ridge National Laboratory.
-
-# Disclaimer
-
-This manuscript has been authored by UT-Battelle, LLC, under contract DE-AC05-00OR22725 with the US Department of Energy (DOE). The US government retains and the publisher, by accepting the article for publication, acknowledges that the US government retains a nonexclusive, paid-up, irrevocable, worldwide license to publish or reproduce the published form of this manuscript, or allow others to do so, for US government purposes. DOE will provide public access to these results of federally sponsored research in accordance with the [DOE Public Access Plan](http://energy.gov/downloads/doe-public-access-plan).
+This work was funded by the Laboratory Directed Research and Development (LDRD) program at Oak Ridge National Laboratory. This manuscript has been authored by UT-Battelle, LLC, under contract DE-AC05-00OR22725 with the US Department of Energy (DOE). The US government retains and the publisher, by accepting the article for publication, acknowledges that the US government retains a nonexclusive, paid-up, irrevocable, worldwide license to publish or reproduce the published form of this manuscript, or allow others to do so, for US government purposes. DOE will provide public access to these results of federally sponsored research in accordance with the [DOE Public Access Plan](http://energy.gov/downloads/doe-public-access-plan).
 
 # References
