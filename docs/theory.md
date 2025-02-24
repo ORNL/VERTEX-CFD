@@ -83,7 +83,7 @@ Boundary conditions are weakly imposed by computing numerical flux at the bounda
 
 The boundary conditions implemented in VERTEX-CFD are listed below:
 
-- Periodic boundary
+- [Periodic boundary](#periodic-boundary)
 - [Dirichlet with time-transient variation](#dirichlet-boundary)
 - [Symmetry for isothermal flow](#symmetry-boundary-condition)
 - [No-slip for viscous flow](#no-slip-boundary-condition)
@@ -93,6 +93,9 @@ The boundary conditions implemented in VERTEX-CFD are listed below:
 - [Cavity Lid](#cavity-Lid)
 
 The vector solution is denoted by $$U_{bc} = (P_{p,{bc}}, \mathbf{u}_{bc}, T_{bc}, \varphi_{bc})$$ at the boundary. It should be noted that when the energy equation and the electric potential equation are not solved, the temperature $$T_{bc}$$ and the electric potential $$\varphi_{bc}$$ are ignored.
+
+### Periodic boundary
+Users can set periodic boundaries in the input file by using the Trilinos specific syntax described in [Panzer_STK class](https://docs.trilinos.org/dev/packages/panzer/doc/html/Panzer__STK__PeriodicBC__Parser_8cpp_source.html). Meshes on periodic faces must be identical for the logic to properly work.
 
 ### Dirichlet boundary
 The Dirichlet boundary condition denotes the Dirichlet boundary condition in VERTEX-CFD. The velocity is set equal to the user-specified values or Dirichlet values $$\mathbf{u}_D$$ while the Lagrange pressure and the boundary gradients are set to the interior values. The temperature is also set to a user-specified value $T_{bc}$. Linear ramping in time is also available and can be used to vary each primitive variable independently.
