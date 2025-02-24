@@ -66,6 +66,8 @@ void Volume<Scalar>::ComputeVol()
     in_args.container_ = _lof->buildLinearObjContainer();
     in_args.ghostedContainer_ = _lof->buildGhostedLinearObjContainer();
     in_args.evaluate_transient_terms = false;
+    in_args.time = 0.0;
+    in_args.step_size = 0.0;
 
     _lof->initializeGhostedContainer(panzer::LinearObjContainer::X
                                          | panzer::LinearObjContainer::F
