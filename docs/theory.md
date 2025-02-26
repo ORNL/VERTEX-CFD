@@ -11,7 +11,7 @@ usemathjax: true
 
 ## Governing equations
 
-VERTEX-CFD implements the entropically damped artificial compressibility (EDAC) Navier-Stokes equations, a temperature equation, and a magneto-hydrodynamics (MHD) equation (induction-less equation). Coupling between the different equations is ensured by the Buoyancy force and the Lorentz force.
+VERTEX-CFD implements the entropically damped artificial compressibility (EDAC) Navier-Stokes equations, a temperature equation, and a magneto-hydrodynamics (MHD) equation (inductionless equation). Coupling between the different equations is ensured by the buoyancy force and the Lorentz force.
 
 $$
 \begin{align}
@@ -46,9 +46,9 @@ $$
 
 ## Discretized equations
 
-VERTEX-CFD employs a finite element discretization method and high-order implicit temporal integrators to integrate partial differential equations (PDEs). Numerical stability of the solution is ensured by the use of L-stable implicit temporal integrator and the use of appropriate mesh density.
+VERTEX-CFD employs a finite element discretization method and high-order implicit temporal integrators to integrate partial differential equations (PDEs). Numerical stability of the solution is ensured by using an L-stable implicit temporal integrator and the appropriate mesh density.
 
-A continuous Galerkin finite element method from the Trilinos package, Panzer \cite{panzer-website}, is employed to discretize the equations presented in Eq. \ref{eq:pdes}. Considering a finite dimensional subspace $$V^p_h$$, an approximate solution $$U_h$$ of $$U$$ can be expressed as
+A continuous Galerkin finite element method from the Trilinos package, Panzer \cite{panzer-website}, is employed to discretize the equations presented as Eq. \ref{eq:pdes}. Considering a finite dimensional subspace $$V^p_h$$, an approximate solution $$U_h$$ of $$U$$ can be expressed as
 
 $$
 \begin{equation}
@@ -74,7 +74,7 @@ $$
 
 Boundary fluxes are evaluated at quadrature points, and their contribution is added to the global residuals. The boundary flux $$G$$ is evaluated with the symmetric interior penalty method \cite{penaltyMethod}. Implementation of the boundary conditions is further detailed in Section [Boundary conditions](#boundary-conditions).
 
-The time derivative terms $$\partial_t U$$ are evaluated with a high-order temporal integrator (SDIRK-22 or SDIRK-54) from the Tempus package \cite{tempus-website}. Given a test function $$\phi_i$$ of order $$p$$, integral terms are evaluated with a $$p+1$$ quadrature rule. VERTEX-CFD does not currently implement any numerical method to stabilize the numerical solution and solely relies on the numerical dissipation from the discretization method and the implicit temporal integrator. This strategy has been sufficient for laminar flows, as demonstrated in the following sections.
+The time-derivative terms $$\partial_t U$$ are evaluated with a high-order temporal integrator (SDIRK-22 or SDIRK-54) from the Tempus package \cite{tempus-website}. Given a test function $$\phi_i$$ of order $$p$$, integral terms are evaluated with a $$p+1$$ quadrature rule. VERTEX-CFD does not currently implement any numerical method to stabilize the numerical solution and solely relies on the numerical dissipation from the discretization method and the implicit temporal integrator. This strategy has been sufficient for laminar flows, as demonstrated in the following sections.
 
 
 ## Boundary conditions
@@ -95,7 +95,7 @@ The boundary conditions implemented in VERTEX-CFD are listed below:
 The vector solution is denoted by $$U_{bc} = (P_{p,{bc}}, \mathbf{u}_{bc}, T_{bc}, \varphi_{bc})$$ at the boundary. It should be noted that when the energy equation and the electric potential equation are not solved, the temperature $$T_{bc}$$ and the electric potential $$\varphi_{bc}$$ are ignored.
 
 ### Periodic boundary
-Users can set periodic boundaries in the input file by using the Trilinos specific syntax described in [Panzer_STK class](https://docs.trilinos.org/dev/packages/panzer/doc/html/Panzer__STK__PeriodicBC__Parser_8cpp_source.html). Meshes on periodic faces must be identical for the logic to properly work.
+Users can set periodic boundaries in the input file by using the Trilinos specific syntax described in [Panzer_STK class](https://docs.trilinos.org/dev/packages/panzer/doc/html/Panzer__STK__PeriodicBC__Parser_8cpp_source.html). Meshes on periodic faces must be identical for the logic to work properly.
 
 ### Dirichlet boundary
 The Dirichlet boundary condition denotes the Dirichlet boundary condition in VERTEX-CFD. The velocity is set equal to the user-specified values or Dirichlet values $$\mathbf{u}_D$$ while the Lagrange pressure and the boundary gradients are set to the interior values. The temperature is also set to a user-specified value $T_{bc}$. Linear ramping in time is also available and can be used to vary each primitive variable independently.
@@ -114,7 +114,7 @@ $$
 $$
 
 ### Symmetry boundary condition
-The symmetry boundary condition is a no-penetration condition. The normal component of the fluid velocity to the wall is zero while the tangential component is unrestricted. The same observation is valid for the temeprature gradient as well. Assuming the outward normal vector to a wall boundary is denoted by $$\mathbf{n}_{bc} = \left(n_{bc,x}, n_{bc,y}, n_{bc,z} \right)$$ in a three-dimensional computational domain, the boundary condition for the primitive variables reads:
+The symmetry boundary condition is a no-penetration condition. The normal component of the fluid velocity to the wall is zero, whereas the tangential component is unrestricted. The same observation is also valid for the temeprature gradient. Assuming the outward normal vector to a wall boundary is denoted by $$\mathbf{n}_{bc} = \left(n_{bc,x}, n_{bc,y}, n_{bc,z} \right)$$ in a 3D computational domain, the boundary condition for the primitive variables reads as follows:
 
 $$
 \begin{equation}
@@ -129,7 +129,7 @@ $$
 \end{equation}
 $$
 
-The boundary gradients are function of the interior values:
+The boundary gradients are a function of the interior values:
 
 $$
 \begin{align}
@@ -140,7 +140,7 @@ $$
 $$
 
 ### No-slip boundary condition
-The \emph{no-slip} boundary condition is used to model a viscous flow interacting with a moving wall. The velocity of the flow and the wall are the same which can be put in the mathematical form:
+The \emph{no-slip} boundary condition is used to model a viscous flow interacting with a moving wall. The velocity of the flow and the wall are the same: this can be put in the following mathematical form:
 
 $$
 \begin{equation}
@@ -148,7 +148,7 @@ $$
 \end{equation}
 $$
 
-where $$\mathbf{u_{wall}}$$ is an user input parameter that is defaulted to the zero vector. Since this is a wall, the temperature is set to the wall temperature $$T_{wall}$$. The Lagrange pressure is set to its interior value:
+where $$\mathbf{u_{wall}}$$ is a user input parameter that is defaulted to the zero vector. Because this is a wall, the temperature is set to the wall temperature $$T_{wall}$$. The Lagrange pressure is set to its interior value:
 
 $$
 \begin{equation}
@@ -170,11 +170,11 @@ $$
 \end{equation}
 $$
 
-In VERTEX-CFD the wall boundary velocity $$\mathbf{u_{wall}}$$ can linearly vary as a function of time. This is particularly useful when modeling flow with non-natural initial conditions (non-stationary flow over a stationary obstacle). The wall boundary velocity is set to initially match the flow velocity and linearly decreases to zero with time. This strategy is commonly adopted to ease the work of the numerical solver while developing steady-state flow.
+In VERTEX-CFD, the wall boundary velocity $$\mathbf{u_{wall}}$$ can linearly vary as a function of time. This is particularly useful when modeling flow with non-natural initial conditions (non-stationary flow over a stationary obstacle). The wall boundary velocity is set to initially match the flow velocity and linearly decreases to zero with time. This strategy is commonly adopted to ease the work of the numerical solver while developing steady-state flow.
 
 
 ### Rotating wall boundary condition
-The \emph{rotating wall} boundary condition is used to model the interaction of a fluid with a rotating wall. The wall in contact with the fluid rotates with an angular velocity $$\omega_w$$ in the XY plane. The Lagrange pressure is set to the interior value, while the fluid velocity is computed from the angular velocity and the fluid temperature set to the wall temperature $$T_{wall}$$ as follows:
+The \emph{rotating wall} boundary condition is used to model the interaction of a fluid with a rotating wall. The wall in contact with the fluid rotates with an angular velocity $$\omega_w$$ in the XY plane. The Lagrange pressure is set to the interior value, and the fluid velocity is computed from the angular velocity and the fluid temperature set to the wall temperature $$T_{wall}$$, as follows:
 
 $$
 \begin{equation}
@@ -188,9 +188,9 @@ $$
 \end{equation}
 $$
 
-The Cartesian coordinates are defined as $$x$$ and $$y$$ and the z-component of the velocity is assumed to be zero when used in three dimension.
+The Cartesian coordinates are defined as $$x$$ and $$y$$, and the z-component of the velocity is assumed to be zero when used in 3D.
 
-All boundary gradients are set to the interior values such as:
+All boundary gradients are set to the interior values such as the following:
 
 $$
 \begin{equation}
@@ -199,7 +199,7 @@ $$
 $$
 
 ### Laminar flow
-The laminar flow boundary condition sets a parabolic profile for the velocity in the wall normal direction. The input parameters are the average velocity amplitude $u_i^{avg}$, the coordinates of the two points on the circle which can be connected by a line that pass through the circle center. The resultant inlet velocity profiles can be calculated as:
+The laminar flow boundary condition sets a parabolic profile for the velocity in the wall normal direction. The input parameters are the average velocity amplitude $u_i^{avg}$, the coordinates of the two points on the circle which can be connected by a line that passes through the circle's center. The resultant inlet velocity profiles can be calculated as follows:
 
 $$
 \begin{equation}
@@ -207,7 +207,7 @@ $$
 \end{equation}
 $$
 
-where $$R$$ is the characteristic radius of the circle, $$\mathbf{r}$$ is the distance to the circle center which is calculated from the two points provided by the user, and $$C_i$$ is a constant based on the dimensionality of the problem. In 2D, $$C_i$$ is $3/2$, while in 3D, it is $2.0$. This boundary condition can be used with 2D rectangular channels and 3D pipes. The flow direction is calculated based on the surface normals, where the boundary condition is applied. An uniform inlet temperature can also be provided if solving for the temperature equation. The boundary conditions are as follows:
+where $$R$$ is the characteristic radius of the circle, $$\mathbf{r}$$ is the distance to the circle center which is calculated from the two points provided by the user, and $$C_i$$ is a constant based on the dimensionality of the problem. In 2D, $$C_i$$ is $3/2$, whereas in 3D, it is $2.0$. This boundary condition can be used with 2D rectangular channels and 3D pipes. The flow direction is calculated based on the surface normals where the boundary condition is applied. A uniform inlet temperature can also be provided if solving for the temperature equation. The boundary conditions are as follows:
 
 $$
 \begin{equation}
@@ -221,7 +221,7 @@ $$
 \end{equation}
 $$
 
-All boundary gradients are set to the interior values such as:
+All boundary gradients are set to interior values such as the following:
 
 $$
 \begin{equation}
@@ -230,7 +230,7 @@ $$
 $$
 
 ### Outflow boundary condition
-The outflow boundary condition is employed when the back pressure is known at an outlet. The Lagrange pressure is computed from the back pressure $$P_b$$:
+The outflow boundary condition is employed when the back pressure at an outlet is known. The Lagrange pressure is computed from the back pressure $$P_b$$:
 
 $$
 \begin{equation}
@@ -238,7 +238,7 @@ $$
 \end{equation}
 $$
 
-The velocity, the temperature and all boundary gradients are set to their respective interior values such as:
+The velocity, the temperature, and all boundary gradients are set to their respective interior values, as follows:
 
 $$
 \begin{equation}
@@ -255,7 +255,7 @@ $$
 
 ### Cavity Lid
 
-A special boundary condition is implemented for the lid-driven cavity case to provide a smooth transition from the lid velocity to the no-slip condition at the wall, as described by Leriche and Gavrilakis \cite{Leriche2000}. The condition assumes that the domain consists of a two- or three-dimensional cube with half width $$h$$, centered on the origin. The Lagrange pressure at the boundary is set to the interior value:
+A special boundary condition is implemented for the lid-driven cavity case to provide a smooth transition from the lid velocity to the no-slip condition at the wall, as described by Leriche and Gavrilakis \cite{Leriche2000}. The condition assumes that the domain consists of a 2D or 3D cube with a half width of $$h$$, centered on the origin. The Lagrange pressure at the boundary is set to the interior value:
 
 $$
 \begin{equation}
@@ -263,7 +263,7 @@ $$
 \end{equation}
 $$
 
-If the energy equation is to be solved, the boundary temperature is set to a specified constant value:
+If the energy equation is to be solved, then the boundary temperature is set to a specified constant value:
 
 $$
 \begin{equation}
@@ -271,7 +271,7 @@ $$
 \end{equation}
 $$
 
-The user is required to specify the index $$n$$ aligned with the boundary normal vector, and the index $$v$$ of the direction in which the velocity is aligned. The velocity components are then defined as:
+The user is required to specify the index $$n$$ aligned with the boundary normal vector and the index $$v$$ of the direction in which the velocity is aligned. The velocity components are then defined as follows:
 
 $$
 \begin{equation}
@@ -279,7 +279,7 @@ $$
     0, i \neq v \\
     U_0 \prod_{j=0, j \neq n}^{N} \left( 1 - \left(r_i / h \right)^{18} \right)^2
     \end{matrix}
-    \right.
+    \right,
 \end{equation}
 $$
 
@@ -287,10 +287,10 @@ where $$U_0$$ is the nominal wall velocity, $$N$$ is the number of spatial direc
 
 ## Initial conditions
 
-The initial conditions are specified for the velocity $$\mathbf{u}$$, the Lagrange pressure $$P$$ and the temperature $$T$$ when solving for the energy equation. The electric potential $$\varphi$$ is assumed constant and set to $$\varphi_0$$ in all initial conditions presented below.
+The initial conditions are specified for the velocity $$\mathbf{u}$$, the Lagrange pressure $$P$$, and the temperature $$T$$ when solving for the energy equation. The electric potential $$\varphi$$ is assumed constant and is set to $$\varphi_0$$ in all initial conditions presented below.
 
 ### Uniform initial conditions
-The normalized Lagrange pressure, the velocity and the temperature are initialized to constant value across each block of the computational domain:
+The normalized Lagrange pressure, the velocity, and the temperature are initialized to constant values across each block of the computational domain:
 
 $$
 \begin{align}
@@ -305,7 +305,7 @@ $$
 $$
 
 ### Laminar flow
-When using the laminar flow initial condition, the x-component of the velocity is initialized with a parabolic profile. The Lagrange pressure and the temperature are initialized to constant values. The current implementation can be used for two geometries that are a 2D rectangular channel and a 3D pipe. The parabolic profile is function of the average velocity and the channel height $$h$$ in 2D or the pipe diameter $$D$$ in 3D. It is assumed that the flow direction is aligned with the x-axis which yields the following expressions:
+When using the laminar flow initial condition, the x-component of the velocity is initialized with a parabolic profile. The Lagrange pressure and the temperature are initialized to constant values. The current implementation can be used for two geometries: a 2D rectangular channel and a 3D pipe. The parabolic profile is function of the average velocity and the channel height $$h$$ in 2D or the pipe diameter $$D$$ in 3D. It is assumed that the flow direction is aligned with the x-axis, which yields the following expressions:
 
 $$
 \begin{align}
