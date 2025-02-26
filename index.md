@@ -7,7 +7,7 @@ permalink: /
 
 ![Alt text](docs/figures/vertex_cfd_heated_flow_logo.png)
 
-An open-source CFD code for multi-physics modeling and simulation with a focus on fusion applications.
+An open-source CFD code for multiphysics modeling and simulation with a focus on fusion applications.
 {: .fs-6 .fw-300 }
 
 [User Guide](docs/index.html){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
