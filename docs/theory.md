@@ -30,7 +30,7 @@ $$
 The equations are recast in a conservative form and solved for the pressure $$P$$, the velocity $$\mathbf{u}$$, the temperature $$T$$, and the electric potential $$\varphi$$.
 
 $$
-\begin{aligned}\label{eq:pdes}
+\begin{align}\label{eq:pdes}
 \left\{
 \begin{matrix}
     \nabla \cdot \mathbf{u} = 0 \\
@@ -40,7 +40,7 @@ $$
     \nabla \cdot (\sigma \nabla \varphi) = \nabla \cdot [ \sigma \mathbf{u} \times \mathbf{B^0} ]
 \end{matrix}
 \right.
-\end{aligned}
+\end{align}
 $$
 
 
@@ -277,8 +277,8 @@ $$
 \begin{equation}
 \left\{
     \begin{matrix}
-    u_{i} \left(\mathbf{r}, t \right) = 0, i \neq v \\
-    U_0 \prod_{j=0, j \neq n}^{N} \left( 1 - \left(r_i / h \right)^{18} \right)^2
+    u_{i} \left(\mathbf{r}, t \right) $=$ 0, i \neq v \\
+    U_0 \prod_{j=0, j \neq n}^{N} $=$ \left( 1 - \left(r_i / h \right)^{18} \right)^2
     \end{matrix}
     \right,
 \end{equation}
