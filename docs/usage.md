@@ -7,10 +7,10 @@ usemathjax: true
 
 # Usage
 
-Once installed, VERTEX-CFD relies on two files. The first one is the 'vertexcfd' executable and the second one is the input file for the simulation. After the installation, the executable is located in `<PATH TO INSTALLATION LOCATION>/bin/vertexcfd`. The input file is case spesific and there are example case files in `vertex-cfd/examples/inputs`. In this document, the input file located in `vertex-cfd/examples/inputs/incompressible/incompressible_2d_channel.xml` will be used as an example case. 
+Once installed, VERTEX-CFD relies on two files. The first one is the 'vertexcfd' executable, and the second one is the input file for the simulation. After the installation, the executable is located in `<PATH TO INSTALLATION LOCATION>/bin/vertexcfd`. The input file is case-specific, and there are example case files in `vertex-cfd/examples/inputs`. In this document, the input file located in `vertex-cfd/examples/inputs/incompressible/incompressible_2d_channel.xml` will be used as an example case. 
 
 ## Running a simulation
-In order to run a simulation in serial, vertexcfd can be called directly as:
+In order to run a simulation in serial, vertexcfd can be called directly as
 
 ```
 <PATH TO INSTALLATION LOCATION>/bin/vertexcfd --i=PATH_TO_INPUT_FILE/incompressible_2d_channel.xml
@@ -31,7 +31,7 @@ export OMP_PLACES=threads
 
 mpirun <PATH TO INSTALLATION LOCATION>/bin/vertexcfd --i=<PATH TO INPUT FILE LOCATION>/incompressible_2d_channel.xml
 ```
-Once the simulation starts, the example output should look like:
+Once the simulation starts, the example output should look like the following:
 ```
 ============================================================================
 Time Integration Begin
@@ -99,7 +99,7 @@ Thu Mar 31 21:51:51 2022
 Time integration complete.
 ============================================================================
 ```
-Once the simulation is completed. The results should be ready for visualization. For the visualization, we suggest ParaView. However, any visualization software that supports Exodus format should work. The example solution file screenshot visualized in Paraview is shown below:
+Once the simulation is completed, the results should be ready for visualization. For the visualization, we suggest using ParaView. However, any visualization software that supports Exodus format should work. The example solution file screenshot visualized in Paraview is shown below:
 
 ![paraview-ss](https://github.com/user-attachments/assets/75483e4a-cfec-4a51-891f-3b7c72262ba7)
 
