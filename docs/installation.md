@@ -5,13 +5,13 @@ nav_order: 1
 ---
 
 # Installation
-VERTEX-CFD supports both CPU and GPU solvers. Depending on the CPU/GPU supports, Trilinos needs to be compiled with the proper configurations as VERTEX-CFD relies on the Trilinos installation. For the VERTEX-CFD installation, Trilinos should be available in the system. Installation instructions for both Trilinos and VERTEX-CFD are available. If Trilinos is already built and ready, you can skip to [VERTEX-CFD installation instructions](#vertex-cfd-installation). All of the scripts given in this file is also available in [docs/scripts](https://github.com/ORNL/VERTEX-CFD/tree/gh-pages/docs/scripts) directory for users convenience. 
+VERTEX-CFD supports both CPU and GPU solvers. Depending on the CPU/GPU supports, Trilinos must be compiled with the proper configurations because VERTEX-CFD relies on the Trilinos installation. For the VERTEX-CFD installation, Trilinos should be available in the system. Installation instructions for both Trilinos and VERTEX-CFD are available. If Trilinos is already built and ready, then you can skip to [VERTEX-CFD installation instructions](#vertex-cfd-installation). All of the scripts given in this file are also available in the [docs/scripts](https://github.com/ORNL/VERTEX-CFD/tree/gh-pages/docs/scripts) directory for the user's convenience. 
 
 ## Trilinos Installation
-Trilinos supports both CPU and GPU if configured accordingly. For the installation with CPU support only, we have [spack](https://spack.readthedocs.io/en/latest/environments.html) based procedure which is easier to follow. For GPU, as of now, Trilinos needs to be built manually. For both options we suggest using a compute node instead of login node as this will be a demanding process.
+Trilinos supports both CPU and GPU if configured accordingly. For the installation with CPU support only, we have a [spack](https://spack.readthedocs.io/en/latest/environments.html)-based procedure which is easier to follow. For GPU, as of now, Trilinos must be built manually. For both options, we suggest using a compute node instead of a login node, which would be a demanding process.
 
 ### Trilinos-CPU Installation
-First of all, create a directory and git clone spack.
+First, create a directory and git clone spack.
 
 ```
 mkdir trilinos
@@ -19,7 +19,7 @@ cd trilinos/
 git clone -c feature.manyFiles=true --depth=2 https://github.com/spack/spack.git
 ```
 
-Next, create a file named `spack-trilinos16.yaml` which should contain the following configuration for spack. Pay special attention to `EDIT` entries where edits may need to be made depending on machine. Modules already available in your machine can be loaded using the `packages` section at the end of the file. 
+Next, create a file named `spack-trilinos16.yaml` which should contain the configuration presented below for spack. Pay special attention to `EDIT` entries because edits may be required, depending on your machine. Modules already available on your machine can be loaded using the `packages` section at the end of the file. 
 
 ```
 spack:
@@ -85,7 +85,7 @@ spack:
   - trilinos@16.0.0 +chaco+exodus+hdf5+intrepid2+kokkos+mpi+nox+openmp+panzer+phalanx+shards+shared+stk+tempus+zoltan2 build_type=RelWithDebInfo
 ```
 
-Now, source the spack setup script and create an environment named vertex. 
+Now, source the spack setup script and create an environment named `vertex`. 
 
 ```
 source spack/share/spack/setup-env.sh
@@ -94,18 +94,18 @@ spack env activate vertex
 spack spec
 ```
 
- `spack spec` will show the configuration of what is to be installed, make sure the configuration matches what was requested in the configuration file. Next, install Trilinos and its dependencies.
+ `spack spec` will show the configuration of what is to be installed: make sure the configuration matches what was requested in the configuration file. Next, install Trilinos and its dependencies.
 
 ```
 spack install
 ```
 
-If the session is ended for any reason, the user might need to reactivate the vertex spack env using `spack env activate vertex`. If all compiles without error, the modules are ready to use. `spack location -i trilinos` will return the location of the Trilinos install. The modules can be setup using
+If the session is ended for any reason, then the user may need to reactivate the vertex spack env using `spack env activate vertex`. If all compiles without error, then the modules are ready to use. `spack location -i trilinos` will return the location of the Trilinos install. The modules can be set up using
 
 ```
 spack module tcl refresh
 ```
-Trilinos can be called by loading the module as shown below. The folder names may be different depending on your machine configuration. We suggest finding the current folders instead of copying and pasting. As an example, on [CADES](https://www.ornl.gov/content/cades) in ORNL, they are located in:
+Trilinos can be called by loading the module as shown below. The folder names may be different, depending on your machine configuration. We suggest finding the current folders instead of copying and pasting. As an example, on [CADES](https://www.ornl.gov/content/cades) in ORNL, they are located in
 
 ```
 module use /<spack INSTALL LOCATION>/share/spack/modules/linux-centos7-haswell/
@@ -114,7 +114,7 @@ module load trilinos/16.0.0-gcc-13.2.0-qzebvtj
 Trilinos and its dependencies are required to compile [VERTEX-CFD](#vertex-cfd-installation).
 
 ### Trilinos-GPU Installation
-VERTEX-CFD-GPU installation is not, as of now, supported by the spack. Hence, it will be required to compile Trilinos with the GPU support manually. For the Trilinos-GPU installation, first step is to clone Trilinos from the GitHub repo and checkout to `Trilinos-16-0-0` as follows:
+As of now, VERTEX-CFD-GPU installation is not supported by the spack. Hence, Trilinos with GPU support must be compiled manually. To install Trilinos-GPU, the first step is to clone Trilinos from the GitHub repo and checkout to `Trilinos-16-0-0` as follows:
 
 ```
 git clone https://github.com/trilinos/Trilinos.git
@@ -122,14 +122,14 @@ cd Trilinos
 git checkout trilinos-release-16-0-branch
 ```
 
-Once you checked out to the correct version, you can create a new folder for the building Trilinos as follows:
+Once you have checked out to the correct version, you can create a new folder for building Trilinos, as follows:
 
 ```
 mkdir build
 cd build
 ```
 
-After that, modules required to build Trilinos need to be loaded. To this purpose, create a file with `trilinos-cuda-env.sh` name. Although the procedure for the module loading changes depend on the machine, as an example, the content of `trilinos-cuda-env.sh` in NERSC Perlmutter is as follows and you can adjust it according to your machine configurations:
+Now the modules required to build Trilinos must be loaded. Create a file named `trilinos-cuda-env.sh`. The procedure for module loading differs, depending on the machine. The content of `trilinos-cuda-env.sh` in NERSC Perlmutter is given as an example below: this can be adjusted according to your machine's configurations:
 
 ```
 #!/bin/bash
@@ -167,7 +167,7 @@ export CUDA_MANAGED_FORCE_DEVICE_ALLOC=1
 export TPETRA_ASSUME_GPU_AWARE_MPI=0
 ```
 
-Once this is ready, create a configuration script with `trilinos-cuda-config.sh` name and the following content:
+Once this is ready, create a configuration script named `trilinos-cuda-config.sh` and include the following content:
 
 ```
 #!/bin/bash
@@ -247,36 +247,36 @@ cmake \
 ${TRILINOS_SOURCE_DIR}
 ```
 
-As an example, in NERSC Perlmutter system, for `NVCC_WRAPPER`, we used the wrapper available in Sandia National Lab's GitHub page `https://github.com/sandialabs/Albany/blob/master/doc/LandIce/machines/perlmutter/nvcc_wrapper_a100`. After that, run the `trilinos-cuda-config.sh` script as:
+As an example, in the NERSC Perlmutter system, for `NVCC_WRAPPER`, we used the wrapper available from the Sandia National Laboratories' GitHub page `https://github.com/sandialabs/Albany/blob/master/doc/LandIce/machines/perlmutter/nvcc_wrapper_a100`. After that, run the `trilinos-cuda-config.sh` script as:
 
 ```
 ./trilinos-cuda-config.sh
 ```
 
-Once the configuration is completed, you can build and install Trilinos-16-0-0-GPU as follows:
+Once the configuration is completed, Trilinos-16-0-0-GPU can be built and installed as follows:
 
 ```
 make -j install
 ```
 
-After the building and installation, Trilinos-GPU should be ready for [VERTEX-CFD installation](#vertex-cfd-installation).
+After building and installation, Trilinos-GPU should be ready for [VERTEX-CFD installation](#vertex-cfd-installation).
 
 
 ## VERTEX-CFD Installation
 
-Once the Trilinos is installed in your system and ready to use, VERTEX-CFD can be installed. First of all, you can create a folder for VERTEX-CFD and clone from GitHub by using:
+Once Trilinos is installed on your system and ready to use, VERTEX-CFD can be installed. First, create a folder for VERTEX-CFD and clone from GitHub by using the following:
 ```
 mkdir VERTEX-CFD
 cd VERTEX-CFD
 git clone https://github.com/ORNL/VERTEX-CFD.git
 ```
-This will clone the VERTEX-CFD folder. In order to build it, create a new folder as build as follows:
+This will clone the VERTEX-CFD folder. In order to build VERTEX-CFD, create a new folder, as follows:
 ```
 mkdir build
 cd build
 ```
 
-In the build directory, depending on the CPU/GPU installation, you will need different environment files. For GPU, you can use `trilinos-cuda-config.sh`. There is no need for a separate configuration script. However, for CPU, you will need `vertex-env-cpu.sh`. Those environment scripts are system specific depending and it may change based on your system. Carefully modify them based on your system. The content of the `vertex-env-cpu.sh` is as follows:
+Different environment files are needed in the build directory, depending on the CPU/GPU installation. For a GPU, you can use `trilinos-cuda-config.sh`. There is no need for a separate configuration script. However, for a CPU, you will need `vertex-env-cpu.sh`. The environment scripts are system-specific and may vary based on your system. Carefully modify these scripts based on your system. The content of `vertex-env-cpu.sh` is as follows:
 ```
 #!/bin/bash
 
@@ -306,14 +306,14 @@ GCC_ROOT=/<SYSTEM GCC ROOT>/
 unset LIBRARY_PATH
 ```
 
-Please note that, those scripts are system specific. Hence you will need to modify them depending on your system. Please carefully modify them and make sure they are loading the correct modules. The scripts that we shared are succesfully used on CADES (CPU configuration) in ORNL and NERSC Perlmutter (GPU configuration). Once you have the environment script, source the script with one of the lines below based on CPU/GPU installation:
+Please note that because these scripts are system-specific, they must be modified according to your system. Please carefully modify them and make sure they are loading the correct modules. The scripts shared here are succesfully used on CADES (CPU configuration) in ORNL and NERSC Perlmutter (GPU configuration). Once you have the environment script, source the script with one of the lines below based on the CPU/GPU installation:
 
 ```
 source vertex-env-cpu.sh
 source trilinos-cuda-env.sh
 ```
 
-Once the environment script is sourced, VERTEX-CFD needs to be configured. Create a configuration script with `vertex-config.sh` name, which contains the following lines:
+Once the environment script is sourced, VERTEX-CFD must be configured. Create a configuration script named `vertex-config.sh` containing the following lines:
 ```
 #!/bin/sh
 
@@ -350,22 +350,22 @@ cmake \
     \
     ${SOURCE}
 ```
-Please notice that you need to define `NVCC_WRAPPER` and `CMAKE_CXX_COMPILER` for GPU version. Once the configuration script is ready, run it as follows:
+Please note that you must define `NVCC_WRAPPER` and `CMAKE_CXX_COMPILER` for the GPU version. Once the configuration script is ready, run it as follows:
 ```
 ./vertex-config.sh
 ```
 
-When configured succesfully, you can use make to install as:
+When configured succesfully, you can use make to install as follows:
 ```
 make -j install
 ```
-If you wish to limit the number of cores in the installation, append `-j` flag with desired number of cores such as `-j32`. This will build and install VERTEX-CFD. The binary will be located in `<PATH TO DESIRED INSTALLATION LOCATION>/bin/vertexcfd`. Once the installation is completed, unit and regression tests can be run to make sure everything is working as expected. For the instructions for the testing, refer to the following sections.
+If you wish to limit the number of cores in the installation, then append `-j` flag with the desired number of cores, such as `-j32`. This will build and install VERTEX-CFD. The binary will be located in `<PATH TO DESIRED INSTALLATION LOCATION>/bin/vertexcfd`. Once the installation is complete, unit and regression tests can be run to ensure that everything is working as expected. For testing instructions, refer to the following sections.
 
 # Testing
-VERTEX-CFD development procedure strictly requires to develop a unit/regression test for each capability added. Hence, it is suggested to run those tests to make sure installation is properly completed and the functionalities are working as expected.
+The VERTEX-CFD development procedure strictly requires that a unit/regression test be developed for each capability added. Hence, it is suggested to run those tests to make sure that installation is properly completed and the functionalities are working as expected.
 
 ## Unit Tests
-VERTEX-CFD has large amount of unit tests. In order to run those, you can use the below job submission scripts written for SLURM scheduler.
+VERTEX-CFD includes a large amount of unit tests. In order to run these tests, you can use the job submission scripts given below which are written for SLURM scheduler.
 
 ```
 #!/bin/bash
@@ -376,7 +376,7 @@ VERTEX-CFD has large amount of unit tests. In order to run those, you can use th
 #SBATCH --error error.log
                                                                                                                                         
 source <PATH TO>/trilinos-cuda-config.sh
-#source <PATH TO>/vertex-env-cpu.sh # For GPU comment above line and use this line.
+#source <PATH TO>/vertex-env-cpu.sh # For GPU comment above line, and use this line.
 
 export OMP_PROC_BIND=true
 export OMP_PLACES=threads
@@ -389,7 +389,7 @@ export MAP_STRING=slot:pe=${SLURM_CPUS_PER_TASK}
 ctest -j ${SLURM_NTASKS_PER_NODE}
 ```
 
-For other scheduler, such as PBS, you can convert the SLURM submission script. The example output screen for the unit tests is:
+For another scheduler, such as PBS, you can convert the SLURM submission script. The example output screen for the unit tests is as follows:
 ```
         Start   1: VertexCFD_KokkosMPI_test_OPENMP_np_1_nt_1
         Start   2: VertexCFD_KokkosMPI_test_OPENMP_np_1_nt_2
@@ -436,10 +436,10 @@ For other scheduler, such as PBS, you can convert the SLURM submission script. T
         191 - VertexCFD_GeometryPrimitives_test_OPENMP_np_192_nt_1 (Failed)
         202 - VertexCFD_WriteMatrix_test_OPENMP_np_192_nt_1 (Failed)       
 ```
-Note: several unit tests rely on restart files that are not compatible across architecture. The above list of tests is expected to fail outside of the continuous integration pipelines.
+Note: several unit tests rely on restart files that are not compatible across architecture. The listed tests given above are expected to fail outside of the continuous integration pipelines.
 
 ## Regression Tests
-VERTEX-CFD uses regression tests to make sure the new capabilities does not introduce bugs/errors to the source code. In order to run regression tests, you can use the below submission script written for SLURM scheduler:
+VERTEX-CFD uses regression tests to make sure that the new capabilities do not introduce bugs/errors to the source code. In order to run regression tests, you can use the submission script provided below, which is written for SLURM scheduler:
 
 ```
 #!/bin/bash                                                                                                                         
@@ -450,7 +450,7 @@ VERTEX-CFD uses regression tests to make sure the new capabilities does not intr
 #SBATCH --job-name=regression-test
 
 source <PATH TO>/trilinos-cuda-config.sh
-#source <PATH TO>/vertex-env-cpu.sh # For GPU comment above line and use this line.
+#source <PATH TO>/vertex-env-cpu.sh # For GPU comment above line, and use this line.
 
 export OMP_PROC_BIND=true
 export OMP_PLACES=threads
@@ -464,7 +464,7 @@ cd regression_test
 pytest -k "test"
 ```
 
-The example regression test output is:
+The example regression test output is as follows:
 
 ```
 ============================= test session starts ==============================
