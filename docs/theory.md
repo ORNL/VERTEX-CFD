@@ -14,7 +14,7 @@ usemathjax: true
 VERTEX-CFD implements the entropically damped artificial compressibility (EDAC) Navier-Stokes equations, a temperature equation, and a magneto-hydrodynamics (MHD) equation (inductionless equation). Coupling between the different equations is ensured by the buoyancy force and the Lorentz force.
 
 $$
-\begin{aligned}
+\begin{align}
 \left\{
 \begin{matrix}
     \nabla \cdot \mathbf{u} = 0 \\
@@ -24,7 +24,7 @@ $$
     \nabla \cdot (\sigma \nabla \varphi) = \nabla \cdot [ \sigma \mathbf{u} \times \mathbf{B^0} ]
 \end{matrix}
 \right.
-\end{aligned}
+\end{align}
 $$
 
 The equations are recast in a conservative form and solved for the pressure $$P$$, the velocity $$\mathbf{u}$$, the temperature $$T$$, and the electric potential $$\varphi$$.
@@ -72,7 +72,7 @@ $$
 \end{align}
 $$
 
-Boundary fluxes are evaluated at quadrature points, and their contribution is added to the global residuals. The boundary flux $$G$$ is evaluated with the symmetric interior penalty method \cite{penaltyMethod}. Implementation of the boundary conditions is further detailed in Section [Boundary conditions](#boundary-conditions).
+Boundary fluxes are evaluated at quadrature points, and their contribution is added to the global residuals. The boundary flux $$G$$ is evaluated with the symmetric interior penalty method. Implementation of the boundary conditions is further detailed in Section [Boundary conditions](#boundary-conditions).
 
 The time-derivative terms $$\partial_t U$$ are evaluated with a high-order temporal integrator (SDIRK-22 or SDIRK-54) from the Tempus package \cite{tempus-website}. Given a test function $$\phi_i$$ of order $$p$$, integral terms are evaluated with a $$p+1$$ quadrature rule. VERTEX-CFD does not currently implement any numerical method to stabilize the numerical solution and solely relies on the numerical dissipation from the discretization method and the implicit temporal integrator. This strategy has been sufficient for laminar flows, as demonstrated in the following sections.
 
@@ -98,7 +98,7 @@ The vector solution is denoted by $$U_{bc} = (P_{p,{bc}}, \mathbf{u}_{bc}, T_{bc
 Users can set periodic boundaries in the input file by using the Trilinos specific syntax described in [Panzer_STK class](https://docs.trilinos.org/dev/packages/panzer/doc/html/Panzer__STK__PeriodicBC__Parser_8cpp_source.html). Meshes on periodic faces must be identical for the logic to work properly.
 
 ### Dirichlet boundary
-The Dirichlet boundary condition denotes the Dirichlet boundary condition in VERTEX-CFD. The velocity is set equal to the user-specified values or Dirichlet values $$\mathbf{u}_D$$ while the Lagrange pressure and the boundary gradients are set to the interior values. The temperature is also set to a user-specified value $T_{bc}$. Linear ramping in time is also available and can be used to vary each primitive variable independently.
+The Dirichlet boundary condition denotes the Dirichlet boundary condition in VERTEX-CFD. The velocity is set equal to the user-specified values or Dirichlet values $$\mathbf{u}_D$$ while the Lagrange pressure and the boundary gradients are set to the interior values. The temperature is also set to a user-specified value $$T_{bc}$$. Linear ramping in time is also available and can be used to vary each primitive variable independently.
 
 $$
 \begin{equation}
@@ -207,7 +207,7 @@ $$
 \end{equation}
 $$
 
-where $$R$$ is the characteristic radius of the circle, $$\mathbf{r}$$ is the distance to the circle center which is calculated from the two points provided by the user, and $$C_i$$ is a constant based on the dimensionality of the problem. In 2D, $$C_i$$ is $3/2$, whereas in 3D, it is $2.0$. This boundary condition can be used with 2D rectangular channels and 3D pipes. The flow direction is calculated based on the surface normals where the boundary condition is applied. A uniform inlet temperature can also be provided if solving for the temperature equation. The boundary conditions are as follows:
+where $$R$$ is the characteristic radius of the circle, $$\mathbf{r}$$ is the distance to the circle center which is calculated from the two points provided by the user, and $$C_i$$ is a constant based on the dimensionality of the problem. In 2D, $$C_i$$ is $$3/2$$, whereas in 3D, it is $$2.0$$. This boundary condition can be used with 2D rectangular channels and 3D pipes. The flow direction is calculated based on the surface normals where the boundary condition is applied. A uniform inlet temperature can also be provided if solving for the temperature equation. The boundary conditions are as follows:
 
 $$
 \begin{equation}
@@ -275,8 +275,9 @@ The user is required to specify the index $$n$$ aligned with the boundary normal
 
 $$
 \begin{equation}
-    u_{i} \left(\mathbf{r}, t \right) = \left\{ \begin{matrix}
-    0, i \neq v \\
+\left\{
+    \begin{matrix}
+    u_{i} \left(\mathbf{r}, t \right) = 0, i \neq v \\
     U_0 \prod_{j=0, j \neq n}^{N} \left( 1 - \left(r_i / h \right)^{18} \right)^2
     \end{matrix}
     \right,
