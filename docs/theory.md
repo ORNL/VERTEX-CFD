@@ -284,7 +284,7 @@ $$
 \end{equation}
 $$
 
-where $$U_0$$ is the nominal wall velocity, $$N$$ is the number of spatial directions, and $$r_i$$ is the distance of the current location from the origin in the $$i^{th}$$ direction.
+where $$u_i$$ is the nominal wall velocity and $$r_i$$ is the distance of the current location from the origin in the $$i^{th}$$ direction.
 
 ## Initial conditions
 
