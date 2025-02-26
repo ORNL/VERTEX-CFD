@@ -277,6 +277,7 @@ $$
 \begin{equation}
 \left\{
     \begin{matrix}
+    u_i &=& \left( 1 - \left(r_i / h \right)^{18} \right)^2 \\
     u_{j \neq i} &=& 0
     \end{matrix}
 \right.
