@@ -275,12 +275,11 @@ The user is required to specify the index $$n$$ aligned with the boundary normal
 
 $$
 \begin{equation}
-\left\{
-    \begin{matrix}
-    u_i $=$ \left( 1 - \left(r_i / h \right)^{18} \right)^2 \\
-    u_{j \neq i} = 0
+    u_{i} \left(\mathbf{r}, t \right) = \left\{ \begin{matrix}
+    0, i \neq v \\
+    U_0 \prod_{j=0, j \neq n}^{N} \left( 1 - \left(r_i / h \right)^{18} \right)^2
     \end{matrix}
-\right.
+    \right.
 \end{equation}
 $$
 
