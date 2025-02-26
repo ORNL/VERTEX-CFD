@@ -277,8 +277,8 @@ $$
 \begin{equation}
 \left\{
     \begin{matrix}
-    u_{i} \left(\mathbf{r}, t \right) $=$ 0, i \neq v \\
-    U_0 \prod_{j=0, j \neq n}^{N} $=$ \left( 1 - \left(r_i / h \right)^{18} \right)^2
+    u_i $=$ \left( 1 - \left(r_i / h \right)^{18} \right)^2 \\
+    u_{j \neq i} = 0
     \end{matrix}
     \right,
 \end{equation}
