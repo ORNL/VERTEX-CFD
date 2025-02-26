@@ -14,7 +14,7 @@ usemathjax: true
 VERTEX-CFD implements the entropically damped artificial compressibility (EDAC) Navier-Stokes equations, a temperature equation, and a magneto-hydrodynamics (MHD) equation (inductionless equation). Coupling between the different equations is ensured by the buoyancy force and the Lorentz force.
 
 $$
-\begin{align}
+\begin{aligned}
 \left\{
 \begin{matrix}
     \nabla \cdot \mathbf{u} = 0 \\
@@ -24,13 +24,13 @@ $$
     \nabla \cdot (\sigma \nabla \varphi) = \nabla \cdot [ \sigma \mathbf{u} \times \mathbf{B^0} ]
 \end{matrix}
 \right.
-\end{align}
+\end{aligned}
 $$
 
 The equations are recast in a conservative form and solved for the pressure $$P$$, the velocity $$\mathbf{u}$$, the temperature $$T$$, and the electric potential $$\varphi$$.
 
 $$
-\begin{align}\label{eq:pdes}
+\begin{aligned}\label{eq:pdes}
 \left\{
 \begin{matrix}
     \nabla \cdot \mathbf{u} = 0 \\
@@ -40,7 +40,7 @@ $$
     \nabla \cdot (\sigma \nabla \varphi) = \nabla \cdot [ \sigma \mathbf{u} \times \mathbf{B^0} ]
 \end{matrix}
 \right.
-\end{align}
+\end{aligned}
 $$
 
 
