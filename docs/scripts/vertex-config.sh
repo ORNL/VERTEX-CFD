@@ -22,13 +22,25 @@ rm -rf Testing
 # LD_LIBRARY_PATH appropriately to run jobs.
 unset LIBRARY_PATH
 
+# EDIT: This command is for CPU. Comment it for GPU.
 cmake \
     -D CMAKE_BUILD_TYPE=${BUILD} \
     -D CMAKE_INSTALL_PREFIX=${INSTALL} \
-#    -D CMAKE_CXX_COMPILER=${NVCC_WRAPPER} \
     -D VertexCFD_ENABLE_COVERAGE_BUILD=OFF \
     -D CMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -fdiagnostics-color" \
     -D VertexCFD_ENABLE_TESTING=ON \
     -D Trilinos_ROOT=<PATH TO TRILINOS/16.0.0> \
     \
     ${SOURCE}
+
+# EDIT: Uncomment this command for GPU.
+#cmake \
+#    -D CMAKE_BUILD_TYPE=${BUILD} \
+#    -D CMAKE_INSTALL_PREFIX=${INSTALL} \
+#    -D CMAKE_CXX_COMPILER=${NVCC_WRAPPER} \
+#    -D VertexCFD_ENABLE_COVERAGE_BUILD=OFF \
+#    -D CMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -fdiagnostics-color" \
+#    -D VertexCFD_ENABLE_TESTING=ON \
+#    -D Trilinos_ROOT=<PATH TO TRILINOS/16.0.0> \
+#    \
+#    ${SOURCE}
