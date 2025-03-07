@@ -29,7 +29,7 @@ We encourage you to contribute to VERTEX-CFD! Please review the [how to contribu
 - [Ryan Savery](https://impact.ornl.gov/en/persons/ryan-savery)
 
 ## Citing
-If you use VERTEX-CFD in your work, please cite the Zenodo DOI [![DOI](DOI_NUMBER)](DOI_NUMBER) of the version you used as a software citation:
+If you use VERTEX-CFD in your work, please cite the Zenodo DOI [![DOI](DOI_NUMBER)](https://zenodo.org/records/14907174) of the version you used as a software citation:
 ```bibtex
 @software{vertex-cfd,
   author       = {AUTHORS},
