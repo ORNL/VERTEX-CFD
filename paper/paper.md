@@ -24,6 +24,8 @@ authors:
     affiliation: 5
   - name: Ryan Glasby
     affiliation: 4
+  - name: Taylor Erwin
+    affiliation: 4
   - name: Stuart Slattery
     affiliation: 4
   - name: Franklin Curtis
