@@ -30,7 +30,7 @@ spack:
     build_stage:
     - $spack/var/spack/spack-stage/build-$arch-$date/
     misc_cache: $spack/.cache
-    build_jobs: 16 # EDIT: change the number with the number of available cores.
+    build_jobs: 32
     install_tree:
       root: $spack/opt/spack/
       projections:
@@ -43,7 +43,9 @@ spack:
     ccache: false
     db_lock_timeout: 120
     package_lock_timeout: null
-    shared_linking: rpath
+    shared_linking:
+      type: rpath
+      bind: false
     allow_sgid: true
     locks: true
     suppress_gpg_warnings: false
@@ -52,7 +54,7 @@ spack:
   compilers:
   - compiler: # EDIT: change below with your compiler of choice
       spec: gcc@13.2.0
-      paths:
+      paths: # EDIT: Change those based on the location of the compiler location you prefer
         cc: /software/dev_tools/swtree/cs400/gcc/13.2.0/centos7.5_gnu8.5.0/bin/gcc
         cxx: /software/dev_tools/swtree/cs400/gcc/13.2.0/centos7.5_gnu8.5.0/bin/g++
         f77: /software/dev_tools/swtree/cs400/gcc/13.2.0/centos7.5_gnu8.5.0/bin/gfortran
@@ -61,28 +63,25 @@ spack:
       operating_system: centos7 # EDIT: update according to `spack arch`: just the OS version
       target: x86_64
       modules: # EDIT: update with a list of modules you want to load by default
-      - jobutils/1.0
-      - StdEnv
-      - python/3.11.5
-      - openmpi/4.1.0
+      - gcc/13.2.0
 
   packages:
     all:
       target: [broadwell] # EDIT: Change this according to `spack arch`
       compiler: [gcc@13.2.0] # EDIT: Change according to your compiler of choice
       providers: # EDIT: Change versions below according to the default in your machine
-        mpi: [openmpi]
+        mpi: [intel-oneapi-mkl]
         blas: [intel-oneapi-mkl]
         lapack: [intel-oneapi-mkl]
         pkgconfig: [pkg-config]
-      variants: +mpi
 
   specs:
+  - python
   - ninja
   - boost
   - intel-oneapi-mkl
   - googletest
-  - trilinos@16.0.0 +chaco+exodus+hdf5+intrepid2+kokkos+mpi+nox+openmp+panzer+phalanx+shards+shared+stk+tempus+zoltan2 build_type=RelWithDebInfo
+  - trilinos@16.0.0 +chaco+exodus+hdf5+intrepid2+kokkos+mpi+nox+openmp+panzer+phalanx+shards+shared+stk+tempus+zoltan2
 ```
 
 Now, source the spack setup script and create an environment named `vertex`. 
@@ -279,7 +278,7 @@ cd build
 Different environment files are needed in the build directory, depending on the CPU/GPU installation. For a GPU, you can use `trilinos-cuda-config.sh`. There is no need for a separate configuration script. However, for a CPU, you will need `vertex-env-cpu.sh`. The environment scripts are system-specific and may vary based on your system. Carefully modify these scripts based on your system. The content of `vertex-env-cpu.sh` is as follows:
 ```
 #!/bin/bash
-
+module use <SPACK MODULES LOCATION> # EDIT: Update this with the module location, as an example: module use spack/share/spack/modules/linux-centos7-broadwell/
 install=/<spack INSTALL LOCATION>/share/spack/modules/linux-centos7-haswell/
 echo $install
 
