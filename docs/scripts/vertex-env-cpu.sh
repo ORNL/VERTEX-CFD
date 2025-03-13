@@ -1,5 +1,5 @@
 #!/bin/bash
-
+module use <SPACK MODULES LOCATION> # EDIT: Update this with the module location, as an example: module use spack/share/spack/modules/linux-centos7-broadwell/
 install=/<SPACK INSTALL LOCATION>/share/spack/modules/linux-centos7-haswell/
 echo $install
 
