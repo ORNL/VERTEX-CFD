@@ -1,0 +1,539 @@
+if(VertexCFD_ENABLE_TESTING)
+  add_subdirectory(test_harness)
+endif()
+add_subdirectory(utils)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
+set(VERTEXCFD_EQUATIONSET_HEADERS
+  equation_sets/VertexCFD_EquationSet_Factory.hpp
+  equation_sets/VertexCFD_EquationSet_Heat.hpp
+  equation_sets/VertexCFD_EquationSet_IncompressibleNavierStokes.hpp
+  )
+
+set(VERTEXCFD_EQUATIONSET_SOURCES
+  equation_sets/VertexCFD_EquationSet_Heat.cpp
+  equation_sets/VertexCFD_EquationSet_IncompressibleNavierStokes.cpp
+  )
+
+set(VERTEXCFD_CLOSUREMODEL_HEADERS
+  closure_models/VertexCFD_ClosureModelFactory.hpp
+  closure_models/VertexCFD_ClosureModelFactory_TemplateBuilder.hpp
+  closure_models/VertexCFD_Closure_ElementLength.hpp
+  closure_models/VertexCFD_Closure_MeasureElementLength.hpp
+  closure_models/VertexCFD_Closure_SingularValueElementLength.hpp
+  closure_models/VertexCFD_Closure_MetricTensor.hpp
+  closure_models/VertexCFD_Closure_MetricTensorElementLength.hpp
+  closure_models/VertexCFD_Closure_ExternalFields.hpp
+  closure_models/VertexCFD_Closure_ExternalMagneticField.hpp
+  closure_models/VertexCFD_Closure_MethodManufacturedSolution.hpp
+  closure_models/VertexCFD_Closure_MethodManufacturedSolutionSource.hpp
+  closure_models/VertexCFD_Closure_WallDistance.hpp
+  closure_models/VertexCFD_Closure_VectorFieldDivergence.hpp
+  closure_models/VertexCFD_Closure_ConstantScalarField.hpp
+  incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFConvectiveFlux.hpp
+  incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFScalarConvectiveFlux.hpp
+  incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFViscousFlux.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleBuoyancySource.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConvectiveFlux.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleLiftDrag.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleTimeDerivative.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleVariableTimeDerivative.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleLocalTimeStepSize.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousFlux.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConstantSource.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleRotatingAnnulusExact.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressiblePlanarPoiseuilleExact.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleErrorNorms.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousHeat.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleShearVariables.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleTaylorGreenVortexExactSolution.hpp
+  incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleVariableConvectiveFlux.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleVariableDiffusionFlux.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSpalartAllmarasDiffusivityCoefficient.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSpalartAllmarasEddyViscosity.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSpalartAllmarasSource.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKEpsilonDiffusivityCoefficient.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKEpsilonEddyViscosity.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKEpsilonSource.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKOmegaDiffusivityCoefficient.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKOmegaEddyViscosity.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKOmegaSource.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleRealizableKEpsilonEddyViscosity.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleRealizableKEpsilonSource.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSSTDiffusivityCoefficient.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleWALEEddyViscosity.hpp
+  turbulence_models/closure_models/VertexCFD_TurbulenceClosureModelFactory.hpp
+  induction_less_mhd_solver/closure_models/VertexCFD_Closure_ElectricPotentialDiffusionFlux.hpp
+  induction_less_mhd_solver/closure_models/VertexCFD_Closure_ElectricPotentialCrossProductFlux.hpp
+  induction_less_mhd_solver/closure_models/VertexCFD_Closure_ElectricCurrentDensity.hpp
+  induction_less_mhd_solver/closure_models/VertexCFD_Closure_LorentzForce.hpp
+  induction_less_mhd_solver/closure_models/VertexCFD_Closure_HartmannProblemExact.hpp
+  induction_less_mhd_solver/closure_models/VertexCFD_InductionlessClosureModelFactory.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_MagneticPressure.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConvectiveFlux.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionResistiveFlux.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_TotalMagneticField.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_TotalMagneticFieldGradient.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_MHDVortexProblemExact.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_FullInductionModelErrorNorms.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_DivergenceCleaningSource.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_GodunovPowellSource.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_MagneticCorrectionDampingSource.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_FullInductionLocalTimeStepSize.hpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConstantSource.hpp
+  )
+
+set(VERTEXCFD_CLOSUREMODEL_SOURCES
+  closure_models/VertexCFD_Closure_ElementLength.cpp
+  closure_models/VertexCFD_Closure_MeasureElementLength.cpp
+  closure_models/VertexCFD_Closure_SingularValueElementLength.cpp
+  closure_models/VertexCFD_Closure_MetricTensor.cpp
+  closure_models/VertexCFD_Closure_MetricTensorElementLength.cpp
+  closure_models/VertexCFD_Closure_ExternalFields.cpp
+  closure_models/VertexCFD_Closure_ExternalMagneticField.cpp
+  closure_models/VertexCFD_Closure_MethodManufacturedSolution.cpp
+  closure_models/VertexCFD_Closure_MethodManufacturedSolutionSource_Residual.cpp
+  closure_models/VertexCFD_Closure_MethodManufacturedSolutionSource_Jacobian.cpp
+  closure_models/VertexCFD_Closure_MethodManufacturedSolutionSource_Tangent.cpp
+  closure_models/VertexCFD_Closure_WallDistance.cpp
+  closure_models/VertexCFD_Closure_WallDistance_impl.hpp
+  closure_models/VertexCFD_Closure_VectorFieldDivergence.cpp
+  closure_models/VertexCFD_Closure_ConstantScalarField.cpp
+  closure_models/VertexCFD_ClosureModelFactory_Residual2d.cpp
+  closure_models/VertexCFD_ClosureModelFactory_Residual3d.cpp
+  closure_models/VertexCFD_ClosureModelFactory_Jacobian2d.cpp
+  closure_models/VertexCFD_ClosureModelFactory_Jacobian3d.cpp
+  closure_models/VertexCFD_ClosureModelFactory_Tangent2d.cpp
+  closure_models/VertexCFD_ClosureModelFactory_Tangent3d.cpp
+  incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFConvectiveFlux.cpp
+  incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFScalarConvectiveFlux.cpp
+  incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFViscousFlux.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleBuoyancySource.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConvectiveFlux.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleLiftDrag.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleTimeDerivative.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleVariableTimeDerivative.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleLocalTimeStepSize.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousFlux.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConstantSource.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleRotatingAnnulusExact.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressiblePlanarPoiseuilleExact.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleErrorNorms_impl.hpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousHeat.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleShearVariables.cpp
+  incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory_Residual2d.cpp
+  incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory_Residual3d.cpp
+  incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory_Jacobian2d.cpp
+  incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory_Jacobian3d.cpp
+  incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory_Tangent2d.cpp
+  incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory_Tangent3d.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleTaylorGreenVortexExactSolution.cpp
+  incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleErrorNorms_impl.hpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleVariableConvectiveFlux.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleVariableDiffusionFlux.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSpalartAllmarasDiffusivityCoefficient.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSpalartAllmarasEddyViscosity.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSpalartAllmarasSource.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKEpsilonDiffusivityCoefficient.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKEpsilonEddyViscosity.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKEpsilonSource.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKOmegaDiffusivityCoefficient.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKOmegaEddyViscosity.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKOmegaSource.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleRealizableKEpsilonEddyViscosity.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleRealizableKEpsilonSource.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSSTDiffusivityCoefficient.cpp
+  turbulence_models/closure_models/VertexCFD_Closure_IncompressibleWALEEddyViscosity.cpp
+  turbulence_models/closure_models/VertexCFD_TurbulenceClosureModelFactory_Residual2d.cpp
+  turbulence_models/closure_models/VertexCFD_TurbulenceClosureModelFactory_Residual3d.cpp
+  turbulence_models/closure_models/VertexCFD_TurbulenceClosureModelFactory_Jacobian2d.cpp
+  turbulence_models/closure_models/VertexCFD_TurbulenceClosureModelFactory_Jacobian3d.cpp
+  turbulence_models/closure_models/VertexCFD_TurbulenceClosureModelFactory_Tangent2d.cpp
+  turbulence_models/closure_models/VertexCFD_TurbulenceClosureModelFactory_Tangent3d.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_Closure_ElectricPotentialDiffusionFlux.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_Closure_ElectricPotentialCrossProductFlux.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_Closure_ElectricCurrentDensity.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_Closure_LorentzForce.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_Closure_HartmannProblemExact.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_InductionlessClosureModelFactory_Residual2d.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_InductionlessClosureModelFactory_Residual3d.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_InductionlessClosureModelFactory_Jacobian2d.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_InductionlessClosureModelFactory_Jacobian3d.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_InductionlessClosureModelFactory_Tangent2d.cpp
+  induction_less_mhd_solver/closure_models/VertexCFD_InductionlessClosureModelFactory_Tangent3d.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_MagneticPressure.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConvectiveFlux.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionResistiveFlux.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_TotalMagneticField.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_TotalMagneticFieldGradient.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_MHDVortexProblemExact.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_DivergenceCleaningSource.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_GodunovPowellSource.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_MagneticCorrectionDampingSource.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_FullInductionLocalTimeStepSize.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConstantSource.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory_Residual2d.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory_Residual3d.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory_Jacobian2d.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory_Jacobian3d.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory_Tangent2d.cpp
+  full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory_Tangent3d.cpp
+  )
+if(Panzer_BUILD_HESSIAN_SUPPORT)
+  list(APPEND VERTEXCFD_CLOSUREMODEL_SOURCES
+    closure_models/VertexCFD_ClosureModelFactory_Hessian2d.cpp
+    closure_models/VertexCFD_ClosureModelFactory_Hessian3d.cpp
+    closure_models/VertexCFD_Closure_MethodManufacturedSolutionSource_Hessian.cpp
+    incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory_Hessian2d.cpp
+    incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory_Hessian3d.cpp
+    turbulence_models/closure_models/VertexCFD_TurbulenceClosureModelFactory_Hessian2d.cpp
+    turbulence_models/closure_models/VertexCFD_TurbulenceClosureModelFactory_Hessian3d.cpp
+    induction_less_mhd_solver/closure_models/VertexCFD_InductionlessClosureModelFactory_Hessian2d.cpp
+    induction_less_mhd_solver/closure_models/VertexCFD_InductionlessClosureModelFactory_Hessian3d.cpp
+    full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory_Hessian2d.cpp
+    full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory_Hessian3d.cpp
+    )
+endif()
+
+set(VERTEXCFD_BOUNDARYCONDITION_HEADERS
+  boundary_conditions/VertexCFD_BCStrategy_Factory.hpp
+  boundary_conditions/VertexCFD_BCStrategy_BoundaryFluxBase.hpp
+  boundary_conditions/VertexCFD_BCStrategy_BoundaryFluxBase_impl.hpp
+  boundary_conditions/VertexCFD_BCStrategy_StrongDirichletMMS.hpp
+  boundary_conditions/VertexCFD_BoundaryState_ViscousGradient.hpp
+  boundary_conditions/VertexCFD_BoundaryState_ViscousPenaltyParameter.hpp
+  boundary_conditions/VertexCFD_Integrator_BoundaryGradBasisDotVector.hpp
+  boundary_conditions/VertexCFD_BoundaryState_MethodManufacturedSolution.hpp
+  boundary_conditions/VertexCFD_BCStrategy_IncompressibleBoundaryFlux.hpp
+  incompressible_solver/boundary_conditions/VertexCFD_IncompressibleBoundaryState_Factory.hpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleNoSlip.hpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleDirichlet.hpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressiblePressureOutflow.hpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleFreeSlip.hpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleRotatingWall.hpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleLaminarFlow.hpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleSymmetry.hpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleCavityLid.hpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleWallFunction.hpp
+  induction_less_mhd_solver/boundary_conditions/VertexCFD_ElectricPotentialBoundaryState_Factory.hpp
+  induction_less_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_ElectricPotentialFixed.hpp
+  induction_less_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_ElectricPotentialInsulatingWall.hpp
+  turbulence_models/boundary_conditions/VertexCFD_TurbulenceBoundaryState_Factory.hpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceFixed.hpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceExtrapolate.hpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceKOmegaWallResolved.hpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceSymmetry.hpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceInletOutlet.hpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceKEpsilonWallFunction.hpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceBoundaryEddyViscosity.hpp
+  full_induction_mhd_solver/boundary_conditions/VertexCFD_FullInductionBoundaryState_Factory.hpp
+  full_induction_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_FullInductionConducting.hpp
+  full_induction_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_FullInductionFixed.hpp
+  )
+
+set(VERTEXCFD_BOUNDARYCONDITION_SOURCES
+  boundary_conditions/VertexCFD_BCStrategy_BoundaryFluxBase.cpp
+  boundary_conditions/VertexCFD_BoundaryState_ViscousGradient.cpp
+  boundary_conditions/VertexCFD_BoundaryState_ViscousPenaltyParameter.cpp
+  boundary_conditions/VertexCFD_Integrator_BoundaryGradBasisDotVector.cpp
+  boundary_conditions/VertexCFD_BoundaryState_MethodManufacturedSolution.cpp
+  boundary_conditions/VertexCFD_BCStrategy_IncompressibleBoundaryFlux.cpp
+  incompressible_solver/boundary_conditions/VertexCFD_IncompressibleBoundaryState_Factory.cpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleNoSlip.cpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleDirichlet.cpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressiblePressureOutflow.cpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleFreeSlip.cpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleRotatingWall.cpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleLaminarFlow.cpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleSymmetry.cpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleCavityLid.cpp
+  incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleWallFunction.cpp
+  induction_less_mhd_solver/boundary_conditions/VertexCFD_ElectricPotentialBoundaryState_Factory.cpp
+  induction_less_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_ElectricPotentialFixed.cpp
+  induction_less_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_ElectricPotentialInsulatingWall.cpp
+  turbulence_models/boundary_conditions/VertexCFD_TurbulenceBoundaryState_Factory.cpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceFixed.cpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceExtrapolate.cpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceKOmegaWallResolved.cpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceSymmetry.cpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceInletOutlet.cpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceKEpsilonWallFunction.cpp
+  turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceBoundaryEddyViscosity.cpp
+  full_induction_mhd_solver/boundary_conditions/VertexCFD_FullInductionBoundaryState_Factory.cpp
+  full_induction_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_FullInductionConducting.cpp
+  full_induction_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_FullInductionFixed.cpp
+  )
+
+set(VERTEXCFD_INITIALCONDITION_HEADERS
+  initial_conditions/VertexCFD_InitialConditionFactory.hpp
+  initial_conditions/VertexCFD_InitialConditionFactory_TemplateBuilder.hpp
+  initial_conditions/VertexCFD_InitialCondition_Circle.hpp
+  initial_conditions/VertexCFD_InitialCondition_Constant.hpp
+  initial_conditions/VertexCFD_InitialCondition_Gaussian.hpp
+  initial_conditions/VertexCFD_InitialCondition_Step.hpp
+  initial_conditions/VertexCFD_InitialCondition_InverseGaussian.hpp
+  initial_conditions/VertexCFD_InitialCondition_MethodManufacturedSolution.hpp
+  incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleVortexInBox.hpp
+  incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleTaylorGreenVortex.hpp
+  incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleLaminarFlow.hpp
+  full_induction_mhd_solver/initial_conditions/VertexCFD_InitialCondition_MHDVortexProblem.hpp
+  full_induction_mhd_solver/initial_conditions/VertexCFD_InitialCondition_DivergenceAdvectionTest.hpp
+  full_induction_mhd_solver/initial_conditions/VertexCFD_FullInductionInitialConditionFactory.hpp
+  )
+
+set(VERTEXCFD_INITIALCONDITION_SOURCES
+  initial_conditions/VertexCFD_InitialConditionFactory.cpp
+  initial_conditions/VertexCFD_InitialCondition_Circle.cpp
+  initial_conditions/VertexCFD_InitialCondition_Constant.cpp
+  initial_conditions/VertexCFD_InitialCondition_Gaussian.cpp
+  initial_conditions/VertexCFD_InitialCondition_Step.cpp
+  initial_conditions/VertexCFD_InitialCondition_InverseGaussian.cpp
+  initial_conditions/VertexCFD_InitialCondition_MethodManufacturedSolution.cpp
+  incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleVortexInBox.cpp
+  incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleTaylorGreenVortex.cpp
+  incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleLaminarFlow.cpp
+  full_induction_mhd_solver/initial_conditions/VertexCFD_InitialCondition_MHDVortexProblem.cpp
+  full_induction_mhd_solver/initial_conditions/VertexCFD_InitialCondition_DivergenceAdvectionTest.cpp
+  full_induction_mhd_solver/initial_conditions/VertexCFD_FullInductionInitialConditionFactory.cpp
+  )
+
+set(VERTEXCFD_OBSERVER_HEADERS
+  observers/VertexCFD_NOXObserver_IterationOutput.hpp
+  observers/VertexCFD_TempusTimeStepControl_GlobalCFL.hpp
+  observers/VertexCFD_TempusTimeStepControl_GlobalCFL_impl.hpp
+  observers/VertexCFD_TempusObserver_IterationOutput.hpp
+  observers/VertexCFD_TempusObserver_IterationOutput_impl.hpp
+  observers/VertexCFD_TempusObserver_ErrorNormOutput.hpp
+  observers/VertexCFD_TempusObserver_ErrorNormOutput_impl.hpp
+  observers/VertexCFD_TempusObserver_WriteMatrix.hpp
+  observers/VertexCFD_TempusObserver_WriteMatrix_impl.hpp
+  observers/VertexCFD_TempusObserver_WriteRestart.hpp
+  observers/VertexCFD_TempusObserver_WriteRestart_impl.hpp
+  observers/VertexCFD_TempusObserver_WriteToExodus.hpp
+  observers/VertexCFD_TempusObserver_WriteToExodus_impl.hpp
+  observers/VertexCFD_Compute_ErrorNorms.hpp
+  observers/VertexCFD_Compute_ErrorNorms_impl.hpp
+  observers/VertexCFD_Compute_Volume.hpp
+  observers/VertexCFD_Compute_Volume_impl.hpp
+  )
+
+set(VERTEXCFD_OBSERVER_SOURCES
+  observers/VertexCFD_NOXObserver_IterationOutput.cpp
+  )
+
+set(VERTEXCFD_PARAMETER_HEADERS
+  parameters/VertexCFD_GeneralScalarParameter.hpp
+  parameters/VertexCFD_GeneralScalarParameterInput.hpp
+  parameters/VertexCFD_ParameterDatabase.hpp
+  parameters/VertexCFD_ScalarParameter.hpp
+  parameters/VertexCFD_ScalarParameterEvaluator.hpp
+  parameters/VertexCFD_ScalarParameterInput.hpp
+  parameters/VertexCFD_ScalarParameterManager.hpp
+  parameters/VertexCFD_ScalarParameterObserver.hpp
+  )
+
+set(VERTEXCFD_PARAMETER_SOURCES
+  parameters/VertexCFD_GeneralScalarParameter.cpp
+  parameters/VertexCFD_GeneralScalarParameterInput.cpp
+  parameters/VertexCFD_ParameterDatabase.cpp
+  parameters/VertexCFD_ScalarParameter.cpp
+  parameters/VertexCFD_ScalarParameterEvaluator.cpp
+  parameters/VertexCFD_ScalarParameterInput.cpp
+  parameters/VertexCFD_ScalarParameterManager.cpp
+  parameters/VertexCFD_ScalarParameterObserver.cpp
+  )
+
+set(VERTEXCFD_RESPONSE_HEADERS
+  responses/VertexCFD_ResponseManager.hpp
+  responses/VertexCFD_Response_Utils.hpp
+  )
+
+set(VERTEXCFD_RESPONSE_SOURCES
+  responses/VertexCFD_ResponseManager.cpp
+  responses/VertexCFD_Response_Utils.cpp
+  )
+
+set(VERTEXCFD_MESH_HEADERS
+  mesh/VertexCFD_Mesh_ExodusWriter.hpp
+  mesh/VertexCFD_Mesh_Restart.hpp
+  mesh/VertexCFD_Mesh_StkReaderFactory.hpp
+  mesh/VertexCFD_Mesh_GeometryData.hpp
+  mesh/VertexCFD_Mesh_GeometryPrimitives.hpp
+  )
+
+set(VERTEXCFD_MESH_SOURCES
+  mesh/VertexCFD_Mesh_ExodusWriter.cpp
+  mesh/VertexCFD_Mesh_Restart.cpp
+  mesh/VertexCFD_Mesh_StkReaderFactory.cpp
+  )
+
+set(VERTEXCFD_GASPROPERTIES_HEADERS
+  incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp
+  full_induction_mhd_solver/mhd_properties/VertexCFD_FullInductionMHDProperties.hpp
+  )
+
+set(VERTEXCFD_LINEARSOLVER_HEADERS
+  linear_solvers/VertexCFD_LinearSolvers_LocalDirectSolver.hpp
+  linear_solvers/VertexCFD_LinearSolvers_LocalSolverFactory.hpp
+  linear_solvers/VertexCFD_LinearSolvers_LOWSFactoryBuilder.hpp
+  linear_solvers/VertexCFD_LinearSolvers_Preconditioner.hpp
+  linear_solvers/VertexCFD_LinearSolvers_PreconditionerFactory.hpp
+  )
+
+set(VERTEXCFD_LINEARSOLVER_SOURCES
+  linear_solvers/VertexCFD_LinearSolvers_LocalSolverFactory.cpp
+  linear_solvers/VertexCFD_LinearSolvers_LOWSFactoryBuilder.cpp
+  linear_solvers/VertexCFD_LinearSolvers_Preconditioner.cpp
+  linear_solvers/VertexCFD_LinearSolvers_PreconditionerFactory.cpp
+  )
+
+if(${VERTEXCFD_KOKKOS_DEVICE_TYPE} STREQUAL "CUDA")
+  list(APPEND VERTEXCFD_LINEARSOLVER_HEADERS
+    linear_solvers/VertexCFD_LinearSolvers_CusolverGLU.hpp
+    linear_solvers/VertexCFD_LinearSolvers_CusolverNonpublic.hpp
+    )
+  list(APPEND VERTEXCFD_LINEARSOLVER_SOURCES
+    linear_solvers/VertexCFD_LinearSolvers_CusolverGLU.cpp
+    )
+endif()
+if(VertexCFD_ENABLE_SUPERLU)
+  list(APPEND VERTEXCFD_LINEARSOLVER_HEADERS
+    linear_solvers/VertexCFD_LinearSolvers_SuperLU.hpp
+    )
+  list(APPEND VERTEXCFD_LINEARSOLVER_SOURCES
+    linear_solvers/VertexCFD_LinearSolvers_SuperLU.cpp
+    )
+endif()
+
+if(VertexCFD_ENABLE_HYPRE)
+  list(APPEND VERTEXCFD_LINEARSOLVER_HEADERS
+    linear_solvers/VertexCFD_LinearSolvers_Hypre.hpp
+    linear_solvers/VertexCFD_LinearSolvers_HyprePreconditionerFactory.hpp
+    )
+  list(APPEND VERTEXCFD_LINEARSOLVER_SOURCES
+    linear_solvers/VertexCFD_LinearSolvers_Hypre.cpp
+    linear_solvers/VertexCFD_LinearSolvers_HyprePreconditionerFactory.cpp
+    )
+endif()
+
+set(VERTEXCFD_DRIVER_HEADERS
+  drivers/VertexCFD_ExternalFieldsManager.hpp
+  drivers/VertexCFD_InitialConditionManager.hpp
+  drivers/VertexCFD_MeshManager.hpp
+  drivers/VertexCFD_PhysicsManager.hpp
+  )
+
+set(VERTEXCFD_DRIVER_SOURCES
+  drivers/VertexCFD_InitialConditionManager.cpp
+  drivers/VertexCFD_MeshManager.cpp
+  drivers/VertexCFD_PhysicsManager.cpp
+  )
+
+# FIXME - use modern CMake to only include the Trilinos targets we need
+include_directories(${Trilinos_INCLUDE_DIRS} ${Trilinos_TPL_INCLUDE_DIRS})
+link_directories(${Trilinos_LIBRARY_DIRS} ${Trilinos_TPL_LIBRARY_DIRS})
+
+add_library(VertexCFD
+  ${VERTEXCFD_BOUNDARYCONDITION_SOURCES}
+  ${VERTEXCFD_CLOSUREMODEL_SOURCES}
+  ${VERTEXCFD_DRIVER_SOURCES}
+  ${VERTEXCFD_EQUATIONSET_SOURCES}
+  ${VERTEXCFD_INITIALCONDITION_SOURCES}
+  ${VERTEXCFD_LINEARSOLVER_SOURCES}
+  ${VERTEXCFD_MESH_SOURCES}
+  ${VERTEXCFD_PARAMETER_SOURCES}
+  ${VERTEXCFD_OBSERVER_SOURCES}
+  ${VERTEXCFD_RESPONSE_SOURCES}
+  ${VERTEXCFD_GASPROPERTIES_SOURCES})
+
+# FIXME - use modern CMake to only include the Trilinos targets we need
+target_link_libraries(VertexCFD PUBLIC
+  MPI::MPI_CXX
+  Kokkos::kokkos
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+  Utils
+  )
+
+if (Kokkos_ENABLE_CUDA)
+    target_link_libraries(VertexCFD PUBLIC CUDA::cusolver)
+  endif ()
+
+if( VertexCFD_ENABLE_HYPRE )
+  target_link_libraries(VertexCFD PUBLIC HYPRE::HYPRE HYPREDRV::HYPREDRV)
+endif()
+
+if(VertexCFD_ENABLE_SUPERLU)
+    target_link_libraries(VertexCFD PUBLIC SuperLU_dist::SuperLU_dist)
+endif ()
+
+target_include_directories(VertexCFD
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
+install(TARGETS VertexCFD
+  EXPORT VertexCFDTargets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+install(EXPORT VertexCFDTargets
+  FILE VertexCFDTargets.cmake
+  NAMESPACE VertexCFD::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/VertexCFD)
+
+install(FILES
+  ${VERTEXCFD_EQUATIONSET_HEADERS}
+  ${VERTEXCFD_CLOSUREMODEL_HEADERS}
+  ${VERTEXCFD_DRIVER_HEADERS}
+  ${VERTEXCFD_BOUNDARYCONDITION_HEADERS}
+  ${VERTEXCFD_INITIALCONDITION_HEADERS}
+  ${VERTEXCFD_OBSERVER_HEADERS}
+  ${VERTEXCFD_MESH_HEADERS}
+  ${VERTEXCFD_RESPONSE_HEADERS}
+  ${VERTEXCFD_GASPROPERTIES_HEADERS}
+  ${VERTEXCFD_LINEARSOLVER_HEADERS}
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+include(CMakePackageConfigHelpers)
+
+add_executable( vertexcfd drivers/vertexcfd.cpp )
+target_link_libraries( vertexcfd PRIVATE VertexCFD )
+target_include_directories( vertexcfd PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+install(TARGETS vertexcfd DESTINATION ${CMAKE_INSTALL_DIR} )
+
+if(VertexCFD_ENABLE_TESTING)
+  add_subdirectory(boundary_conditions/unit_test)
+  add_subdirectory(drivers/unit_test)
+  add_subdirectory(initial_conditions/unit_test)
+  add_subdirectory(closure_models/unit_test)
+  add_subdirectory(mesh/unit_test)
+  add_subdirectory(observers/unit_test)
+  add_subdirectory(parameters/unit_test)
+  add_subdirectory(responses/unit_test)
+  add_subdirectory(linear_solvers/unit_test)
+  # Incompressible flow
+  add_subdirectory(incompressible_solver/boundary_conditions/unit_test)
+  add_subdirectory(incompressible_solver/closure_models/unit_test)
+  add_subdirectory(incompressible_solver/initial_conditions/unit_test)
+  add_subdirectory(incompressible_solver/fluid_properties/unit_test)
+  # Incompressible LSVOF flow
+  add_subdirectory(incompressible_lsvof_solver/closure_models/unit_test)
+  # Turbulence models
+  add_subdirectory(turbulence_models/closure_models/unit_test)
+  add_subdirectory(turbulence_models/boundary_conditions/unit_test)
+  # MHD
+  add_subdirectory(induction_less_mhd_solver/closure_models/unit_test)
+  add_subdirectory(induction_less_mhd_solver/boundary_conditions/unit_test)
+  # Full Induction model
+  add_subdirectory(full_induction_mhd_solver/boundary_conditions/unit_test)
+  add_subdirectory(full_induction_mhd_solver/closure_models/unit_test)
+  add_subdirectory(full_induction_mhd_solver/initial_conditions/unit_test)
+  add_subdirectory(full_induction_mhd_solver/mhd_properties/unit_test)
+endif()

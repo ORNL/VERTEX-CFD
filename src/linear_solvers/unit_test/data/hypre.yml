@@ -1,0 +1,4 @@
+preconditioner:
+    amg:
+        max_iter: 1000
+        tolerance: 1.0e-14
