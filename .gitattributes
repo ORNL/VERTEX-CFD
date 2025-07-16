@@ -1,3 +1,0 @@
-*.exo filter=lfs diff=lfs merge=lfs -text
-*.restart.data filter=lfs diff=lfs merge=lfs -text
-*.restart.dofmap filter=lfs diff=lfs merge=lfs -text
