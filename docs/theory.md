@@ -199,7 +199,7 @@ $$
 $$
 
 ### Laminar flow
-The laminar flow boundary condition sets a parabolic profile for the velocity in the wall normal direction. The input parameters are the average velocity amplitude $u_i^{avg}$, the coordinates of the two points on the circle which can be connected by a line that passes through the circle's center. The resultant inlet velocity profiles can be calculated as follows:
+The laminar flow boundary condition sets a parabolic profile for the velocity in the wall normal direction. The input parameters are the average velocity amplitude $$u_i^{avg}$$, the coordinates of the two points on the circle which can be connected by a line that passes through the circle's center. The resultant inlet velocity profiles can be calculated as follows:
 
 $$
 \begin{equation}
