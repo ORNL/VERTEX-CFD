@@ -64,7 +64,7 @@ The need for scalability on HPC platforms and flexibility of source code led the
 
 ## Dependencies and deployment
 
-The VERTEX-CFD package is an open-source code that is hosted on the Oak Ridge National Laboratory (ORNL) GitHub account [https://github.com/ORNL/VERTEX-CFD](https://github.com/ORNL/VERTEX-CFD). VERTEX-CFD is built on the [Trilinos package](https://trilinos.github.io/) [@trilinos-website] that provides a suite of tools for code development on HPC platforms. It has been deployed on a wide variety of HPC platforms, ranging from small clusters to exascale computers including Summit [@olcf-web], Frontier [@olcf-web], and Perlmutter [@nersc-web].
+The VERTEX-CFD package is an open-source code that is hosted on the Oak Ridge National Laboratory (ORNL) GitHub account [https://github.com/ORNL/VERTEX-CFD](https://github.com/ORNL/VERTEX-CFD) but developed on a GitLab account. VERTEX-CFD is built on the [Trilinos package](https://trilinos.github.io/) [@trilinos-website] that provides a suite of tools for code development on HPC platforms. It has been deployed on a wide variety of HPC platforms, ranging from small clusters to exascale computers including Summit [@olcf-web], Frontier [@olcf-web], and Perlmutter [@nersc-web].
 
 
 ## Governing equations and discretization methods
@@ -119,6 +119,7 @@ The authors declare that they have no known competing financial interests or per
 This work was funded by the Laboratory Directed Research and Development (LDRD) program at Oak Ridge National Laboratory. This manuscript has been authored by UT-Battelle, LLC, under contract DE-AC05-00OR22725 with the US Department of Energy (DOE). The US government retains and the publisher, by accepting the article for publication, acknowledges that the US government retains a nonexclusive, paid-up, irrevocable, worldwide license to publish or reproduce the published form of this manuscript, or allow others to do so, for US government purposes. DOE will provide public access to these results of federally sponsored research in accordance with the [DOE Public Access Plan](http://energy.gov/downloads/doe-public-access-plan).
 
 # References
+
 
 
 
