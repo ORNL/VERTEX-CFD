@@ -65,6 +65,8 @@ The need for scalability on HPC platforms and flexibility of source code led the
 
 # Current capabilities and development workflow
 
+![Caption for example figure.\label{fig:example}](figures/VERTEX-CFD-one-slide.pdf)
+
 ## Dependencies and deployment
 
 The VERTEX-CFD package is an open-source code that is hosted on the Oak Ridge National Laboratory (ORNL) GitHub account [https://github.com/ORNL/VERTEX-CFD](https://github.com/ORNL/VERTEX-CFD) but developed on a GitLab account. VERTEX-CFD is built on the [Trilinos package](https://trilinos.github.io/) [@trilinos-website] that provides a suite of tools for code development on HPC platforms. It has been deployed on a wide variety of HPC platforms, ranging from small clusters to exascale computers including Summit [@olcf-web], Frontier [@olcf-web], and Perlmutter [@nersc-web].
