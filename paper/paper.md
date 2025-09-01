@@ -108,9 +108,13 @@ Development tasks are currently focusing on the following three main activities:
 
 - Optimization of the source code for Frontier supercomputer [@olcf-web].
 
+# Conflict of interests
+
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
 
 # Acknowledgements
 
 This work was funded by the Laboratory Directed Research and Development (LDRD) program at Oak Ridge National Laboratory. This manuscript has been authored by UT-Battelle, LLC, under contract DE-AC05-00OR22725 with the US Department of Energy (DOE). The US government retains and the publisher, by accepting the article for publication, acknowledges that the US government retains a nonexclusive, paid-up, irrevocable, worldwide license to publish or reproduce the published form of this manuscript, or allow others to do so, for US government purposes. DOE will provide public access to these results of federally sponsored research in accordance with the [DOE Public Access Plan](http://energy.gov/downloads/doe-public-access-plan).
 
 # References
+
