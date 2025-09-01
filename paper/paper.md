@@ -65,7 +65,7 @@ The need for scalability on HPC platforms and flexibility of source code led the
 
 # Current capabilities and development workflow
 
-![Caption for example figure.\label{fig:example}](figures/VERTEX-CFD-one-slide.pdf)
+![Caption for example figure.\label{fig:example}](figures/VERTEX-CFD-one-slide.png)
 
 ## Dependencies and deployment
 
