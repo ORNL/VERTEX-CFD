@@ -59,7 +59,7 @@ Fusion energy development draws from a wide range of disciplines to describe des
 
 Two approaches are commonly adopted to predict MS flows exposed to a magnetic field: high-fidelity simulation (large-eddy simulation (LES) or direct numerical simulation (DNS)), and Reynolds-averaged Navier-Stokes (RANS) turbulence models. LESs can resolve turbulences at temporal and spatial scales at the expense of large HPC resources. Blanket design with LES is not possible because of current HPC limitations. Design optimization often requires multiple simulation runs to investigate performance under various conditions. The main technique that reduces the computational requirements of the analysis is the RANS turbulence model. This approach filters out the instantaneous velocity component, and the influence of the turbulence is modeled solely by the closure models. Turbulence modeling is a complex problem, and many turbulence models are available as described in the literature [@Chen_2022; @Menter1992ImprovedTK], albeit with many limitations [@10.1023/a:1022818327584]. Furthermore, these models are not readily applicable to the MHD flows and would require modifications [@Smolentsev2002] because MHD effects introduce additional terms in the turbulence balance equations.
 
-VERTEX-CFD is a new open-source package designed to address the modeling of MHD flows in complex geometries. It provides a robust multi-physics solver that can generate high-fidelity simulations by scaling on HPC platforms. Artificial intelligence and machine learning (AI&ML) capabilities are provided by TensorFlow Lite package [@tensorflow2015-whitepaper] that is coupled to VERTEX-CFD. The coupling allows to enhance physical models with ML models at runtime. These capabilities will provide the needed resources to extend the applicability of turbulence models to MHD flows, and perform modeling of complex flows under the influence of an external magnetic field. This in turn will be leveraged for the modeling of realistic complex geometries found in fusion blankets to capture the coupled multiphysics behavior that governs blanket performance and lifetime.
+VERTEX-CFD is a new open-source package designed to address the modeling of MHD flows in complex geometries, e.g. fusion blankets. It provides a robust multi-physics solver that can generate high-fidelity simulations by scaling on HPC platforms. Artificial intelligence and machine learning (AI&ML) capabilities are provided by TensorFlow Lite package [@tensorflow2015-whitepaper] that is coupled to VERTEX-CFD. The coupling allows to enhance physical models with ML models at runtime. These capabilities will provide the needed resources to extend the applicability of turbulence models to MHD flows, and perform modeling of flows under the influence of an external magnetic field. This in turn will be leveraged for the modeling of realistic complex geometries found in fusion blankets to capture the coupled multiphysics behavior that governs blanket performance and lifetime.
 
 # Current capabilities and development workflow
 
@@ -122,6 +122,7 @@ This work was funded by the Laboratory Directed Research and Development (LDRD) 
 The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
 
 # References
+
 
 
 
