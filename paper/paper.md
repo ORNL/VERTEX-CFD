@@ -61,15 +61,13 @@ Two approaches are commonly adopted to predict MS flows exposed to a magnetic fi
 
 VERTEX-CFD is a new open-source package designed to address the modeling of MHD flows in complex geometries. It provides a robust multi-physics solver that can generate high-fidelity simulations by scaling on HPC platforms. Artificial intelligence and machine learning (AI&ML) capabilities are provided by TensorFlow Lite package [@tensorflow2015-whitepaper] that is coupled to VERTEX-CFD. The coupling allows to enhance physical models with ML models at runtime. These capabilities will provide the needed resources to extend the applicability of turbulence models to MHD flows, and perform modeling of complex flows under the influence of an external magnetic field. This in turn will be leveraged for the modeling of realistic complex geometries found in fusion blankets to capture the coupled multiphysics behavior that governs blanket performance and lifetime.
 
-The need for scalability on HPC platforms and flexibility of source code led the authors to investigate different open-source high-performace computing tools: MFEM [@mfem], Trilinos [@trilinos-website] and Nek5000[@nek5000]. MFEM is a lightweight, flexible library focused on high-order finite element discretizations, ideal for prototyping new PDE solvers and coupling with external linear algebra packages. Trilinos is a broad collection of modular packages that provides scalable solvers, discretizations, and multiphysics coupling capabilities, making it a comprehensive but complex toolkit for large scientific codes. Nek5000, in contrast, is a specialized, production-ready CFD solver based on the spectral element method, optimized for incompressible flows and turbulence simulations. Trilinos was selected as the base for the open-source VERTEX-CFD package due to its comprehensive suite of scalable solvers, advanced preconditioning techniques, robust multiphysics coupling capabilities, and the familiartity of the authors with the source code base. Its modular design and mature software infrastructure provide a flexible foundation for integrating diverse discretization strategies and targeting emerging high-performance architectures. By leveraging Trilinos, the package benefits from a well-established ecosystem that has been widely adopted in large-scale scientific applications, ensuring both reliability and extensibility for future developments.
-
 # Current capabilities and development workflow
 
-![Caption for example figure.\label{fig:example}](figures/VERTEX-CFD-one-slide.png)
+The need for scalability on HPC platforms and flexibility of source code led the authors to investigate different open-source high-performace computing tools: MFEM [@mfem], Trilinos [@trilinos-website] and Nek5000[@nek5000]. MFEM is a lightweight, flexible library focused on high-order finite element discretizations, ideal for prototyping new PDE solvers and coupling with external linear algebra packages. Trilinos is a broad collection of modular packages that provides scalable solvers, discretizations, and multiphysics coupling capabilities, making it a comprehensive but complex toolkit for large scientific codes. Nek5000, in contrast, is a specialized, production-ready CFD solver based on the spectral element method, optimized for incompressible flows and turbulence simulations. Trilinos was selected as the base for the open-source VERTEX-CFD package due to its comprehensive suite of scalable solvers, advanced preconditioning techniques, robust multiphysics coupling capabilities, and the familiartity of the authors with the source code base. Its modular design and mature software infrastructure provide a flexible foundation for integrating diverse discretization strategies and targeting emerging high-performance architectures. By leveraging Trilinos, the package benefits from a well-established ecosystem that has been widely adopted in large-scale scientific applications, ensuring both reliability and extensibility for future developments.
 
 ## Dependencies and deployment
 
-The VERTEX-CFD package is an open-source code that is hosted on the Oak Ridge National Laboratory (ORNL) GitHub account [https://github.com/ORNL/VERTEX-CFD](https://github.com/ORNL/VERTEX-CFD) but developed on a GitLab account. VERTEX-CFD is built on the [Trilinos package](https://trilinos.github.io/) [@trilinos-website] that provides a suite of tools for code development on HPC platforms. It has been deployed on a wide variety of HPC platforms, ranging from small clusters to exascale computers including Summit [@olcf-web], Frontier [@olcf-web], and Perlmutter [@nersc-web].
+The VERTEX-CFD package is an open-source code that is hosted on the Oak Ridge National Laboratory (ORNL) GitHub account [https://github.com/ORNL/VERTEX-CFD](https://github.com/ORNL/VERTEX-CFD) but developed on a GitLab account hosted on the ORNL network. VERTEX-CFD is built on the [Trilinos package](https://trilinos.github.io/) [@trilinos-website] that provides a suite of tools for code development on HPC platforms. It has been deployed on a wide variety of HPC platforms, ranging from small clusters to exascale computers including Summit [@olcf-web], Frontier [@olcf-web], and Perlmutter [@nersc-web].
 
 ## Governing equations and discretization methods
 
@@ -90,6 +88,7 @@ The VERTEX-CFD software is still under active development and currently implemen
 
 The set of equations presented above can be augmented with RANS turbulence models and the wall-adapting local eddy (WALE) viscosity model [@nicoud:hal-00910373] to simulate turbulent flows. Solvers, FEMs, and other relevant tools are provided by the [Trilinos package](https://trilinos.github.io/) [@trilinos-website]. The VERTEX-CFD software is designed to scale and to be compatible with various CPU and GPU architectures on HPC platforms by leveraging Kokkos [@kokkos] programming language. VERTEX-CFD software has demonstrated second-order temporal and spatial accuracy [@vertexcfd-ans-2024].
 
+![VERTEX-CFD capabilities, dependencies, and numerical results.\label{fig:vertex-cfd}](figures/VERTEX-CFD-one-slide.png)
 
 ## Development workflow: testing, validation and verification
 
@@ -97,7 +96,7 @@ The long-term objectives of the VERTEX-CFD project are to facilitate the additio
 
 Such approach can only be made possible by setting clear requirements and review processes for all developers contributing to the project code: any changes and additions to the source code are reviewed and tested before being merged. VERTEX-CFD software is tested daily on a continuous integration (CI) workflow hosted on the ORNL network. Each new physics is implemented in closure models with unit tests that are run on CPU and GPU nodes.
 
-Physical models and coupling between equations were verified and validated against benchmark problems taken from the published literature: isothermal flows [@Taylor-green-vortex; @10.1115/1.3240731; @Clausen2013], heated flows [@Kuehn_Goldstein_1976; @tritton_1959], transient and steady-state cases, turbulent cases [@nicoud:hal-00910373; @nasa-web], and MHD flows [@SMOLENTSEV201565].
+Physical models and coupling between equations were verified and validated against benchmark problems taken from the published literature: isothermal flows [@Taylor-green-vortex; @10.1115/1.3240731; @Clausen2013], heated flows [@Kuehn_Goldstein_1976; @tritton_1959], transient and steady-state cases, turbulent cases [@nicoud:hal-00910373; @nasa-web], and MHD flows [@SMOLENTSEV201565] as shown in Figure \autoref{fig:vertex-cfd}.
 
 
 # Conclusions and current development activities
@@ -108,21 +107,22 @@ Development tasks are currently focusing on the following three main activities:
 
 - Implementation of a conjugate heat transfer model.
 
-- Coupling with TensorFlowLite [@tensorflow2015-whitepaper] for AI&ML applications.
+- Testing of the coupling with TensorFlowLite [@tensorflow2015-whitepaper] for AI&ML applications.
 
 - Implementation of wall function for RANS models to enable high-Reynolds turbulence models.
 
 - Optimization of the source code for Frontier supercomputer [@olcf-web].
 
-# Conflict of interests
-
-The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
-
 # Acknowledgements
 
 This work was funded by the Laboratory Directed Research and Development (LDRD) program at Oak Ridge National Laboratory. This manuscript has been authored by UT-Battelle, LLC, under contract DE-AC05-00OR22725 with the US Department of Energy (DOE). The US government retains and the publisher, by accepting the article for publication, acknowledges that the US government retains a nonexclusive, paid-up, irrevocable, worldwide license to publish or reproduce the published form of this manuscript, or allow others to do so, for US government purposes. DOE will provide public access to these results of federally sponsored research in accordance with the [DOE Public Access Plan](http://energy.gov/downloads/doe-public-access-plan).
 
+# Conflict of interests
+
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
 # References
+
 
 
 
