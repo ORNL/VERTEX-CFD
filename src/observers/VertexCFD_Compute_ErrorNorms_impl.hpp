@@ -110,6 +110,7 @@ void ErrorNorms<Scalar>::ComputeNorms(
     in_args.ghostedContainer_ = _lof->buildGhostedLinearObjContainer();
     in_args.evaluate_transient_terms = false;
     in_args.time = working_state->getTime();
+    in_args.step_size = working_state->getTimeStep();
 
     _lof->initializeGhostedContainer(panzer::LinearObjContainer::X,
                                      *(in_args.ghostedContainer_));

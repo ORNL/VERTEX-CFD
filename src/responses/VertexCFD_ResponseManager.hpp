@@ -54,7 +54,9 @@ class ResponseManager
     void deactivateAll();
     void
     evaluateResponses(const Teuchos::RCP<Thyra::VectorBase<double>>& x,
-                      const Teuchos::RCP<Thyra::VectorBase<double>>& x_dot);
+                      const Teuchos::RCP<Thyra::VectorBase<double>>& x_dot,
+                      const double t,
+                      const double dt);
 
     int numResponses() const;
     int globalIndex(const int index = 0) const;
