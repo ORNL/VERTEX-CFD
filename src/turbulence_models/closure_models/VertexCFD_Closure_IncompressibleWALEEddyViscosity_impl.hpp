@@ -58,8 +58,20 @@ template<class EvalType, class Traits, int NumSpaceDim>
 void IncompressibleWALEEddyViscosity<EvalType, Traits, NumSpaceDim>::evaluateFields(
     typename Traits::EvalData workset)
 {
+    // Allocate space for thread-local temporaries
+    size_t bytes;
+    if constexpr (Sacado::IsADType<scalar_type>::value)
+    {
+        const int fad_size = Kokkos::dimension_scalar(_nu_t.get_view());
+        bytes = scratch_view::shmem_size(_nu_t.extent(1), NUM_TMPS, fad_size);
+    }
+    else
+    {
+        bytes = scratch_view::shmem_size(_nu_t.extent(1), NUM_TMPS);
+    }
     auto policy = panzer::HP::inst().teamPolicy<scalar_type, PHX::Device>(
         workset.num_cells);
+    policy.set_scratch_size(0, Kokkos::PerTeam(bytes));
     Kokkos::parallel_for(this->getName(), policy, *this);
 }
 
@@ -77,12 +89,26 @@ IncompressibleWALEEddyViscosity<EvalType, Traits, NumSpaceDim>::operator()(
     const auto tol = 1.0e-10;
     const double one_third = 1.0 / 3.0;
 
+    scratch_view tmp_field;
+    if constexpr (Sacado::IsADType<scalar_type>::value)
+    {
+        const int fad_size = Kokkos::dimension_scalar(_nu_t.get_view());
+        tmp_field
+            = scratch_view(team.team_shmem(), num_point, NUM_TMPS, fad_size);
+    }
+    else
+    {
+        tmp_field = scratch_view(team.team_shmem(), num_point, NUM_TMPS);
+    }
+
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             // Calculate mag square of symmetric and skew symmetric
             // velocity gradient tensors, and mesh scale delta
-            scalar_type mag_sqr_s = 0.0;
-            scalar_type mag_sqr_w = 0.0;
+            auto&& mag_sqr_s = tmp_field(point, MAG_SQR_S);
+            auto&& mag_sqr_w = tmp_field(point, MAG_SQR_W);
+            mag_sqr_s = 0.0;
+            mag_sqr_w = 0.0;
             double delta = 0.0;
 
             for (int i = 0; i < num_space_dim; ++i)
@@ -111,13 +137,15 @@ IncompressibleWALEEddyViscosity<EvalType, Traits, NumSpaceDim>::operator()(
 
             // Calculate traceless symmetric part of square of
             // velocity gradient tensor
-            scalar_type mag_sqr_sd = 0.0;
+            auto&& mag_sqr_sd = tmp_field(point, MAG_SQR_SD);
+            auto&& Sd_ij = tmp_field(point, SD_IJ);
+            mag_sqr_sd = 0.0;
 
             for (int i = 0; i < num_space_dim; ++i)
             {
                 for (int j = 0; j < num_space_dim; ++j)
                 {
-                    scalar_type Sd_ij = 0.0;
+                    Sd_ij = 0.0;
 
                     for (int k = 0; k < num_space_dim; ++k)
                     {

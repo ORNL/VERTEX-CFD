@@ -15,8 +15,9 @@ namespace VertexCFD
 namespace Test
 {
 template<class EvalType>
-struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
-                      public PHX::EvaluatorDerived<EvalType, panzer::Traits>
+struct ExpectedDistance
+    : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
+      public PHX::EvaluatorDerived<EvalType, panzer::Traits>
 {
     using scalar_type = typename EvalType::ScalarT;
 
@@ -27,14 +28,14 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
 
     int _ir_degree;
 
-    Dependencies(const panzer::IntegrationRule& ir)
+    ExpectedDistance(const panzer::IntegrationRule& ir)
         : _num_space_dim(ir.spatial_dimension)
         , _exp_distance("exp_distance", ir.dl_scalar)
         , _ir_degree(ir.cubature_degree)
     {
         this->addEvaluatedField(_exp_distance);
 
-        this->setName("Wall Distance Unit Test Dependencies");
+        this->setName("Wall Distance Unit Test Expected Distance");
     }
 
     void evaluateFields(typename panzer::Traits::EvalData d) override
@@ -42,7 +43,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         auto _ir_index = panzer::getIntegrationRuleIndex(_ir_degree, d);
         _ip_coords = d.int_rules[_ir_index]->ip_coordinates;
         Kokkos::parallel_for(
-            "Wall Distance Unit Test Dependencies",
+            "Wall Distance Unit Test Expected Distance",
             Kokkos::RangePolicy<PHX::exec_space>(0, d.num_cells),
             *this);
     }
@@ -52,7 +53,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         const int num_point = _exp_distance.extent(1);
         for (int qp = 0; qp < num_point; ++qp)
         {
-            double y_dist = 1 - std::abs(_ip_coords(c, qp, 1));
+            const double y_dist = 1 - std::abs(_ip_coords(c, qp, 1));
             double z_dist = 1e8;
             if (_num_space_dim == 3)
             {
@@ -79,7 +80,7 @@ void testEval(const std::string element_type)
         Teuchos::DefaultComm<int>::getComm());
 
     // Make an empty parameter database and build mesh parameters.
-    Parameter::ParameterDatabase parameter_db(comm);
+    const Parameter::ParameterDatabase parameter_db(comm);
     auto mesh_params = parameter_db.meshParameters();
     mesh_params->set("Mesh Input Type", "Inline");
     auto& inline_params = mesh_params->sublist("Inline");
@@ -101,21 +102,22 @@ void testEval(const std::string element_type)
         mesh_details.set("Z Elements", nelem_z);
     }
 
-    Teuchos::RCP<MeshManager> mesh_manager{
+    const Teuchos::RCP<MeshManager> mesh_manager{
         Teuchos::rcp(new MeshManager(parameter_db, comm))};
     mesh_manager->completeMeshConstruction();
 
-    Teuchos::ParameterList closure_params;
-    closure_params.set<std::string>("Wall Names", "top,bottom,front,back");
+    const auto sideset_geometry
+        = Teuchos::rcp(new VertexCFD::Mesh::Topology::SidesetGeometry(
+            mesh_manager->mesh(), {"top", "bottom", "front", "back"}));
 
-    const auto dep_eval = Teuchos::rcp(new Dependencies<EvalType>(ir));
-    test_fixture.registerEvaluator<EvalType>(dep_eval);
-    test_fixture.registerTestField<EvalType>(dep_eval->_exp_distance);
+    const auto exp_dist_eval = Teuchos::rcp(new ExpectedDistance<EvalType>(ir));
+    test_fixture.registerEvaluator<EvalType>(exp_dist_eval);
+    test_fixture.registerTestField<EvalType>(exp_dist_eval->_exp_distance);
 
     // Initialize and register closure model
     auto eval = Teuchos::rcp(
         new ClosureModel::WallDistance<EvalType, panzer::Traits, num_space_dim>(
-            ir, mesh_manager, closure_params));
+            ir, sideset_geometry));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_distance);
 
@@ -123,8 +125,8 @@ void testEval(const std::string element_type)
 
     // Evaluate and assert closure model values
     auto fv_dist = test_fixture.getTestFieldData<EvalType>(eval->_distance);
-    auto fv_exp_dist
-        = test_fixture.getTestFieldData<EvalType>(dep_eval->_exp_distance);
+    auto fv_exp_dist = test_fixture.getTestFieldData<EvalType>(
+        exp_dist_eval->_exp_distance);
 
     const int num_point = ir.num_points;
     for (int qp = 0; qp < num_point; ++qp)
@@ -189,10 +191,39 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "WallDistance";
     test_fixture.eval_name = "distance";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
-    test_fixture.model_params.set("Wall Names", "dummy");
+
+    // Construct a minimal mesh needed for construction of the wall distance
+    // closure model.
+    {
+        auto comm = Teuchos::rcp_dynamic_cast<const Teuchos::MpiComm<int>>(
+            Teuchos::DefaultComm<int>::getComm());
+
+        const Parameter::ParameterDatabase parameter_db(comm);
+        parameter_db.meshParameters()
+            ->set("Mesh Input Type", "Inline")
+            .sublist("Inline")
+            .set("Element Type", "Tet4")
+            .sublist("Mesh")
+            .set("X Elements", 1)
+            .set("Y Elements", 1)
+            .set("Z Elements", 1);
+        auto mesh_manager{Teuchos::rcp(new MeshManager(parameter_db, comm))};
+        mesh_manager->completeMeshConstruction();
+
+        test_fixture.user_params.set("MeshManager", mesh_manager)
+            .sublist("Wall List")
+            .set("Wall Names", "top");
+        const auto sideset_geometry
+            = Teuchos::rcp(new VertexCFD::Mesh::Topology::SidesetGeometry(
+                mesh_manager->mesh(), {"top"}));
+
+        test_fixture.user_params.set("Sideset Geometry", sideset_geometry);
+    }
+
     test_fixture.template buildAndTest<
         ClosureModel::WallDistance<EvalType, panzer::Traits, num_space_dim>,
         num_space_dim>();

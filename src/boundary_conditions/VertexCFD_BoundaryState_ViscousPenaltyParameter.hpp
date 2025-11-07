@@ -29,7 +29,7 @@ class ViscousPenaltyParameter : public panzer::EvaluatorWithBaseImpl<Traits>,
     ViscousPenaltyParameter(const panzer::IntegrationRule& ir,
                             const panzer::PureBasis& basis,
                             const std::string& dof_name,
-                            const Teuchos::ParameterList& user_params);
+                            const double& penalty);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;
@@ -43,7 +43,6 @@ class ViscousPenaltyParameter : public panzer::EvaluatorWithBaseImpl<Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _penalty_param;
 
   private:
-    std::string _dof_name;
     std::string _basis_name;
     int _num_space_dim;
     int _basis_index;

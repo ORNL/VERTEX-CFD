@@ -3,6 +3,10 @@
 
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFScalarConvectiveFlux.hpp"
 
+#include "utils/VertexCFD_Utils_PhaseIndex.hpp"
+#include "utils/VertexCFD_Utils_PhaseLayout.hpp"
+#include "utils/VertexCFD_Utils_ScalarToVector.hpp"
+
 #include <gtest/gtest.h>
 
 namespace VertexCFD
@@ -68,6 +72,17 @@ void testEval()
 
     const auto& ir = *test_fixture.ir;
 
+    // Phase list
+    std::vector<std::string> phase_list;
+    phase_list.push_back("alpha_air");
+
+    // Create combined array of phase fraction fields
+    const auto phase_vec
+        = Utils::ScalarToVector<EvalType, PhaseIndex>::createFromList(
+            ir, "volume_fractions", phase_list, false, false);
+
+    test_fixture.registerEvaluator<EvalType>(phase_vec);
+
     // Initialize velocity components and dependents
     const double _nanval = std::numeric_limits<double>::quiet_NaN();
     const double u = 0.25;
@@ -78,18 +93,12 @@ void testEval()
     auto deps = Teuchos::rcp(new Dependencies<EvalType>(ir, u, v, w));
     test_fixture.registerEvaluator<EvalType>(deps);
 
-    // Closure parameters
-    Teuchos::ParameterList closure_params;
-    closure_params.set("Field Name", "alpha_air");
-    closure_params.set("Equation Name", "alpha_air_equation");
-    //
-
     // Initialize class object to test
     const auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleLSVOFScalarConvectiveFlux<EvalType,
                                                                   panzer::Traits,
                                                                   num_space_dim>(
-            ir, closure_params));
+            ir, 0, 1, "alpha_air_equation"));
 
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_scalar_flux);

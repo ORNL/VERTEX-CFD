@@ -40,13 +40,13 @@ inline void getOutputFields(const Teuchos::ParameterList& params,
     getOutputFieldsByType(params.sublist("Cell Average Quantities"),
                           out_fields);
     // get rid of repeated names
-    std::set<std::string> out_set(out_fields.begin(), out_fields.end());
+    const std::set<std::string> out_set(out_fields.begin(), out_fields.end());
     out_fields.assign(out_set.begin(), out_set.end());
     // do the same for vector outputs
     getOutputFieldsByType(params.sublist("Cell Average Vectors"),
                           out_vec_fields);
-    std::set<std::string> out_vec_set(out_vec_fields.begin(),
-                                      out_vec_fields.end());
+    const std::set<std::string> out_vec_set(out_vec_fields.begin(),
+                                            out_vec_fields.end());
     out_vec_fields.assign(out_vec_set.begin(), out_vec_set.end());
 }
 

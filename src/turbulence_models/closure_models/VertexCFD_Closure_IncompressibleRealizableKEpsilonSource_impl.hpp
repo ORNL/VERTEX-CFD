@@ -15,13 +15,11 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleRealizableKEpsilonSource<EvalType, Traits, NumSpaceDim>::
-    IncompressibleRealizableKEpsilonSource(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop)
-    : _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
+    IncompressibleRealizableKEpsilonSource(const panzer::IntegrationRule& ir)
+    : _nu("kinematic_viscosity", ir.dl_scalar)
+    , _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
     , _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
     , _turb_dissipation_rate("turb_dissipation_rate", ir.dl_scalar)
-    , _nu(fluid_prop.constantKinematicViscosity())
     , _C_2(1.9)
     , _k_source("SOURCE_turb_kinetic_energy_equation", ir.dl_scalar)
     , _k_prod("PRODUCTION_turb_kinetic_energy_equation", ir.dl_scalar)
@@ -31,6 +29,7 @@ IncompressibleRealizableKEpsilonSource<EvalType, Traits, NumSpaceDim>::
     , _e_dest("DESTRUCTION_turb_dissipation_rate_equation", ir.dl_scalar)
 {
     // Add dependent fields
+    this->addDependentField(_nu);
     this->addDependentField(_nu_t);
     this->addDependentField(_turb_kinetic_energy);
     this->addDependentField(_turb_dissipation_rate);
@@ -115,7 +114,8 @@ IncompressibleRealizableKEpsilonSource<EvalType, Traits, NumSpaceDim>::operator(
                   / SmoothMath::max(
                       _turb_kinetic_energy(cell, point)
                           + sqrt(SmoothMath::max(
-                              _nu * _turb_dissipation_rate(cell, point),
+                              _nu(cell, point)
+                                  * _turb_dissipation_rate(cell, point),
                               max_tol,
                               0.0)),
                       max_tol,

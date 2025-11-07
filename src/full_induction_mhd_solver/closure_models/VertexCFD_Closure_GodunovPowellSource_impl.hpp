@@ -1,7 +1,8 @@
 #ifndef VERTEXCFD_CLOSURE_GODUNOVPOWELLSOURCE_IMPL_HPP
 #define VERTEXCFD_CLOSURE_GODUNOVPOWELLSOURCE_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 
@@ -19,6 +20,9 @@ GodunovPowellSource<EvalType, Traits, NumSpaceDim>::GodunovPowellSource(
     : _magnetic_permeability(mhd_props.vacuumMagneticPermeability())
     , _divergence_total_magnetic_field("divergence_total_magnetic_field",
                                        ir.dl_scalar)
+    , _total_magnetic_field(
+          "total_magnetic_field",
+          Utils::buildMagneticLayout(ir.dl_scalar, num_magnetic_field_dim))
 {
     // Evaluated fields
     Utils::addEvaluatedVectorField(*this,
@@ -33,8 +37,7 @@ GodunovPowellSource<EvalType, Traits, NumSpaceDim>::GodunovPowellSource(
     // Dependent fields
     this->addDependentField(_divergence_total_magnetic_field);
     Utils::addDependentVectorField(*this, ir.dl_scalar, _velocity, "velocity_");
-    Utils::addDependentVectorField(
-        *this, ir.dl_scalar, _total_magnetic_field, "total_magnetic_field_");
+    this->addDependentField(_total_magnetic_field);
 
     this->setName("Godunov-Powell Source " + std::to_string(num_space_dim)
                   + "D");
@@ -65,7 +68,7 @@ GodunovPowellSource<EvalType, Traits, NumSpaceDim>::operator()(
             {
                 _godunov_powell_momentum_source[dim](cell, point)
                     = -_divergence_total_magnetic_field(cell, point)
-                      * _total_magnetic_field[dim](cell, point)
+                      * _total_magnetic_field(cell, point, dim)
                       / _magnetic_permeability;
                 _godunov_powell_induction_source[dim](cell, point)
                     = -_divergence_total_magnetic_field(cell, point)

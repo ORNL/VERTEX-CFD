@@ -14,7 +14,7 @@ namespace Test
 {
 //---------------------------------------------------------------------------//
 template<class EvalType, int NumSpaceDim>
-void testGaussian()
+void testGaussian(const bool scaling = false)
 {
     const int integration_order = 1;
     const int basis_order = 1;
@@ -29,6 +29,12 @@ void testGaussian()
     if (num_space_dim > 2)
         center[2] = 2.0 / 3.0;
     params.set<Teuchos::Array<double>>("Center", center);
+    if (scaling)
+    {
+        params.set<std::string>("Scaling", "scaled");
+        params.set<double>("Scale", 1.0);
+    }
+
     Teuchos::Array<double> sigma(num_space_dim);
     sigma[0] = 0.5;
     sigma[1] = 2.0;
@@ -54,48 +60,96 @@ void testGaussian()
         num_dofs = 8;
     EXPECT_EQ(num_dofs, ic.extent(1));
 
-    if (num_space_dim == 2)
+    if (scaling)
     {
-        EXPECT_DOUBLE_EQ(0.4568536920450875, fieldValue(ic, 0, 0));
-        EXPECT_DOUBLE_EQ(0.3967508000449945, fieldValue(ic, 0, 1));
-        EXPECT_DOUBLE_EQ(0.3967508000449945, fieldValue(ic, 0, 2));
-        EXPECT_DOUBLE_EQ(0.4568536920450875, fieldValue(ic, 0, 3));
+        if (num_space_dim == 2)
+        {
+            EXPECT_DOUBLE_EQ(1.1094346363285787, fieldValue(ic, 0, 0));
+            EXPECT_DOUBLE_EQ(0.73179702839459293, fieldValue(ic, 0, 1));
+            EXPECT_DOUBLE_EQ(0.73179702839459293, fieldValue(ic, 0, 2));
+            EXPECT_DOUBLE_EQ(1.1094346363285787, fieldValue(ic, 0, 3));
+        }
+        else if (num_space_dim == 3)
+        {
+            EXPECT_DOUBLE_EQ(1.0905062861781287, fieldValue(ic, 0, 0));
+            EXPECT_DOUBLE_EQ(0.72207888939230869, fieldValue(ic, 0, 1));
+            EXPECT_DOUBLE_EQ(0.72207888939230869, fieldValue(ic, 0, 2));
+            EXPECT_DOUBLE_EQ(1.0905062861781287, fieldValue(ic, 0, 3));
+            EXPECT_DOUBLE_EQ(1.104658643428823, fieldValue(ic, 0, 4));
+            EXPECT_DOUBLE_EQ(0.72934495187948012, fieldValue(ic, 0, 5));
+            EXPECT_DOUBLE_EQ(0.72934495187948012, fieldValue(ic, 0, 6));
+            EXPECT_DOUBLE_EQ(1.104658643428823, fieldValue(ic, 0, 7));
+        }
     }
-    else if (num_space_dim == 3)
+    else
     {
-        EXPECT_DOUBLE_EQ(0.3493585546023939, fieldValue(ic, 0, 0));
-        EXPECT_DOUBLE_EQ(0.3415609562691542, fieldValue(ic, 0, 1));
-        EXPECT_DOUBLE_EQ(0.3415609562691542, fieldValue(ic, 0, 2));
-        EXPECT_DOUBLE_EQ(0.3493585546023939, fieldValue(ic, 0, 3));
-        EXPECT_DOUBLE_EQ(0.3496580828086895, fieldValue(ic, 0, 4));
-        EXPECT_DOUBLE_EQ(0.3417147391778995, fieldValue(ic, 0, 5));
-        EXPECT_DOUBLE_EQ(0.3417147391778995, fieldValue(ic, 0, 6));
-        EXPECT_DOUBLE_EQ(0.3496580828086895, fieldValue(ic, 0, 7));
+        if (num_space_dim == 2)
+        {
+            EXPECT_DOUBLE_EQ(0.4568536920450875, fieldValue(ic, 0, 0));
+            EXPECT_DOUBLE_EQ(0.3967508000449945, fieldValue(ic, 0, 1));
+            EXPECT_DOUBLE_EQ(0.3967508000449945, fieldValue(ic, 0, 2));
+            EXPECT_DOUBLE_EQ(0.4568536920450875, fieldValue(ic, 0, 3));
+        }
+        else if (num_space_dim == 3)
+        {
+            EXPECT_DOUBLE_EQ(0.3493585546023939, fieldValue(ic, 0, 0));
+            EXPECT_DOUBLE_EQ(0.3415609562691542, fieldValue(ic, 0, 1));
+            EXPECT_DOUBLE_EQ(0.3415609562691542, fieldValue(ic, 0, 2));
+            EXPECT_DOUBLE_EQ(0.3493585546023939, fieldValue(ic, 0, 3));
+            EXPECT_DOUBLE_EQ(0.3496580828086895, fieldValue(ic, 0, 4));
+            EXPECT_DOUBLE_EQ(0.3417147391778995, fieldValue(ic, 0, 5));
+            EXPECT_DOUBLE_EQ(0.3417147391778995, fieldValue(ic, 0, 6));
+            EXPECT_DOUBLE_EQ(0.3496580828086895, fieldValue(ic, 0, 7));
+        }
     }
 }
 
 //---------------------------------------------------------------------------//
-TEST(Gaussian2D, residual_test)
+TEST(Gaussian2D, residual)
 {
     testGaussian<panzer::Traits::Residual, 2>();
 }
 
 //---------------------------------------------------------------------------//
-TEST(Gaussian2D, jacobian_test)
+TEST(Gaussian2D, jacobian)
 {
     testGaussian<panzer::Traits::Jacobian, 2>();
 }
 
 //---------------------------------------------------------------------------//
-TEST(Gaussian3D, residual_test)
+TEST(Gaussian3D, residual)
 {
     testGaussian<panzer::Traits::Residual, 3>();
 }
 
 //---------------------------------------------------------------------------//
-TEST(Gaussian3D, jacobian_test)
+TEST(Gaussian3D, jacobian)
 {
     testGaussian<panzer::Traits::Jacobian, 3>();
+}
+
+//---------------------------------------------------------------------------//
+TEST(ScaledGaussian2D, residual)
+{
+    testGaussian<panzer::Traits::Residual, 2>(true);
+}
+
+//---------------------------------------------------------------------------//
+TEST(ScaledGaussian2D, jacobian)
+{
+    testGaussian<panzer::Traits::Jacobian, 2>(true);
+}
+
+//---------------------------------------------------------------------------//
+TEST(ScaledGaussian3D, residual)
+{
+    testGaussian<panzer::Traits::Residual, 3>(true);
+}
+
+//---------------------------------------------------------------------------//
+TEST(ScaledGaussian3D, jacobian)
+{
+    testGaussian<panzer::Traits::Jacobian, 3>(true);
 }
 
 //---------------------------------------------------------------------------//
@@ -161,25 +215,25 @@ void testInverseGaussian()
 }
 
 //---------------------------------------------------------------------------//
-TEST(InverseGaussian2D, residual_test)
+TEST(InverseGaussian2D, residual)
 {
     testInverseGaussian<panzer::Traits::Residual, 2>();
 }
 
 //---------------------------------------------------------------------------//
-TEST(InverseGaussian2D, jacobian_test)
+TEST(InverseGaussian2D, jacobian)
 {
     testInverseGaussian<panzer::Traits::Jacobian, 2>();
 }
 
 //---------------------------------------------------------------------------//
-TEST(InverseGaussian3D, residual_test)
+TEST(InverseGaussian3D, residual)
 {
     testInverseGaussian<panzer::Traits::Residual, 3>();
 }
 
 //---------------------------------------------------------------------------//
-TEST(InverseGaussian3D, jacobian_test)
+TEST(InverseGaussian3D, jacobian)
 {
     testInverseGaussian<panzer::Traits::Jacobian, 3>();
 }

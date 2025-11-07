@@ -25,7 +25,7 @@ TEST(ScalarParameterInput, xml_write_read)
 
     // Make a parameter list with a scalar parameter input.
     Teuchos::ParameterList write_list;
-    Parameter::ScalarParameterInput write_input = {"Parameter Name"};
+    const Parameter::ScalarParameterInput write_input = {"Parameter Name"};
     write_list.set("Object Parameter", write_input);
 
     // Write a parameter list to XML. Write it to cout too so we can see it.
@@ -45,7 +45,7 @@ TEST(ScalarParameterInput, xml_write_read)
     EXPECT_EQ("Parameter Name", read_input.parameter_name);
 
     // Check equality operator.
-    Parameter::ScalarParameterInput eq_check = {"Parameter Name"};
+    const Parameter::ScalarParameterInput eq_check = {"Parameter Name"};
     EXPECT_EQ(eq_check, write_input);
 }
 

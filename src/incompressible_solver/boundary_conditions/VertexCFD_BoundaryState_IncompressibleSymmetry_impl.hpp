@@ -14,7 +14,7 @@ template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleSymmetry<EvalType, Traits, NumSpaceDim>::IncompressibleSymmetry(
     const panzer::IntegrationRule& ir,
     const FluidProperties::ConstantFluidProperties& fluid_prop,
-    const std::string& continuity_model_name)
+    const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
     , _boundary_grad_lagrange_pressure("BOUNDARY_GRAD_lagrange_pressure",
                                        ir.dl_vector)
@@ -26,8 +26,7 @@ IncompressibleSymmetry<EvalType, Traits, NumSpaceDim>::IncompressibleSymmetry(
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
     , _normals("Side Normal", ir.dl_vector)
     , _solve_temp(fluid_prop.solveTemperature())
-    , _continuity_model_name(continuity_model_name)
-    , _is_edac(continuity_model_name == "EDAC" ? true : false)
+    , _is_edac(is_edac)
 {
     this->addEvaluatedField(_boundary_lagrange_pressure);
     if (_is_edac)

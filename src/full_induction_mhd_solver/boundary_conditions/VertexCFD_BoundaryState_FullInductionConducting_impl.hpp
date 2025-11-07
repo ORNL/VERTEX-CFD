@@ -96,8 +96,30 @@ template<class EvalType, class Traits, int NumSpaceDim>
 void FullInductionConducting<EvalType, Traits, NumSpaceDim>::evaluateFields(
     typename Traits::EvalData workset)
 {
+    // Allocate space for thread-local temporaries
+    size_t bytes;
+    if constexpr (Sacado::IsADType<scalar_type>::value)
+    {
+        const int fad_size = Kokkos::dimension_scalar(
+            _boundary_induced_magnetic_field[0].get_view());
+        bytes = scratch_view_B::shmem_size(
+            _boundary_induced_magnetic_field[0].extent(1), fad_size);
+        bytes += scratch_view_gradB::shmem_size(
+            _boundary_induced_magnetic_field[0].extent(1),
+            num_space_dim,
+            fad_size);
+    }
+    else
+    {
+        bytes = scratch_view_B::shmem_size(
+            _boundary_induced_magnetic_field[0].extent(1));
+        bytes += scratch_view_gradB::shmem_size(
+            _boundary_induced_magnetic_field[0].extent(1), num_space_dim);
+    }
+
     auto policy = panzer::HP::inst().teamPolicy<scalar_type, PHX::Device>(
         workset.num_cells);
+    policy.set_scratch_size(0, Kokkos::PerTeam(bytes));
     Kokkos::parallel_for(this->getName(), policy, *this);
 }
 
@@ -110,12 +132,32 @@ FullInductionConducting<EvalType, Traits, NumSpaceDim>::operator()(
     const int cell = team.league_rank();
     const int num_point = _boundary_induced_magnetic_field[0].extent(1);
     const int num_grad_dim = _boundary_grad_induced_magnetic_field[0].extent(2);
+    scratch_view_B scratch_data_B;
+    scratch_view_gradB scratch_data_gradB;
+    if constexpr (Sacado::IsADType<scalar_type>::value)
+    {
+        const int fad_size = Kokkos::dimension_scalar(
+            _boundary_induced_magnetic_field[0].get_view());
+        scratch_data_B = scratch_view_B(team.team_shmem(), num_point, fad_size);
+        scratch_data_gradB = scratch_view_gradB(
+            team.team_shmem(), num_point, num_space_dim, fad_size);
+    }
+    else
+    {
+        scratch_data_B = scratch_view_B(team.team_shmem(), num_point);
+        scratch_data_gradB
+            = scratch_view_gradB(team.team_shmem(), num_point, num_space_dim);
+    }
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             // Compute B \cdot n
-            scalar_type B_dot_n = 0.0;
-            Kokkos::Array<scalar_type, num_space_dim> gradB_dot_n = {0};
+            auto&& B_dot_n = scratch_data_B(point);
+            B_dot_n = 0.0;
+            auto&& gradB_dot_n
+                = Kokkos::subview(scratch_data_gradB, point, Kokkos::ALL);
+            for (int d = 0; d < num_space_dim; ++d)
+                gradB_dot_n[d] = 0.;
             for (int grad_dim = 0; grad_dim < num_grad_dim; ++grad_dim)
             {
                 B_dot_n += (_induced_magnetic_field[grad_dim](cell, point)

@@ -1,5 +1,5 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleVariableTimeDerivative.hpp"
 
@@ -28,13 +28,11 @@ void testFactory(const bool build_magn_corr)
         eval_names.push_back(
             "magnetic_correction_potential Incompressible Time Derivative 2D");
     }
-    test_fixture.user_params.sublist("Full Induction MHD Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties")
         .set("Build Magnetic Correction Potential Equation", build_magn_corr)
         .set("Hyperbolic Divergence Cleaning Speed", 1.1);
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 1.5)
-        .set("Artificial compressibility", 0.1);
-
+    test_fixture.factory_type = "Full Induction MHD";
     test_fixture.num_evaluators = eval_names.size();
     for (int ind = 0; ind < test_fixture.num_evaluators; ++ind)
     {

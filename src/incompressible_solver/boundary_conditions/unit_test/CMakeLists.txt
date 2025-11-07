@@ -13,4 +13,5 @@ VertexCFD_add_tests(
   IncompressibleBoundaryLaminarFlow
   IncompressibleCavityLid
   IncompressibleWallFunction
+  IncompressibleWallFunctionStress
   )

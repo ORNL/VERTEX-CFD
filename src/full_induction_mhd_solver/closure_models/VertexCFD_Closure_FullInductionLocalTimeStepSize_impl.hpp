@@ -1,9 +1,9 @@
 #ifndef VERTEXCFD_CLOSURE_FULLINDUCTIONLOCALTIMESTEPSIZE_IMPL_HPP
 #define VERTEXCFD_CLOSURE_FULLINDUCTIONLOCALTIMESTEPSIZE_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
-
-#include <utils/VertexCFD_Utils_SmoothMath.hpp>
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
+#include "utils/VertexCFD_Utils_SmoothMath.hpp"
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 
@@ -18,22 +18,24 @@ template<class EvalType, class Traits, int NumSpaceDim>
 FullInductionLocalTimeStepSize<EvalType, Traits, NumSpaceDim>::
     FullInductionLocalTimeStepSize(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
         const MHDProperties::FullInductionMHDProperties& mhd_props)
     : _local_dt("local_dt", ir.dl_scalar)
-    , _rho(fluid_prop.constantDensity())
     , _magnetic_permeability(mhd_props.vacuumMagneticPermeability())
     , _c_h(mhd_props.hyperbolicDivergenceCleaningSpeed())
+    , _rho("density", ir.dl_scalar)
     , _element_length("element_length", ir.dl_vector)
+    , _total_magnetic_field(
+          "total_magnetic_field",
+          Utils::buildMagneticLayout(ir.dl_scalar, num_magnetic_field_dim))
 {
     // Add evaluated field
     this->addEvaluatedField(_local_dt);
 
     // Add dependent fields
+    this->addDependentField(_rho);
     this->addDependentField(_element_length);
     Utils::addDependentVectorField(*this, ir.dl_scalar, _velocity, "velocity_");
-    Utils::addDependentVectorField(
-        *this, ir.dl_scalar, _total_magnetic_field, "total_magnetic_field_");
+    this->addDependentField(_total_magnetic_field);
 
     this->setName("Full Induction Local Time Step Size");
 }
@@ -58,8 +60,7 @@ FullInductionLocalTimeStepSize<EvalType, Traits, NumSpaceDim>::operator()(
     const int num_point = _local_dt.extent(1);
     const int num_grad_dim = _element_length.extent(2);
 
-    const double sqrt_mu_0_rho_inv
-        = 1.0 / std::sqrt(_magnetic_permeability * _rho);
+    using Kokkos::sqrt;
 
     const double tol = 1.0e-8;
     Kokkos::parallel_for(
@@ -71,8 +72,9 @@ FullInductionLocalTimeStepSize<EvalType, Traits, NumSpaceDim>::operator()(
                 using SmoothMath::max;
                 _local_dt(cell, point)
                     += (abs(_velocity[dim](cell, point), tol)
-                        + max(abs(_total_magnetic_field[dim](cell, point), tol)
-                                  * sqrt_mu_0_rho_inv,
+                        + max(abs(_total_magnetic_field(cell, point, dim), tol)
+                                  / sqrt(_magnetic_permeability
+                                         * _rho(cell, point)),
                               _c_h,
                               tol))
                        / _element_length(cell, point, dim);

@@ -15,14 +15,13 @@ namespace Test
 {
 //---------------------------------------------------------------------------//
 // Test data dependencies.
-template<class EvalType>
+template<class EvalType, int NumSpaceDim>
 struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
                       public PHX::EvaluatorDerived<EvalType, panzer::Traits>
 {
     using scalar_type = typename EvalType::ScalarT;
-
-    static constexpr int num_field_dim = 3;
-    int num_space_dim;
+    static constexpr int num_space_dim = NumSpaceDim;
+    static constexpr int num_magnetic_field_dim = 3;
 
     double _scalar_magn_pot;
     double _eta;
@@ -32,12 +31,12 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _boundary_velocity_2;
 
     Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>,
-                  num_field_dim>
+                  num_space_dim>
         _induced_magnetic_field;
 
     Kokkos::Array<
         PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
-        num_field_dim>
+        num_space_dim>
         _grad_induced_magnetic_field;
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point>
@@ -46,7 +45,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _resistivity;
 
     Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>,
-                  num_field_dim>
+                  num_magnetic_field_dim>
         _external_magnetic_field;
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> _normals;
@@ -54,8 +53,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     Dependencies(const panzer::IntegrationRule& ir,
                  const double scalar_magn_pot,
                  const double eta)
-        : num_space_dim(ir.spatial_dimension)
-        , _scalar_magn_pot(scalar_magn_pot)
+        : _scalar_magn_pot(scalar_magn_pot)
         , _eta(eta)
         , _boundary_velocity_0("BOUNDARY_velocity_0", ir.dl_scalar)
         , _boundary_velocity_1("BOUNDARY_velocity_1", ir.dl_scalar)
@@ -100,9 +98,12 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         if (num_space_dim == 3)
             _boundary_velocity_2.deep_copy(5.0);
 
-        for (int dim = 0; dim < num_field_dim; ++dim)
+        for (int dim = 0; dim < num_magnetic_field_dim; ++dim)
         {
-            _induced_magnetic_field[dim].deep_copy(1.25 * (dim + 1));
+            if (dim < num_space_dim)
+            {
+                _induced_magnetic_field[dim].deep_copy(1.25 * (dim + 1));
+            }
             _external_magnetic_field[dim].deep_copy(pow(-0.5, dim + 1) * 0.1);
         }
 
@@ -118,16 +119,15 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     KOKKOS_INLINE_FUNCTION void operator()(const int c) const
     {
         const int num_point = _grad_induced_magnetic_field[0].extent(1);
-        const int num_grad_dim = _grad_induced_magnetic_field[0].extent(2);
         for (int qp = 0; qp < num_point; ++qp)
         {
             _normals(c, qp, 0) = 0.45;
             _normals(c, qp, 1) = -0.65;
-            if (num_grad_dim == 3)
+            if (num_space_dim == 3)
                 _normals(c, qp, 2) = 0.35;
-            for (int fdim = 0; fdim < num_field_dim; ++fdim)
+            for (int fdim = 0; fdim < num_space_dim; ++fdim)
             {
-                for (int gdim = 0; gdim < num_grad_dim; ++gdim)
+                for (int gdim = 0; gdim < num_space_dim; ++gdim)
                 {
                     _grad_induced_magnetic_field[fdim](c, qp, gdim)
                         = (fdim + 11) * pow(-0.5, fdim + gdim);
@@ -157,8 +157,9 @@ void testEval(bool build_magn_corr,
     const double eta = 3.6;
 
     // Create dependencies
-    const auto dep_eval = Teuchos::rcp(
-        new Dependencies<EvalType>(*test_fixture.ir, scalar_magn_pot, eta));
+    const auto dep_eval
+        = Teuchos::rcp(new Dependencies<EvalType, num_space_dim>(
+            *test_fixture.ir, scalar_magn_pot, eta));
     test_fixture.registerEvaluator<EvalType>(dep_eval);
 
     // Create conducting wall evaluator.
@@ -174,13 +175,12 @@ void testEval(bool build_magn_corr,
         bc_params.set("scalar_magnetic_potential", bnd_scalar_magn_pot);
 
     Teuchos::ParameterList full_indu_params;
-    full_indu_params.set("Vacuum Magnetic Permeability", 0.12);
-    full_indu_params.set("Build Magnetic Correction Potential Equation",
-                         build_magn_corr);
-    full_indu_params.set("Hyperbolic Divergence Cleaning Speed", 1.1);
-    full_indu_params.set("Build Resistive Flux", build_resistive_flux);
-    full_indu_params.set("Resistivity", eta);
-    MHDProperties::FullInductionMHDProperties mhd_props(full_indu_params);
+    full_indu_params.set("Vacuum Magnetic Permeability", 0.12)
+        .set("Build Magnetic Correction Potential Equation", build_magn_corr)
+        .set("Hyperbolic Divergence Cleaning Speed", 1.1)
+        .set("Build Resistive Flux", build_resistive_flux)
+        .set("Resistivity", eta);
+    const MHDProperties::FullInductionMHDProperties mhd_props(full_indu_params);
 
     const auto cond_eval = Teuchos::rcp(
         new BoundaryCondition::

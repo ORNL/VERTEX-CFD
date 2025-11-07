@@ -29,14 +29,18 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
                       public PHX::EvaluatorDerived<EvalType, panzer::Traits>
 {
     using scalar_type = typename EvalType::ScalarT;
+    const double nan_val = std::numeric_limits<double>::quiet_NaN();
 
     double _dphi_dt;
     double _du_dt;
     double _dv_dt;
     double _dw_dt;
     bool _build_temp_equ;
+    bool _unscaled_density;
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _dvdt_lagrange_pressure;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _rho;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _cp;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _dvdt_velocity_0;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _dvdt_velocity_1;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _dvdt_velocity_2;
@@ -47,19 +51,25 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
                  const double du_dt,
                  const double dv_dt,
                  const double dw_dt,
-                 const bool build_temp_equ)
+                 const bool build_temp_equ,
+                 const bool unscaled_density)
         : _dphi_dt(dphi_dt)
         , _du_dt(du_dt)
         , _dv_dt(dv_dt)
         , _dw_dt(dw_dt)
         , _build_temp_equ(build_temp_equ)
+        , _unscaled_density(unscaled_density)
         , _dvdt_lagrange_pressure("DXDT_lagrange_pressure", ir.dl_scalar)
+        , _rho("density", ir.dl_scalar)
+        , _cp("specific_heat_capacity", ir.dl_scalar)
         , _dvdt_velocity_0("DXDT_velocity_0", ir.dl_scalar)
         , _dvdt_velocity_1("DXDT_velocity_1", ir.dl_scalar)
         , _dvdt_velocity_2("DXDT_velocity_2", ir.dl_scalar)
         , _dvdt_temperature("DXDT_temperature", ir.dl_scalar)
     {
         this->addEvaluatedField(_dvdt_lagrange_pressure);
+        this->addEvaluatedField(_rho);
+        this->addEvaluatedField(_cp);
         this->addEvaluatedField(_dvdt_velocity_0);
         this->addEvaluatedField(_dvdt_velocity_1);
         this->addEvaluatedField(_dvdt_velocity_2);
@@ -71,6 +81,8 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     void evaluateFields(typename panzer::Traits::EvalData) override
     {
         _dvdt_lagrange_pressure.deep_copy(_dphi_dt);
+        _rho.deep_copy(_unscaled_density ? 2.0 : 1.0);
+        _cp.deep_copy(_build_temp_equ ? 5.0 : nan_val);
         _dvdt_velocity_0.deep_copy(_du_dt);
         _dvdt_velocity_1.deep_copy(_dv_dt);
         _dvdt_velocity_2.deep_copy(_dw_dt);
@@ -91,29 +103,30 @@ void testEval(const bool unscaled_density, const bool build_temp_equ)
         num_space_dim, integration_order, basis_order);
 
     // Eval dependencies.
-    double dphi_dt = 0.125;
-    double du_dt = 1.25;
-    double dv_dt = 1.5;
-    double dw_dt
+    const double dphi_dt = 0.125;
+    const double du_dt = 1.25;
+    const double dv_dt = 1.5;
+    const double dw_dt
         = num_space_dim == 3 ? 1.75 : std::numeric_limits<double>::quiet_NaN();
-    auto dep_eval = Teuchos::rcp(new Dependencies<EvalType>(
-        *test_fixture.ir, dphi_dt, du_dt, dv_dt, dw_dt, build_temp_equ));
+    auto dep_eval = Teuchos::rcp(new Dependencies<EvalType>(*test_fixture.ir,
+                                                            dphi_dt,
+                                                            du_dt,
+                                                            dv_dt,
+                                                            dw_dt,
+                                                            build_temp_equ,
+                                                            unscaled_density));
     test_fixture.registerEvaluator<EvalType>(dep_eval);
 
     // Fluid properties
     const double beta = 0.1;
-    double rho = 1.0;
+    const double rho = unscaled_density ? 2.0 : 1.0;
     const double Cp
         = build_temp_equ ? 5.0 : std::numeric_limits<double>::quiet_NaN();
     Teuchos::ParameterList fluid_prop_list;
+    fluid_prop_list.set("Density", rho);
     fluid_prop_list.set("Kinematic viscosity", 0.375);
     fluid_prop_list.set("Artificial compressibility", beta);
     fluid_prop_list.set("Build Temperature Equation", build_temp_equ);
-    if (unscaled_density)
-    {
-        rho = 2.0;
-        fluid_prop_list.set("Density", rho);
-    }
     if (build_temp_equ)
     {
         fluid_prop_list.set("Thermal conductivity", 0.5);
@@ -233,7 +246,8 @@ void testFactory()
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.user_params.set("Build Temperature Equation", false);
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.type_name = "IncompressibleTimeDerivative";

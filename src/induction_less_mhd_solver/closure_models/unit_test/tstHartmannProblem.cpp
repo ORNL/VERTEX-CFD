@@ -1,7 +1,6 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 #include "induction_less_mhd_solver/closure_models/VertexCFD_Closure_HartmannProblemExact.hpp"
 
 #include <gtest/gtest.h>
@@ -31,26 +30,23 @@ void testEval()
     Kokkos::deep_copy(ip_coord_view, ip_coord_mirror);
 
     // Initialize class object to test
-    Teuchos::ParameterList user_params;
-    user_params.set("Hartmann Solution Half-Width Channel", 2.5);
     Teuchos::Array<double> ext_magn_vct(3);
     ext_magn_vct[0] = 1.5;
     ext_magn_vct[1] = 2.0;
     ext_magn_vct[2] = 3.0;
+    Teuchos::ParameterList user_params;
     user_params.set("External Magnetic Field", ext_magn_vct);
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 4.5);
-    fluid_prop_list.set("Density", 4.0);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", false);
-    fluid_prop_list.set("Build Inductionless MHD Equation", true);
-    fluid_prop_list.set("Electrical conductivity", 3.5);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+
+    Teuchos::ParameterList closure_params;
+    closure_params.set("Hartmann Solution Half-Width Channel", 2.5);
+    closure_params.set("Electrical Conductivity", 3.5);
+    closure_params.set("Density", 4.0);
+    closure_params.set("Kinematic Viscosity", 4.5);
 
     const auto eval = Teuchos::rcp(
         new ClosureModel::
             HartmannProblemExact<EvalType, panzer::Traits, num_space_dim>(
-                ir, fluid_prop, user_params));
+                ir, closure_params, user_params));
 
     // Register
     test_fixture.registerEvaluator<EvalType>(eval);
@@ -115,10 +111,14 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.user_params.set("Build Inductionless MHD Equation", true);
     test_fixture.user_params.set("Build Temperature Equation", false);
-    Teuchos::Array<double> ext_magn_vct(3);
+    const Teuchos::Array<double> ext_magn_vct(3);
     test_fixture.user_params.set("External Magnetic Field", ext_magn_vct);
-    test_fixture.user_params.set("Hartmann Solution Half-Width Channel", 2.5);
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.model_params.set("Hartmann Solution Half-Width Channel", 2.5)
+        .set("Kinematic Viscosity", 0.1)
+        .set("Electrical Conductivity", 3.5)
+        .set("Density", 1.0);
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0)
         .set("Electrical conductivity", 3.5);

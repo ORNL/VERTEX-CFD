@@ -1,5 +1,5 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_TotalMagneticFieldGradient.hpp"
 
@@ -13,27 +13,29 @@ namespace VertexCFD
 {
 namespace Test
 {
-template<class EvalType>
+template<class EvalType, int NumSpaceDim>
 struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
                       public PHX::EvaluatorDerived<EvalType, panzer::Traits>
 {
     using scalar_type = typename EvalType::ScalarT;
+    static constexpr int num_space_dim = NumSpaceDim;
+    static constexpr int num_magnetic_field_dim = 3;
 
     Kokkos::Array<
         PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
-        3>
+        num_space_dim>
         grad_ind_magn_field;
     Kokkos::Array<
         PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
-        3>
+        num_magnetic_field_dim>
         grad_ext_magn_field;
 
-    const Kokkos::Array<double, 3> _bi;
-    const Kokkos::Array<double, 3> _b0;
+    const Kokkos::Array<double, num_magnetic_field_dim> _bi;
+    const Kokkos::Array<double, num_magnetic_field_dim> _b0;
 
     Dependencies(const panzer::IntegrationRule& ir,
-                 const Kokkos::Array<double, 3> bi,
-                 const Kokkos::Array<double, 3> b0,
+                 const Kokkos::Array<double, num_magnetic_field_dim> bi,
+                 const Kokkos::Array<double, num_magnetic_field_dim> b0,
                  const std::string& gradient_prefix)
         : _bi(bi)
         , _b0(b0)
@@ -64,7 +66,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         const int num_grad_dim = grad_ind_magn_field[0].extent(2);
         for (int qp = 0; qp < num_point; ++qp)
         {
-            for (int dim = 0; dim < 3; ++dim)
+            for (int dim = 0; dim < num_magnetic_field_dim; ++dim)
             {
                 const double qpd = (qp + dim + 1);
                 for (int grad_dim = 0; grad_dim < num_grad_dim; ++grad_dim)
@@ -90,15 +92,17 @@ void testEval(const std::string& gradient_prefix)
     const auto& ir = *test_fixture.ir;
 
     // Initialize induced / external magnetic field gradient base values
-    const Kokkos::Array<double, 3> bi
+    static constexpr int num_magnetic_field_dim = 3;
+    const Kokkos::Array<double, num_magnetic_field_dim> bi
         = {0.25,
            0.5,
            num_space_dim > 2 ? 0.9 : std::numeric_limits<double>::quiet_NaN()};
-    const Kokkos::Array<double, 3> b0 = {0.325, -0.65, 0.7};
+    const Kokkos::Array<double, num_magnetic_field_dim> b0
+        = {0.325, -0.65, 0.7};
 
     // Eval dependencies
-    const auto deps = Teuchos::rcp(
-        new Dependencies<EvalType>(ir, bi, b0, gradient_prefix));
+    const auto deps = Teuchos::rcp(new Dependencies<EvalType, num_space_dim>(
+        ir, bi, b0, gradient_prefix));
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Initialize and register
@@ -124,40 +128,45 @@ void testEval(const std::string& gradient_prefix)
 
     test_fixture.registerEvaluator<EvalType>(eval);
 
-    for (int dim = 0; dim < num_space_dim; ++dim)
-    {
-        test_fixture.registerTestField<EvalType>(
-            eval->_grad_total_magnetic_field[dim]);
-    }
+    test_fixture.registerTestField<EvalType>(eval->_grad_total_magnetic_field);
+    test_fixture.registerTestField<EvalType>(
+        eval->_divergence_total_magnetic_field);
     test_fixture.evaluate<EvalType>();
 
     // Evaluate test fields
-    const auto grad_bt_0 = test_fixture.getTestFieldData<EvalType>(
-        eval->_grad_total_magnetic_field[0]);
-    const auto grad_bt_1 = test_fixture.getTestFieldData<EvalType>(
-        eval->_grad_total_magnetic_field[1]);
-    const auto grad_bt_2 = test_fixture.getTestFieldData<EvalType>(
-        eval->_grad_total_magnetic_field[2]);
+    const auto grad_bt = test_fixture.getTestFieldData<EvalType>(
+        eval->_grad_total_magnetic_field);
+    const auto div_bt = test_fixture.getTestFieldData<EvalType>(
+        eval->_divergence_total_magnetic_field);
 
     // Expected values
     const int num_point = ir.num_points;
     const int num_grad_dim = ir.spatial_dimension;
 
+    EXPECT_EQ(num_magnetic_field_dim, grad_bt.extent(3));
+
     // Assert values
     for (int qp = 0; qp < num_point; ++qp)
     {
-        for (int dim = 0; dim < num_grad_dim; ++dim)
+        double exp_div_b = 0.0;
+        for (int fdim = 0; fdim < num_magnetic_field_dim; ++fdim)
         {
             // Currently force assumption of uniform external field, so the
             // expected total field gradient is just the induced field gradient
-            const double exp_0 = bi[0] * (qp + 1) / (dim + 1);
-            EXPECT_DOUBLE_EQ(exp_0, fieldValue(grad_bt_0, 0, qp, dim));
-            const double exp_1 = bi[1] * (qp + 2) / (dim + 1);
-            EXPECT_DOUBLE_EQ(exp_1, fieldValue(grad_bt_1, 0, qp, dim));
-            const double exp_2
-                = num_space_dim < 3 ? 0.0 : bi[2] * (qp + 3) / (dim + 1);
-            EXPECT_DOUBLE_EQ(exp_2, fieldValue(grad_bt_2, 0, qp, dim));
+            const int qfd1 = qp + fdim + 1;
+            for (int gdim = 0; gdim < num_grad_dim; ++gdim)
+            {
+                const double exp_db = num_space_dim < num_magnetic_field_dim
+                                              && fdim == 2
+                                          ? 0.0
+                                          : bi[fdim] * qfd1 / (gdim + 1);
+                EXPECT_DOUBLE_EQ(exp_db,
+                                 fieldValue(grad_bt, 0, qp, gdim, fdim));
+                if (gdim == fdim)
+                    exp_div_b += exp_db;
+            }
         }
+        EXPECT_DOUBLE_EQ(exp_div_b, fieldValue(div_bt, 0, qp));
     }
 }
 
@@ -209,10 +218,9 @@ void testFactory()
     test_fixture.type_name = "TotalMagneticField";
     test_fixture.eval_name = "Total Magnetic Field Gradient"
                              + std::to_string(num_space_dim) + "D";
-    test_fixture.user_params.sublist("Full Induction MHD Properties");
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 1.5)
-        .set("Artificial compressibility", 0.1);
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties");
+    test_fixture.factory_type = "Full Induction MHD";
     test_fixture.template buildAndTest<
         ClosureModel::TotalMagneticFieldGradient<EvalType, panzer::Traits, num_space_dim>,
         num_space_dim>();

@@ -67,9 +67,10 @@ void testEval()
     //                  * sin(2*pi*f_z*(z-phi_z)) for 3D
     auto set_function = [=](const Kokkos::Array<double, num_coeff> coeff,
                             const Kokkos::Array<double, num_space_dim> x) {
-        double val = coeff[0] * sin(2.0 * pi * coeff[2] * (x[0] - coeff[3]))
-                     * sin(2.0 * pi * coeff[4] * (x[1] - coeff[5]));
-        double return_val
+        const double val = coeff[0]
+                           * sin(2.0 * pi * coeff[2] * (x[0] - coeff[3]))
+                           * sin(2.0 * pi * coeff[4] * (x[1] - coeff[5]));
+        const double return_val
             = num_space_dim == 2
                   ? val + coeff[1]
                   : val * sin(2.0 * pi * coeff[6] * (x[2] - coeff[7]))
@@ -82,10 +83,10 @@ void testEval()
     //              * sin(2*pi*f_z*(z-phi_z)) for 3D
     auto set_gradX_function = [=](const Kokkos::Array<double, num_coeff> coeff,
                                   const Kokkos::Array<double, num_space_dim> x) {
-        double val = coeff[0] * 2.0 * pi * coeff[2]
-                     * cos(2.0 * pi * coeff[2] * (x[0] - coeff[3]))
-                     * sin(2.0 * pi * coeff[4] * (x[1] - coeff[5]));
-        double return_val
+        const double val = coeff[0] * 2.0 * pi * coeff[2]
+                           * cos(2.0 * pi * coeff[2] * (x[0] - coeff[3]))
+                           * sin(2.0 * pi * coeff[4] * (x[1] - coeff[5]));
+        const double return_val
             = num_space_dim == 2
                   ? val
                   : val * sin(2.0 * pi * coeff[6] * (x[2] - coeff[7]));
@@ -98,10 +99,10 @@ void testEval()
     //              * sin(2*pi*f_z*(z-phi_z)) for 3D
     auto set_gradY_function = [=](const Kokkos::Array<double, num_coeff> coeff,
                                   const Kokkos::Array<double, num_space_dim> x) {
-        double val = coeff[0] * 2.0 * pi * coeff[4]
-                     * sin(2.0 * pi * coeff[2] * (x[0] - coeff[3]))
-                     * cos(2.0 * pi * coeff[4] * (x[1] - coeff[5]));
-        double return_val
+        const double val = coeff[0] * 2.0 * pi * coeff[4]
+                           * sin(2.0 * pi * coeff[2] * (x[0] - coeff[3]))
+                           * cos(2.0 * pi * coeff[4] * (x[1] - coeff[5]));
+        const double return_val
             = num_space_dim == 2
                   ? val
                   : val * sin(2.0 * pi * coeff[6] * (x[2] - coeff[7]));
@@ -241,7 +242,7 @@ void testEval()
     const double T_gradX_ref = set_gradX_function(T_coeff, x);
     const double T_gradY_ref = set_gradY_function(T_coeff, x);
 
-    int num_point = boundary_lagrange_pressure_result.extent(1);
+    const int num_point = boundary_lagrange_pressure_result.extent(1);
 
     for (int qp = 0; qp < num_point; ++qp)
     {

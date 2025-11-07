@@ -21,9 +21,9 @@ template<class EvalType>
 void testEval()
 {
     // Setup test fixture.
-    int num_space_dim = 2;
-    int integration_order = 1;
-    int basis_order = 1;
+    const int num_space_dim = 2;
+    const int integration_order = 1;
+    const int basis_order = 1;
     EvaluatorTestFixture test_fixture(
         num_space_dim, integration_order, basis_order);
 
@@ -67,7 +67,8 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "ElementLength";
     test_fixture.eval_name = "Element Length";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.template buildAndTest<

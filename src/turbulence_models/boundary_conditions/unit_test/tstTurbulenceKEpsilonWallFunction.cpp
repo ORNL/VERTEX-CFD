@@ -38,6 +38,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> _grad_e;
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> _normals;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _nu;
 
     const bool _low_k;
     const double _nanval;
@@ -55,6 +56,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         , _grad_k("GRAD_turb_kinetic_energy", ir.dl_vector)
         , _grad_e("GRAD_turb_dissipation_rate", ir.dl_vector)
         , _normals("Side Normal", ir.dl_vector)
+        , _nu("kinematic_viscosity", ir.dl_scalar)
         , _low_k(low_k)
         , _nanval(std::numeric_limits<double>::quiet_NaN())
     {
@@ -70,6 +72,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         this->addEvaluatedField(_grad_k);
         this->addEvaluatedField(_grad_e);
         this->addEvaluatedField(_normals);
+        this->addEvaluatedField(_nu);
         this->setName(
             "Turbulence Model K-Epsilon Wall Function Unit Test Dependencies");
     }
@@ -102,6 +105,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
             _source_k(c, qp) = 5.3;
 
             _nu_t(c, qp) = 4.8;
+            _nu(c, qp) = 0.0001;
 
             for (int d = 0; d < num_space_dim; ++d)
             {
@@ -124,13 +128,6 @@ void testEval(const bool low_k, const bool neumann)
     EvaluatorTestFixture test_fixture(
         num_space_dim, integration_order, basis_order);
 
-    // Create fluid properties
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.0001);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", false);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
-
     // Create boundary parameters
     Teuchos::ParameterList bc_params;
     bc_params.set("Epsilon Condition Type", neumann ? "Neumann" : "Dirichlet");
@@ -145,7 +142,7 @@ void testEval(const bool low_k, const bool neumann)
         new BoundaryCondition::TurbulenceKEpsilonWallFunction<EvalType,
                                                               panzer::Traits,
                                                               num_space_dim>(
-            *test_fixture.ir, bc_params, fluid_prop));
+            *test_fixture.ir, bc_params));
     test_fixture.registerEvaluator<EvalType>(wall_eval);
 
     // Add required test fields.

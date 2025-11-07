@@ -98,14 +98,14 @@ void testEval(const Kokkos::Array<double, 3> time_values,
     EvaluatorTestFixture test_fixture(
         num_grad_dim, integration_order, basis_order);
 
-    std::string continuity_model_name = "";
+    bool is_edac = false;
     switch (continuity_model)
     {
         case (ContinuityModel::AC):
-            continuity_model_name = "AC";
+            is_edac = false;
             break;
         case (ContinuityModel::EDAC):
-            continuity_model_name = "EDAC";
+            is_edac = true;
             break;
     }
 
@@ -157,10 +157,9 @@ void testEval(const Kokkos::Array<double, 3> time_values,
 
     // Create dirichlet evaluator.
     auto dirichlet_eval = Teuchos::rcp(
-        new BoundaryCondition::IncompressibleDirichlet<EvalType,
-                                                       panzer::Traits,
-                                                       num_space_dim>(
-            *test_fixture.ir, fluid_prop, bc_params, continuity_model_name));
+        new BoundaryCondition::
+            IncompressibleDirichlet<EvalType, panzer::Traits, num_space_dim>(
+                *test_fixture.ir, fluid_prop, bc_params, is_edac));
     test_fixture.registerEvaluator<EvalType>(dirichlet_eval);
 
     // Add required test fields.

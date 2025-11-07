@@ -5,9 +5,11 @@
 #include "closure_models/VertexCFD_Closure_MeasureElementLength.hpp"
 #include "closure_models/VertexCFD_Closure_MetricTensorElementLength.hpp"
 #include "closure_models/VertexCFD_Closure_SingularValueElementLength.hpp"
+#include "closure_models/VertexCFD_Closure_WallDistance.hpp"
 
-#include "turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceExtrapolate.hpp"
-#include "turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceFixed.hpp"
+#include "boundary_conditions/VertexCFD_BoundaryState_VariableExtrapolate.hpp"
+#include "boundary_conditions/VertexCFD_BoundaryState_VariableFixed.hpp"
+
 #include "turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceInletOutlet.hpp"
 #include "turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceKEpsilonWallFunction.hpp"
 #include "turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceKOmegaWallResolved.hpp"
@@ -16,7 +18,11 @@
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKEpsilonEddyViscosity.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKOmegaDiffusivityCoefficient.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKOmegaEddyViscosity.hpp"
+#include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKTauDiffusivityCoefficient.hpp"
+#include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKTauEddyViscosity.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleRealizableKEpsilonEddyViscosity.hpp"
+#include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSSTDiffusivityCoefficient.hpp"
+#include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSSTEddyViscosity.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSpalartAllmarasDiffusivityCoefficient.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSpalartAllmarasEddyViscosity.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleWALEEddyViscosity.hpp"
@@ -39,8 +45,7 @@ class TurbulenceBoundaryStateFactory
     create(const panzer::IntegrationRule& ir,
            const Teuchos::ParameterList& bc_params,
            const Teuchos::ParameterList& user_params,
-           const std::string _turbulence_model_name,
-           const FluidProperties::ConstantFluidProperties& fluid_prop)
+           const std::string _turbulence_model_name)
     {
         // Evaluator vector to return
         std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>> evaluators;
@@ -61,14 +66,14 @@ class TurbulenceBoundaryStateFactory
                 const auto diffusive_coeff_op = Teuchos::rcp(
                     new ClosureModel::IncompressibleSpalartAllmarasDiffusivityCoefficient<
                         EvalType,
-                        panzer::Traits>(ir, fluid_prop));
+                        panzer::Traits>(ir));
                 evaluators.push_back(diffusive_coeff_op);
 
                 // Turbulent eddy viscosity
                 const auto eddy_visc_op = Teuchos::rcp(
                     new ClosureModel::IncompressibleSpalartAllmarasEddyViscosity<
                         EvalType,
-                        panzer::Traits>(ir, fluid_prop));
+                        panzer::Traits>(ir));
                 evaluators.push_back(eddy_visc_op);
             }
             // K-Epsilon model family
@@ -87,8 +92,7 @@ class TurbulenceBoundaryStateFactory
                     const auto diffusive_coeff_op = Teuchos::rcp(
                         new ClosureModel::IncompressibleKEpsilonDiffusivityCoefficient<
                             EvalType,
-                            panzer::Traits>(
-                            ir, fluid_prop, 1.0, 1.2, "BOUNDARY_"));
+                            panzer::Traits>(ir, 1.0, 1.2, "BOUNDARY_"));
                     evaluators.push_back(diffusive_coeff_op);
 
                     // Turbulent eddy viscosity
@@ -106,8 +110,7 @@ class TurbulenceBoundaryStateFactory
                     const auto diffusive_coeff_op = Teuchos::rcp(
                         new ClosureModel::IncompressibleKEpsilonDiffusivityCoefficient<
                             EvalType,
-                            panzer::Traits>(
-                            ir, fluid_prop, 1.0, 1.3, "BOUNDARY_"));
+                            panzer::Traits>(ir, 1.0, 1.3, "BOUNDARY_"));
                     evaluators.push_back(diffusive_coeff_op);
 
                     // Turbulent eddy viscosity
@@ -131,11 +134,78 @@ class TurbulenceBoundaryStateFactory
                 const auto eval_coeff = Teuchos::rcp(
                     new ClosureModel::IncompressibleKOmegaDiffusivityCoefficient<
                         EvalType,
-                        panzer::Traits>(ir, fluid_prop, user_params));
+                        panzer::Traits>(ir, user_params));
                 evaluators.push_back(eval_coeff);
 
                 const auto eval_eddy = Teuchos::rcp(
                     new ClosureModel::IncompressibleKOmegaEddyViscosity<
+                        EvalType,
+                        panzer::Traits,
+                        NumSpaceDim>(ir, user_params));
+                evaluators.push_back(eval_eddy);
+            }
+            else if (std::string::npos != _turbulence_model_name.find("SST"))
+            {
+                // SST turbulence variable names
+                turb_field_names_vct.push_back("turb_kinetic_energy");
+                turb_field_names_vct.push_back(
+                    "turb_specific_dissipation_rate");
+
+                if (bc_params.get<std::string>("Type") == "No-Slip")
+                {
+                    // SST eddy viscosity closure
+                    const auto eval_eddy = Teuchos::rcp(
+                        new ClosureModel::IncompressibleSSTEddyViscosity<
+                            EvalType,
+                            panzer::Traits,
+                            NumSpaceDim>(ir, user_params, true));
+                    evaluators.push_back(eval_eddy);
+                }
+                else
+                {
+                    // Wall distance closure
+                    const auto dist = Teuchos::rcp(
+                        new ClosureModel::WallDistance<EvalType,
+                                                       panzer::Traits,
+                                                       NumSpaceDim>(
+                            ir,
+                            user_params.get<
+                                Teuchos::RCP<Mesh::Topology::SidesetGeometry>>(
+                                "Sideset Geometry")));
+                    evaluators.push_back(dist);
+                    // SST eddy viscosity closure
+                    const auto eval_eddy = Teuchos::rcp(
+                        new ClosureModel::IncompressibleSSTEddyViscosity<
+                            EvalType,
+                            panzer::Traits,
+                            NumSpaceDim>(ir, user_params));
+                    evaluators.push_back(eval_eddy);
+                }
+
+                // SST diffusivity closure
+                const auto eval_coeff = Teuchos::rcp(
+                    new ClosureModel::IncompressibleSSTDiffusivityCoefficient<
+                        EvalType,
+                        panzer::Traits>(ir, user_params));
+                evaluators.push_back(eval_coeff);
+            }
+            // K-Tau model family
+            else if (std::string::npos != _turbulence_model_name.find("K-Tau"))
+            {
+                // K-Tau turbulence variable names
+                turb_field_names_vct.push_back("turb_kinetic_energy");
+                turb_field_names_vct.push_back(
+                    "turb_specific_dissipation_rate");
+
+                // K-Tau closure models
+                const auto eval_coeff = Teuchos::rcp(
+                    new ClosureModel::IncompressibleKTauDiffusivityCoefficient<
+                        EvalType,
+                        panzer::Traits>(ir, user_params));
+                evaluators.push_back(eval_coeff);
+
+                const auto eval_eddy = Teuchos::rcp(
+                    new ClosureModel::IncompressibleKTauEddyViscosity<
                         EvalType,
                         panzer::Traits,
                         NumSpaceDim>(ir));
@@ -231,7 +301,7 @@ class TurbulenceBoundaryStateFactory
                 for (auto& variable_name : turb_field_names_vct)
                 {
                     const auto state
-                        = Teuchos::rcp(new TurbulenceFixed<EvalType, Traits>(
+                        = Teuchos::rcp(new VariableFixed<EvalType, Traits>(
                             ir, bc_params, variable_name));
                     evaluators.push_back(state);
                 }
@@ -244,7 +314,7 @@ class TurbulenceBoundaryStateFactory
                 for (auto& variable_name : turb_field_names_vct)
                 {
                     const auto state = Teuchos::rcp(
-                        new TurbulenceExtrapolate<EvalType, Traits>(
+                        new VariableExtrapolate<EvalType, Traits>(
                             ir, variable_name));
                     evaluators.push_back(state);
                 }
@@ -282,7 +352,7 @@ class TurbulenceBoundaryStateFactory
                 // Wall functions for use with high Re K-Epsilon models
                 const auto state = Teuchos::rcp(
                     new TurbulenceKEpsilonWallFunction<EvalType, Traits, NumSpaceDim>(
-                        ir, bc_params, fluid_prop));
+                        ir, bc_params));
                 evaluators.push_back(state);
 
                 found_model = true;

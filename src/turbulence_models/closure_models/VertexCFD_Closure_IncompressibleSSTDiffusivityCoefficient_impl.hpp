@@ -14,11 +14,10 @@ template<class EvalType, class Traits>
 IncompressibleSSTDiffusivityCoefficient<EvalType, Traits>::
     IncompressibleSSTDiffusivityCoefficient(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
         const Teuchos::ParameterList& user_params)
     : _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
     , _sst_blending_function("sst_blending_function", ir.dl_scalar)
-    , _nu(fluid_prop.constantKinematicViscosity())
+    , _nu("kinematic_viscosity", ir.dl_scalar)
     , _sigma_k1(0.85)
     , _sigma_k2(1.0)
     , _sigma_w1(0.5)
@@ -33,10 +32,10 @@ IncompressibleSSTDiffusivityCoefficient<EvalType, Traits>::
         Teuchos::ParameterList turb_list
             = user_params.sublist("Turbulence Parameters");
 
-        if (turb_list.isSublist("SST Parameters"))
+        if (turb_list.isSublist("SST K-Omega Parameters"))
         {
             Teuchos::ParameterList sst_list
-                = turb_list.sublist("SST Parameters");
+                = turb_list.sublist("SST K-Omega Parameters");
 
             if (sst_list.isType<double>("sigma_k1"))
             {
@@ -63,6 +62,7 @@ IncompressibleSSTDiffusivityCoefficient<EvalType, Traits>::
     // Add dependent fields
     this->addDependentField(_nu_t);
     this->addDependentField(_sst_blending_function);
+    this->addDependentField(_nu);
 
     // Add evaluated fields
     this->addEvaluatedField(_diffusivity_var_k);
@@ -95,12 +95,12 @@ IncompressibleSSTDiffusivityCoefficient<EvalType, Traits>::operator()(
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             _diffusivity_var_k(cell, point)
-                = _nu
+                = _nu(cell, point)
                   + (_sigma_k1 * _sst_blending_function(cell, point)
                      + _sigma_k2 * (1.0 - _sst_blending_function(cell, point)))
                         * _nu_t(cell, point);
             _diffusivity_var_w(cell, point)
-                = _nu
+                = _nu(cell, point)
                   + (_sigma_w1 * _sst_blending_function(cell, point)
                      + _sigma_w2 * (1.0 - _sst_blending_function(cell, point)))
                         * _nu_t(cell, point);

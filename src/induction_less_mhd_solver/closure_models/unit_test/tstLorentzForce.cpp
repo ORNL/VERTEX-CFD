@@ -1,7 +1,6 @@
 #include <VertexCFD_EvaluatorTestHarness.hpp>
 #include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 #include "induction_less_mhd_solver/closure_models/VertexCFD_Closure_LorentzForce.hpp"
 
 #include <gtest/gtest.h>
@@ -22,6 +21,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     // quiet_NaN is a host-side function so we store the value
     const double _nanval = std::numeric_limits<double>::quiet_NaN();
 
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> sigma;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> velocity_0;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> velocity_1;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> velocity_2;
@@ -33,6 +33,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
 
     Dependencies(const panzer::IntegrationRule& ir)
         : num_grad_dim(ir.spatial_dimension)
+        , sigma("electrical_conductivity", ir.dl_scalar)
         , velocity_0("velocity_0", ir.dl_scalar)
         , velocity_1("velocity_1", ir.dl_scalar)
         , velocity_2("velocity_2", ir.dl_scalar)
@@ -41,6 +42,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         , ext_magn_field_1("external_magnetic_field_1", ir.dl_scalar)
         , ext_magn_field_2("external_magnetic_field_2", ir.dl_scalar)
     {
+        this->addEvaluatedField(sigma);
         this->addEvaluatedField(velocity_0);
         this->addEvaluatedField(velocity_1);
         this->addEvaluatedField(velocity_2);
@@ -66,6 +68,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         const int num_point = velocity_0.extent(1);
         for (int qp = 0; qp < num_point; ++qp)
         {
+            sigma(c, qp) = 3.0;
             velocity_0(c, qp) = 0.1;
             velocity_1(c, qp) = -0.2;
             grad_electric_potential(c, qp, 0) = 0.6;
@@ -103,17 +106,9 @@ void testEval()
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Initialize class object to test
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.375);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", false);
-    fluid_prop_list.set("Build Inductionless MHD Equation", true);
-    fluid_prop_list.set("Electrical conductivity", 3.0);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
-
     const auto eval = Teuchos::rcp(
         new ClosureModel::LorentzForce<EvalType, panzer::Traits, num_space_dim>(
-            ir, fluid_prop));
+            ir));
 
     // Register
     test_fixture.registerEvaluator<EvalType>(eval);
@@ -179,10 +174,10 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.user_params.set("Build Inductionless MHD Equation", true);
     test_fixture.user_params.set("Build Temperature Equation", false);
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0)
-        .set("Electrical conductivity", 3.0);
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
+        .set("Kinematic viscosity", 2.0)
+        .set("Artificial compressibility", 2.0);
     test_fixture.type_name = "LorentzForce";
     test_fixture.eval_name = "Electric Potential Lorentz Force "
                              + std::to_string(num_space_dim) + "D";

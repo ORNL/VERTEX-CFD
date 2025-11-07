@@ -29,7 +29,7 @@ TEST(TypeTraits, OneArgument)
 
     // Static FAD
     using sfad_type = Sacado::Fad::SFad<double, 1>;
-    sfad_type a = 1.0;
+    const sfad_type a = 1.0;
 
     // SFad
     testResultType<sfad_type>(a);
@@ -39,7 +39,7 @@ TEST(TypeTraits, OneArgument)
 
     // Dynamic FAD
     using dfad_type = Sacado::Fad::DFad<double>;
-    dfad_type x(1, 1.0);
+    const dfad_type x(1, 1.0);
 
     // DFad
     testResultType<dfad_type>(x);
@@ -49,7 +49,7 @@ TEST(TypeTraits, OneArgument)
 
     // Nested  FAD -> DFad<SFad>
     using nfad_type = Sacado::Fad::DFad<sfad_type>;
-    nfad_type p(1, 1.0);
+    const nfad_type p(1, 1.0);
 
     // DFad<SFad>
     testResultType<nfad_type>(p);
@@ -77,8 +77,8 @@ TEST(TypeTraits, TwoArgument)
 
     // Static FAD
     using sfad_type = Sacado::Fad::SFad<double, 1>;
-    sfad_type a = 1.0;
-    sfad_type b = 2.0;
+    const sfad_type a = 1.0;
+    const sfad_type b = 2.0;
 
     // SFad / int
     testResultType<sfad_type>(a, 1);
@@ -108,8 +108,8 @@ TEST(TypeTraits, TwoArgument)
 
     // Dynamic FAD
     using dfad_type = Sacado::Fad::DFad<double>;
-    dfad_type x(1, 1.0);
-    dfad_type y(1, 1.0);
+    const dfad_type x(1, 1.0);
+    const dfad_type y(1, 1.0);
 
     // DFad / int
     testResultType<dfad_type>(x, 1);
@@ -139,8 +139,8 @@ TEST(TypeTraits, TwoArgument)
 
     // Nested  FAD -> DFad<SFad>
     using nfad_type = Sacado::Fad::DFad<sfad_type>;
-    nfad_type p(1, 1.0);
-    nfad_type q(1, 2.0);
+    const nfad_type p(1, 1.0);
+    const nfad_type q(1, 2.0);
 
     // DFad<SFad> / int
     testResultType<nfad_type>(p, 1);
@@ -213,24 +213,24 @@ TEST(TypeTraits, ManyArgument)
 
     // Static FAD
     using sfad_type = Sacado::Fad::SFad<double, 1>;
-    sfad_type a = 1.0;
-    sfad_type b = 2.0;
+    const sfad_type a = 1.0;
+    const sfad_type b = 2.0;
 
     // SFad expr / SFad / double / int
     testResultType<sfad_type>(1, a, 2.0, a * b + 1, b);
 
     // Dynamic FAD
     using dfad_type = Sacado::Fad::DFad<double>;
-    dfad_type x(1, 1.0);
-    dfad_type y(1, 1.0);
+    const dfad_type x(1, 1.0);
+    const dfad_type y(1, 1.0);
 
     // DFad expr / DFad / double / int
     testResultType<dfad_type>(1, x, 2.0, x * y + 1, y);
 
     // Nested  FAD -> DFad<SFad>
     using nfad_type = Sacado::Fad::DFad<sfad_type>;
-    nfad_type p(1, 1.0);
-    nfad_type q(1, 2.0);
+    const nfad_type p(1, 1.0);
+    const nfad_type q(1, 2.0);
 
     // Everything
     testResultType<nfad_type>(

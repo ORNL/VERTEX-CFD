@@ -28,7 +28,7 @@ class IncompressibleDirichlet : public panzer::EvaluatorWithBaseImpl<Traits>,
         const panzer::IntegrationRule& ir,
         const FluidProperties::ConstantFluidProperties& fluid_prop,
         const Teuchos::ParameterList& bc_params,
-        const std::string& continuity_model_name);
+        const bool is_edac);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -73,7 +73,6 @@ class IncompressibleDirichlet : public panzer::EvaluatorWithBaseImpl<Traits>,
         _grad_temperature;
 
     bool _solve_temp;
-    std::string _continuity_model_name;
     bool _is_edac;
 };
 

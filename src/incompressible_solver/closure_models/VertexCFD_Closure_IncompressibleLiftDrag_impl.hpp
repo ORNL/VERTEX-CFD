@@ -14,12 +14,14 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleLiftDrag<EvalType, Traits, NumSpaceDim>::IncompressibleLiftDrag(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
-    const Teuchos::ParameterList& user_params)
+    const Teuchos::ParameterList& user_params,
+    const bool use_turbulence_model)
     : _normals("Side Normal", ir.dl_vector)
     , _lagrange_pressure("lagrange_pressure", ir.dl_scalar)
-    , _nu(fluid_prop.constantKinematicViscosity())
-    , _rho(fluid_prop.constantDensity())
+    , _rho("density", ir.dl_scalar)
+    , _nu("kinematic_viscosity", ir.dl_scalar)
+    , _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
+    , _use_turbulence_model(use_turbulence_model)
     , _use_compressible_formula(user_params.isType<bool>("Compressible "
                                                          "Formula")
                                     ? user_params.get<bool>("Compressible "
@@ -41,6 +43,13 @@ IncompressibleLiftDrag<EvalType, Traits, NumSpaceDim>::IncompressibleLiftDrag(
     this->addDependentField(_lagrange_pressure);
     Utils::addDependentVectorField(
         *this, ir.dl_vector, _grad_velocity, "GRAD_velocity_");
+    this->addDependentField(_rho);
+    this->addDependentField(_nu);
+
+    if (_use_turbulence_model)
+    {
+        this->addDependentField(_nu_t);
+    }
 
     this->setName("Incompressible Lift/Drag " + std::to_string(num_space_dim)
                   + "D");
@@ -89,7 +98,14 @@ IncompressibleLiftDrag<EvalType, Traits, NumSpaceDim>::operator()(
                     = _lagrange_pressure(cell, point)
                       * _normals(cell, point, i);
                 _viscous_force[i](cell, point)
-                    = -_rho * _nu * _shear_tensor[i](cell, point);
+                    = -_rho(cell, point) * _nu(cell, point)
+                      * _shear_tensor[i](cell, point);
+                if (_use_turbulence_model)
+                {
+                    _viscous_force[i](cell, point)
+                        -= _rho(cell, point) * _nu_t(cell, point)
+                           * _shear_tensor[i](cell, point);
+                }
                 _total_force[i](cell, point)
                     = _viscous_force[i](cell, point)
                       + _pressure_force[i](cell, point);

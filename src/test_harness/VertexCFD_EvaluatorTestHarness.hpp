@@ -202,7 +202,7 @@ struct EvaluatorTestFixture
         fm->setKokkosExtendedDataTypeDimensions<panzer::Traits::Jacobian>(
             derivative_dimensions);
         fm->postRegistrationSetup(setup_data);
-        panzer::Traits::PED ped;
+        const panzer::Traits::PED ped;
         fm->preEvaluate<EvalType>(ped);
         fm->evaluateFields<EvalType>(*workset);
         fm->postEvaluate<EvalType>(0);
@@ -268,7 +268,7 @@ struct EvaluatorTestFixture
 
         // Fill cell local IDs
         {
-            Kokkos::View<int*, PHX::Device> cell_local_ids_k(
+            const Kokkos::View<int*, PHX::Device> cell_local_ids_k(
                 "cell_local_ids_k", num_cell);
             auto cell_local_ids_k_host
                 = Kokkos::create_mirror_view(cell_local_ids_k);
@@ -291,13 +291,8 @@ struct EvaluatorTestFixture
         workset->time = 0.0;
         workset->step_size = 0.0;
 
-        panzer::MDFieldArrayFactory array_factory("", true);
-#if TRILINOS_MAJOR_MINOR_VERSION >= 140500
+        const panzer::MDFieldArrayFactory array_factory("", true);
         auto& node_coords = workset->cell_node_coordinates;
-#else
-        auto& node_coords = workset->cell_vertex_coordinates;
-#endif
-
         node_coords
             = array_factory
                   .buildStaticArray<double, panzer::Cell, panzer::NODE, panzer::Dim>(

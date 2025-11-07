@@ -14,10 +14,10 @@ namespace Test
 void lupDecompAndSolveTest3x3()
 {
     constexpr int dim = 3;
-    Kokkos::View<double[dim][dim], PHX::mem_space> A("A");
-    Kokkos::View<int[dim], PHX::mem_space> p("p");
-    Kokkos::View<double[dim], PHX::mem_space> b("b");
-    Kokkos::View<double[dim], PHX::mem_space> w("w");
+    const Kokkos::View<double[dim][dim], PHX::mem_space> A("A");
+    const Kokkos::View<int[dim], PHX::mem_space> p("p");
+    const Kokkos::View<double[dim], PHX::mem_space> b("b");
+    const Kokkos::View<double[dim], PHX::mem_space> w("w");
 
     // Create host mirror views
     auto A_host = Kokkos::create_mirror_view(A);
@@ -79,8 +79,8 @@ void lupDecompAndSolveTest3x3()
 void lupDecompTest5x5()
 {
     constexpr int dim = 5;
-    Kokkos::View<double[dim][dim], PHX::mem_space> A("A");
-    Kokkos::View<int[dim], PHX::mem_space> p("p");
+    const Kokkos::View<double[dim][dim], PHX::mem_space> A("A");
+    const Kokkos::View<int[dim], PHX::mem_space> p("p");
 
     // Create host mirror views
     auto A_host = Kokkos::create_mirror_view(A);
@@ -150,10 +150,10 @@ void lupDecompTest5x5()
 void lupSolveTest5x5()
 {
     constexpr int dim = 5;
-    Kokkos::View<double[dim][dim], PHX::mem_space> A("A");
-    Kokkos::View<int[dim], PHX::mem_space> p("p");
-    Kokkos::View<double[dim], PHX::mem_space> b("b");
-    Kokkos::View<double[dim], PHX::mem_space> w("w");
+    const Kokkos::View<double[dim][dim], PHX::mem_space> A("A");
+    const Kokkos::View<int[dim], PHX::mem_space> p("p");
+    const Kokkos::View<double[dim], PHX::mem_space> b("b");
+    const Kokkos::View<double[dim], PHX::mem_space> w("w");
 
     // Create host mirror views
     auto A_host = Kokkos::create_mirror_view(A);

@@ -18,27 +18,17 @@ class ConstantFluidProperties
   public:
     ConstantFluidProperties() = default;
     explicit ConstantFluidProperties(const Teuchos::ParameterList& params)
-        : _kinematic_viscosity(params.get<double>("Kinematic viscosity"))
-        , _beta(params.get<double>("Artificial compressibility"))
+        : _beta(params.get<double>("Artificial compressibility"))
         , _solve_temp(params.get<bool>("Build Temperature Equation"))
         , _build_ind_less_equ(false)
         , _build_buoyancy(false)
     {
-        // Density
-        if (params.isType<double>("Density"))
-        {
-            _density = params.get<double>("Density");
-        }
-        else
-        {
-            _density = 1.0;
-        }
-
         // Thermal parameters
         if (_solve_temp)
         {
-            _thermal_conductivity = params.get<double>("Thermal conductivity");
-            _Cp = params.get<double>("Specific heat capacity");
+            _gamma = params.isType<double>("Heat Capacity Ratio")
+                         ? params.get<double>("Heat Capacity Ratio")
+                         : 1.0;
 
             // Check for buoyancy bool
             if (params.isType<bool>("Build Buoyancy Source"))
@@ -48,8 +38,7 @@ class ConstantFluidProperties
         }
         else
         {
-            _thermal_conductivity = std::numeric_limits<double>::quiet_NaN();
-            _Cp = std::numeric_limits<double>::quiet_NaN();
+            _gamma = std::numeric_limits<double>::quiet_NaN();
         }
 
         // Buoyancy source term
@@ -71,42 +60,12 @@ class ConstantFluidProperties
             _build_ind_less_equ
                 = params.get<bool>("Build Inductionless MHD Equation");
         }
-
-        if (_build_ind_less_equ)
-        {
-            _sigma = params.get<double>("Electrical conductivity");
-        }
-        else
-        {
-            _sigma = std::numeric_limits<double>::quiet_NaN();
-        }
     }
 
-    // Constant density
-    KOKKOS_INLINE_FUNCTION double constantDensity() const { return _density; }
-
-    // Constant kinematic viscosity
-    KOKKOS_INLINE_FUNCTION double constantKinematicViscosity() const
+    // Constant heat capacity ratio
+    KOKKOS_INLINE_FUNCTION double constantHeatCapacityRatio() const
     {
-        return _kinematic_viscosity;
-    }
-
-    // Constant thermal conductivity
-    KOKKOS_INLINE_FUNCTION double constantThermalConductivity() const
-    {
-        return _thermal_conductivity;
-    }
-
-    // Constant heat capacity
-    KOKKOS_INLINE_FUNCTION double constantHeatCapacity() const
-    {
-        return _density * _Cp;
-    }
-
-    // Constant electrical conductivity
-    KOKKOS_INLINE_FUNCTION double constantElectricalConductivity() const
-    {
-        return _sigma;
+        return _gamma;
     }
 
     // Solve temperature equation
@@ -119,6 +78,12 @@ class ConstantFluidProperties
     KOKKOS_INLINE_FUNCTION bool buildBuoyancy() const
     {
         return _build_buoyancy;
+    }
+
+    // Build inductionless MHD equations
+    KOKKOS_INLINE_FUNCTION bool buildInductionlessMHD() const
+    {
+        return _build_ind_less_equ;
     }
 
     // Expansion coefficient
@@ -140,12 +105,8 @@ class ConstantFluidProperties
     }
 
   private:
-    double _kinematic_viscosity;
+    double _gamma;
     double _beta;
-    double _density;
-    double _Cp;
-    double _thermal_conductivity;
-    double _sigma;
     double _beta_T;
     double _T_ref;
     bool _solve_temp;

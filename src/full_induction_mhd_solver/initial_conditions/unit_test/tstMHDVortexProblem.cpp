@@ -55,7 +55,7 @@ void testEval()
     const int num_coord = test_fixture.cell_topo->getNodeCount();
 
     // Set non-trivial coordinates for the degree of freedom
-    Kokkos::View<double**, Kokkos::HostSpace> x(
+    const Kokkos::View<double**, Kokkos::HostSpace> x(
         "coordinate", num_space_dim, num_coord);
     auto basis_coord_view
         = test_fixture.workset->bases[0]->basis_coordinates.get_static_view();

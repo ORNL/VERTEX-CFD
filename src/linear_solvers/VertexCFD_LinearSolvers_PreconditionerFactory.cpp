@@ -156,7 +156,7 @@ PreconditionerFactory::getValidParameters() const
     }
     else
     {
-        Teuchos::RCP<Tpetra::RowMatrix<>> row_mat;
+        const Teuchos::RCP<Tpetra::RowMatrix<>> row_mat;
         auto schwarz = Teuchos::rcp(
             new Ifpack2::AdditiveSchwarz<Tpetra::RowMatrix<>>(row_mat));
         *params = *(schwarz->getValidParameters());

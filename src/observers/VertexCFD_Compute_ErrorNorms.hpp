@@ -2,7 +2,6 @@
 #define VERTEXCFD_COMPUTE_ERRORNORMS_HPP
 
 #include "boundary_conditions/VertexCFD_BCStrategy_Factory.hpp"
-#include "equation_sets/VertexCFD_EquationSet_Factory.hpp"
 
 #include <Panzer_FieldManagerBuilder.hpp>
 #include <Panzer_GlobalIndexer.hpp>
@@ -76,7 +75,7 @@ class ErrorNorms
     std::vector<DofErrorNorm> _L2_error_norms;
     int _L1_error_norm_order;
     int _L2_error_norm_order;
-    int _num_mom_eq;
+    int _num_space_dim;
 
   public:
     const std::vector<DofErrorNorm>& L1_errorNorms() const

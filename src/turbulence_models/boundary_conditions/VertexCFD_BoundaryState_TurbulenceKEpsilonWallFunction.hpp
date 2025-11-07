@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_BOUNDARYSTATE_TURBULENCEKEPSILONWALLFUNCTION_HPP
 #define VERTEXCFD_BOUNDARYSTATE_TURBULENCEKEPSILONWALLFUNCTION_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -30,10 +28,8 @@ class TurbulenceKEpsilonWallFunction
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    TurbulenceKEpsilonWallFunction(
-        const panzer::IntegrationRule& ir,
-        const Teuchos::ParameterList& bc_params,
-        const FluidProperties::ConstantFluidProperties& fluid_prop);
+    TurbulenceKEpsilonWallFunction(const panzer::IntegrationRule& ir,
+                                   const Teuchos::ParameterList& bc_params);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -67,10 +63,10 @@ class TurbulenceKEpsilonWallFunction
         _grad_e;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _normals;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
 
     int _num_grad_dim;
     double _C_mu;
-    double _nu;
     double _kappa;
     double _yp_tr;
     bool _neumann;

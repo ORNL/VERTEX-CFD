@@ -1,6 +1,7 @@
 #ifndef VERTEXCFD_CLOSURE_TOTALMAGNETICFIELD_IMPL_HPP
 #define VERTEXCFD_CLOSURE_TOTALMAGNETICFIELD_IMPL_HPP
 
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
 #include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
@@ -13,6 +14,9 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 TotalMagneticField<EvalType, Traits, NumSpaceDim>::TotalMagneticField(
     const panzer::IntegrationRule& ir, const std::string& field_prefix)
+    : _total_magnetic_field(
+          "total_magnetic_field",
+          Utils::buildMagneticLayout(ir.dl_scalar, num_magnetic_field_dim))
 {
     // Add dependent fields
     Utils::addDependentVectorField(*this,
@@ -24,8 +28,7 @@ TotalMagneticField<EvalType, Traits, NumSpaceDim>::TotalMagneticField(
                                    _external_magnetic_field,
                                    "external_magnetic_field_");
     // Add evaluated fields
-    Utils::addEvaluatedVectorField(
-        *this, ir.dl_scalar, _total_magnetic_field, "total_magnetic_field_");
+    this->addEvaluatedField(_total_magnetic_field);
 
     // Closure model name
     this->setName("Total Magnetic Field " + std::to_string(num_space_dim)
@@ -49,22 +52,21 @@ TotalMagneticField<EvalType, Traits, NumSpaceDim>::operator()(
     const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const
 {
     const int cell = team.league_rank();
-    const int num_point = _total_magnetic_field[0].extent(1);
-    const int num_field_dim = _total_magnetic_field.size();
+    const int num_point = _total_magnetic_field.extent(1);
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             for (int dim = 0; dim < num_space_dim; ++dim)
             {
-                _total_magnetic_field[dim](cell, point)
+                _total_magnetic_field(cell, point, dim)
                     = _induced_magnetic_field[dim](cell, point)
                       + _external_magnetic_field[dim](cell, point);
             }
 
-            if (num_space_dim < num_field_dim)
+            for (int dim = num_space_dim; dim < num_magnetic_field_dim; ++dim)
             {
-                _total_magnetic_field[2](cell, point)
-                    = _external_magnetic_field[2](cell, point);
+                _total_magnetic_field(cell, point, dim)
+                    = _external_magnetic_field[dim](cell, point);
             }
         });
 }

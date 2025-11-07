@@ -35,7 +35,7 @@ class IncompressibleRotatingWall
         const panzer::IntegrationRule& ir,
         const FluidProperties::ConstantFluidProperties& fluid_prop,
         const Teuchos::ParameterList& bc_params,
-        const std::string& continuity_model_name);
+        const bool is_edac);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;
@@ -72,7 +72,6 @@ class IncompressibleRotatingWall
     double _time_init, _time_final;
     double _angular_velocity;
     bool _solve_temp;
-    std::string _continuity_model_name;
     bool _is_edac;
     double _T_wall;
 
@@ -87,6 +86,9 @@ class IncompressibleRotatingWall
 
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_temperature;
+
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
+        _normals;
 
     PHX::MDField<const double, panzer::Cell, panzer::Point, panzer::Dim> _ip_coords;
 };

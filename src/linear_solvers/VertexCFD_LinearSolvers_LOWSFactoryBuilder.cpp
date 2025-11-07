@@ -13,7 +13,6 @@
 #include <Thyra_Ifpack2PreconditionerFactory.hpp>
 #include <Thyra_PreconditionerFactoryBase.hpp>
 #include <Tpetra_CrsMatrix.hpp>
-#include <Trilinos_version.h>
 
 namespace VertexCFD
 {
@@ -39,15 +38,10 @@ LOWSFactoryBuilder::buildLOWS(Teuchos::RCP<Teuchos::ParameterList> params)
     }
 
     {
-#if TRILINOS_MAJOR_MINOR_VERSION >= 130500
         Stratimikos::enableMueLu<double,
                                  int,
                                  panzer::GlobalOrdinal,
                                  panzer::TpetraNodeType>(builder, "MueLu");
-#else
-        Stratimikos::enableMueLu<int, panzer::GlobalOrdinal, panzer::TpetraNodeType>(
-            builder, "MueLu");
-#endif
     }
 
     {

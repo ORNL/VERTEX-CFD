@@ -89,18 +89,31 @@ IncompressibleKEpsilonSource<EvalType, Traits, NumSpaceDim>::operator()(
 
             // Turbulent kinetic energy terms
             _k_prod(cell, point) *= (2.0 * _nu_t(cell, point));
-            _k_dest(cell, point) = -_turb_dissipation_rate(cell, point);
+            if (_turb_kinetic_energy(cell, point) > 0.0)
+            {
+                _k_dest(cell, point) = -SmoothMath::max(
+                    _turb_dissipation_rate(cell, point), 0.0, 0.0);
+            }
+            else
+            {
+                _k_dest(cell, point) = 0.0;
+            }
             _k_source(cell, point) = _k_prod(cell, point)
                                      + _k_dest(cell, point);
 
             // Turbulent dissipation rate terms
             _e_prod(cell, point)
-                = _C_1 * _turb_dissipation_rate(cell, point)
+                = _C_1
+                  * SmoothMath::max(
+                      _turb_dissipation_rate(cell, point), 0.0, 0.0)
                   / SmoothMath::max(
                       _turb_kinetic_energy(cell, point), max_tol, 0.0)
                   * _k_prod(cell, point);
             _e_dest(cell, point)
-                = -_C_2 * pow(_turb_dissipation_rate(cell, point), 2.0)
+                = -_C_2
+                  * pow(SmoothMath::max(
+                            _turb_dissipation_rate(cell, point), 0.0, 0.0),
+                        2.0)
                   / SmoothMath::max(
                       _turb_kinetic_energy(cell, point), max_tol, 0.0);
             _e_source(cell, point) = _e_prod(cell, point)

@@ -45,32 +45,39 @@ IncompressibleKOmegaSource<EvalType, Traits, NumSpaceDim>::IncompressibleKOmegaS
     // Check for user-defined coefficients or parameters
     if (user_params.isSublist("Turbulence Parameters"))
     {
-        Teuchos::ParameterList turb_list
+        const Teuchos::ParameterList turb_list
             = user_params.sublist("Turbulence Parameters");
 
-        if (turb_list.isType<double>("beta_star"))
+        if (turb_list.isSublist("K-Omega Parameters"))
         {
-            _beta_star = turb_list.get<double>("beta_star");
-        }
+            const Teuchos::ParameterList k_w_list
+                = turb_list.sublist("K-Omega Parameters");
 
-        if (turb_list.isType<double>("gamma"))
-        {
-            _gamma = turb_list.get<double>("gamma");
-        }
+            if (k_w_list.isType<double>("beta_star"))
+            {
+                _beta_star = k_w_list.get<double>("beta_star");
+            }
 
-        if (turb_list.isType<double>("beta_0"))
-        {
-            _beta_0 = turb_list.get<double>("beta_0");
-        }
+            if (k_w_list.isType<double>("gamma"))
+            {
+                _gamma = k_w_list.get<double>("gamma");
+            }
 
-        if (turb_list.isType<double>("sigma_d"))
-        {
-            _sigma_d = turb_list.get<double>("sigma_d");
-        }
+            if (k_w_list.isType<double>("beta_0"))
+            {
+                _beta_0 = k_w_list.get<double>("beta_0");
+            }
 
-        if (turb_list.isType<bool>("Limit Production Term"))
-        {
-            _limit_production = turb_list.get<bool>("Limit Production Term");
+            if (k_w_list.isType<double>("sigma_d"))
+            {
+                _sigma_d = k_w_list.get<double>("sigma_d");
+            }
+
+            if (k_w_list.isType<bool>("Limit Production Term"))
+            {
+                _limit_production
+                    = k_w_list.get<bool>("Limit Production Term");
+            }
         }
     }
 
@@ -117,12 +124,13 @@ IncompressibleKOmegaSource<EvalType, Traits, NumSpaceDim>::operator()(
     const int cell = team.league_rank();
     const int num_point = _nu_t.extent(1);
     const double max_tol = 1.0e-10;
-    using std::abs;
-    using std::pow;
+    using Kokkos::abs;
+    using Kokkos::pow;
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
-            scalar_type Sij_Sij = 0.0;
+            auto&& Sij_Sij = _w_source(cell, point);
+            Sij_Sij = 0.0;
             for (int i = 0; i < num_space_dim; ++i)
             {
                 Sij_Sij += pow(_grad_velocity[i](cell, point, i), 2.0);
@@ -135,7 +143,8 @@ IncompressibleKOmegaSource<EvalType, Traits, NumSpaceDim>::operator()(
                 }
             }
 
-            scalar_type chi_w = 0.0;
+            auto&& chi_w = _w_dest(cell, point);
+            chi_w = 0.0;
             for (int i = 0; i < num_space_dim; ++i)
             {
                 for (int j = 0; j < num_space_dim; ++j)
@@ -162,8 +171,8 @@ IncompressibleKOmegaSource<EvalType, Traits, NumSpaceDim>::operator()(
                     max_tol,
                     0.0));
 
-            const scalar_type f_beta = (1.0 + 85.0 * chi_w)
-                                       / (1.0 + 100.0 * chi_w);
+            auto&& f_beta = _w_cross(cell, point);
+            f_beta = (1.0 + 85.0 * chi_w) / (1.0 + 100.0 * chi_w);
 
             // Turbulent kinetic energy terms
             _k_prod(cell, point) = 2.0 * _nu_t(cell, point) * Sij_Sij;
@@ -194,21 +203,24 @@ IncompressibleKOmegaSource<EvalType, Traits, NumSpaceDim>::operator()(
 
             // Compute the cross diffusion term
             _w_cross(cell, point) = 0.0;
-            scalar_type dkdxj_dwdxj = 0.0;
             for (int j = 0; j < num_space_dim; ++j)
             {
-                dkdxj_dwdxj
+                _w_cross(cell, point)
                     += _grad_turb_kinetic_energy(cell, point, j)
                        * _grad_turb_specific_dissipation_rate(cell, point, j);
             }
-            if (dkdxj_dwdxj > 0.0)
+            if (_w_cross(cell, point) > 0.0)
             {
                 _w_cross(cell, point)
-                    = _sigma_d * dkdxj_dwdxj
+                    = _sigma_d * _w_cross(cell, point)
                       / SmoothMath::max(
                           _turb_specific_dissipation_rate(cell, point),
                           max_tol,
                           0.0);
+            }
+            else
+            {
+                _w_cross(cell, point) = 0.0;
             }
 
             _w_source(cell, point) = _w_prod(cell, point) + _w_dest(cell, point)

@@ -1,7 +1,7 @@
 #ifndef VERTEXCFD_CLOSURE_MAGNETICPRESSURE_IMPL_HPP
 #define VERTEXCFD_CLOSURE_MAGNETICPRESSURE_IMPL_HPP
 
-#include "utils/VertexCFD_Utils_VectorField.hpp"
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 
@@ -15,11 +15,13 @@ MagneticPressure<EvalType, Traits>::MagneticPressure(
     const panzer::IntegrationRule& ir,
     const MHDProperties::FullInductionMHDProperties& mhd_props)
     : _magnetic_permeability(mhd_props.vacuumMagneticPermeability())
+    , _total_magnetic_field(
+          "total_magnetic_field",
+          Utils::buildMagneticLayout(ir.dl_scalar, num_magnetic_field_dim))
     , _magnetic_pressure("magnetic_pressure", ir.dl_scalar)
 {
     // Add dependent fields
-    Utils::addDependentVectorField(
-        *this, ir.dl_scalar, _total_magnetic_field, "total_magnetic_field_");
+    this->addDependentField(_total_magnetic_field);
 
     // Add evaluated fields
     this->addEvaluatedField(_magnetic_pressure);
@@ -45,16 +47,15 @@ KOKKOS_INLINE_FUNCTION void MagneticPressure<EvalType, Traits>::operator()(
 {
     const int cell = team.league_rank();
     const int num_point = _magnetic_pressure.extent(1);
-    const int num_field_dim = _total_magnetic_field.size();
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             _magnetic_pressure(cell, point) = 0.0;
-            for (int dim = 0; dim < num_field_dim; ++dim)
+            for (int dim = 0; dim < num_magnetic_field_dim; ++dim)
             {
                 _magnetic_pressure(cell, point)
-                    += _total_magnetic_field[dim](cell, point)
-                       * _total_magnetic_field[dim](cell, point);
+                    += _total_magnetic_field(cell, point, dim)
+                       * _total_magnetic_field(cell, point, dim);
             }
             _magnetic_pressure(cell, point) /= 2.0 * _magnetic_permeability;
         });

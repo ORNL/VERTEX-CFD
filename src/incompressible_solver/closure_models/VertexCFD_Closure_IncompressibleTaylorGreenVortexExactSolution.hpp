@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLETAYLORGREENVORTEXEXACTSOLUTION_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLETAYLORGREENVORTEXEXACTSOLUTION_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -33,7 +31,7 @@ class IncompressibleTaylorGreenVortexExactSolution
 
     IncompressibleTaylorGreenVortexExactSolution(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop);
+        const Teuchos::ParameterList& closure_params);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;
@@ -49,13 +47,12 @@ class IncompressibleTaylorGreenVortexExactSolution
         _velocity;
 
   private:
+    double _nu;
     int _ir_degree;
     int _ir_index;
+    double _Ft;
 
     PHX::MDField<const double, panzer::Cell, panzer::Point, panzer::Dim> _ip_coords;
-    const double _nu;
-    double _Ft;
-    double _time;
 };
 
 //---------------------------------------------------------------------------//

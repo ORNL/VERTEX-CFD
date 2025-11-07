@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLEREALIZABLEKEPSILONSOURCE_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLEREALIZABLEKEPSILONSOURCE_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -29,9 +27,7 @@ class IncompressibleRealizableKEpsilonSource
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleRealizableKEpsilonSource(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop);
+    IncompressibleRealizableKEpsilonSource(const panzer::IntegrationRule& ir);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -40,6 +36,7 @@ class IncompressibleRealizableKEpsilonSource
         const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const;
 
   private:
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu_t;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>
         _turb_kinetic_energy;
@@ -51,7 +48,6 @@ class IncompressibleRealizableKEpsilonSource
         num_space_dim>
         _grad_velocity;
 
-    double _nu;
     double _C_2;
 
   public:

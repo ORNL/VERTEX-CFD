@@ -30,6 +30,12 @@ class FullInductionICFactory
         std::string& error_msg,
         Teuchos::RCP<std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>>>
             evaluators);
+
+    std::string availableInitialConditions()
+    {
+        return "DivergenceAdvectionTest\n"
+               "MHDVortexProblem\n";
+    }
 };
 
 //---------------------------------------------------------------------------//

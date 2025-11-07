@@ -32,7 +32,7 @@ void addEvaluatedVectorField(
 
     for (size_t dim = 0; dim < num_space_dim; ++dim)
     {
-        std::string name = scalar_name + std::to_string(dim);
+        const std::string name = scalar_name + std::to_string(dim);
         kokkos_array[dim]
             = PHX::MDField<ScalarType, Tags...>(name, data_layout);
         f.addEvaluatedField(kokkos_array[dim]);
@@ -54,7 +54,7 @@ void addContributedVectorField(
 
     for (size_t dim = 0; dim < num_space_dim; ++dim)
     {
-        std::string name = scalar_name + std::to_string(dim);
+        const std::string name = scalar_name + std::to_string(dim);
         kokkos_array[dim]
             = PHX::MDField<ScalarType, Tags...>(name, data_layout);
         f.addContributedField(kokkos_array[dim]);
@@ -75,7 +75,7 @@ void addDependentVectorField(
 
     for (size_t dim = 0; dim < num_space_dim; ++dim)
     {
-        std::string name = scalar_name + std::to_string(dim);
+        const std::string name = scalar_name + std::to_string(dim);
         kokkos_array[dim]
             = PHX::MDField<const ScalarType, Tags...>(name, data_layout);
         f.addDependentField(kokkos_array[dim]);

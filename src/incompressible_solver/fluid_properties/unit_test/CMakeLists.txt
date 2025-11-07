@@ -5,4 +5,5 @@ VertexCFD_add_tests(
   LIBS VertexCFD
   NAMES
   IncompressibleConstantFluidProperties
+  IncompressibleFluidProperties
   )

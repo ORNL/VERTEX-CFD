@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLEKEPSILONDIFFUSIVITYCOEFFICIENT_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLEKEPSILONDIFFUSIVITYCOEFFICIENT_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -30,7 +28,6 @@ class IncompressibleKEpsilonDiffusivityCoefficient
 
     IncompressibleKEpsilonDiffusivityCoefficient(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
         const double sigma_k = 1.0,
         const double sigma_e = 1.3,
         const std::string field_prefix = "");
@@ -42,9 +39,9 @@ class IncompressibleKEpsilonDiffusivityCoefficient
         const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const;
 
   private:
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu_t;
 
-    double _nu;
     double _sigma_k;
     double _sigma_e;
     int _num_grad_dim;

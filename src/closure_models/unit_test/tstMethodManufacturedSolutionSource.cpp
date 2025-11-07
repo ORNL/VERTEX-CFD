@@ -1,8 +1,7 @@
-#include <VertexCFD_ClosureModelFactoryTestHarness.hpp>
-#include <VertexCFD_EvaluatorTestHarness.hpp>
+#include "VertexCFD_ClosureModelFactoryTestHarness.hpp"
+#include "VertexCFD_EvaluatorTestHarness.hpp"
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-#include <closure_models/VertexCFD_Closure_MethodManufacturedSolutionSource.hpp>
+#include "closure_models/VertexCFD_Closure_MethodManufacturedSolutionSource.hpp"
 
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
@@ -43,20 +42,16 @@ void testEval(const bool build_viscous_flux,
         num_space_dim, integration_order, basis_order);
 
     // Create the param list to initialize the evaluator
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 4.0);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", true);
-    fluid_prop_list.set("Thermal conductivity", 5.0);
-    fluid_prop_list.set("Specific heat capacity", 0.6);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    Teuchos::ParameterList closure_params;
+    closure_params.set("Density", 1.0);
+    closure_params.set("Kinematic Viscosity", 4.0);
 
     // Create mms source evaluator.
     auto mms_eval = Teuchos::rcp(
         new ClosureModel::MethodManufacturedSolutionSource<EvalType,
                                                            panzer::Traits,
                                                            num_space_dim>(
-            *test_fixture.ir, build_viscous_flux, fluid_prop));
+            *test_fixture.ir, build_viscous_flux, closure_params));
     test_fixture.registerEvaluator<EvalType>(mms_eval);
 
     // Add required test fields.
@@ -80,7 +75,7 @@ void testEval(const bool build_viscous_flux,
         mms_eval->_energy_mms_source);
 
     // Check the mms source solutions
-    int num_point = continuity_result.extent(1);
+    const int num_point = continuity_result.extent(1);
     for (int qp = 0; qp < num_point; ++qp)
     {
         EXPECT_DOUBLE_EQ(expected_sol[0], fieldValue(continuity_result, 0, qp));
@@ -211,7 +206,9 @@ void testFactory()
         test_fixture.eval_name = "Method of Manufactured Solution Source 2D";
     else if (num_space_dim == 3)
         test_fixture.eval_name = "Method of Manufactured Solution Source 3D";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.model_params.set("Density", 1.0).set("Kinematic Viscosity", 2.0);
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.template buildAndTest<

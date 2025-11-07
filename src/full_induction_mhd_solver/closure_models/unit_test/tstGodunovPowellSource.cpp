@@ -1,10 +1,12 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_GodunovPowellSource.hpp"
 
 #include "full_induction_mhd_solver/mhd_properties/VertexCFD_FullInductionMHDProperties.hpp"
 
+#include "utils/VertexCFD_Utils_MagneticDim.hpp"
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
 #include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <gtest/gtest.h>
@@ -26,17 +28,19 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         velocity;
-    Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>, 3>
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, MagneticDim>
         tot_magn_field;
 
     Dependencies(const panzer::IntegrationRule& ir)
         : div_magn_field("divergence_total_magnetic_field", ir.dl_scalar)
+        , tot_magn_field(
+              "total_magnetic_field",
+              Utils::buildMagneticLayout(ir.dl_scalar, num_magnetic_field_dim))
     {
         this->addEvaluatedField(div_magn_field);
         Utils::addEvaluatedVectorField(
             *this, ir.dl_scalar, velocity, "velocity_");
-        Utils::addEvaluatedVectorField(
-            *this, ir.dl_scalar, tot_magn_field, "total_magnetic_field_");
+        this->addEvaluatedField(tot_magn_field);
 
         this->setName("Godunov-Powell Source Unit Test Dependencies");
     }
@@ -52,7 +56,6 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     KOKKOS_INLINE_FUNCTION void operator()(const int c) const
     {
         const int num_point = div_magn_field.extent(1);
-        const int num_field_dim = tot_magn_field.size();
         using std::pow;
 
         for (int qp = 0; qp < num_point; ++qp)
@@ -62,9 +65,9 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
             {
                 velocity[dim](c, qp) = pow(-0.6, dim) * (qp + dim + 1.2);
             }
-            for (int dim = 0; dim < num_field_dim; ++dim)
+            for (int dim = 0; dim < num_magnetic_field_dim; ++dim)
             {
-                tot_magn_field[dim](c, qp) = pow(-0.9, dim + 1)
+                tot_magn_field(c, qp, dim) = pow(-0.9, dim + 1)
                                              * (qp + dim + 1.3);
             }
         }
@@ -88,8 +91,8 @@ void testEval()
 
     Teuchos::ParameterList full_induction_params;
     full_induction_params.set("Vacuum Magnetic Permeability", 0.05);
-    MHDProperties::FullInductionMHDProperties mhd_props
-        = MHDProperties::FullInductionMHDProperties(full_induction_params);
+    const MHDProperties::FullInductionMHDProperties mhd_props(
+        full_induction_params);
 
     auto eval = Teuchos::rcp(
         new ClosureModel::GodunovPowellSource<EvalType,
@@ -185,12 +188,11 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.sublist("Full Induction MHD Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties")
         .set("Vacuum Magnetic Permeability", 0.1)
         .set("Build Magnetic Correction Potential Equation", false);
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 1.5)
-        .set("Artificial compressibility", 0.1);
+    test_fixture.factory_type = "Full Induction MHD";
     test_fixture.type_name = "GodunovPowellSource";
     test_fixture.eval_name = "Godunov-Powell Source "
                              + std::to_string(num_space_dim) + "D";

@@ -2,14 +2,16 @@
 def ic2d(y, h_min, h_max, vel_avg):
     coeff = 3.0 / 2.0
     H = 0.5 * (h_max - h_min)
-    u = vel_avg * coeff * (1.0 - y * y / (H * H))
+    y0 = h_min + H
+    u = vel_avg * coeff * (1.0 - pow(y - y0, 2.0) / (H * H))
     return u, 0.0
 
 
 def ic3d(y, z, h_min, h_max, vel_avg):
     coeff = 2.0
     H = 0.5 * (h_max - h_min)
-    r2 = y * y + z * z
+    y0 = h_min + H
+    r2 = pow(y - y0, 2.0) + z * z
     u = vel_avg * coeff * (1.0 - r2 / (H * H))
     return u, 0.0, 0.0
 

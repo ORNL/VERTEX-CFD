@@ -2,10 +2,10 @@ import numpy as np
 import math
 
 # Wilcox k-w model constants
-beta_star = 0.09
-gamma = 0.52
-beta_0 = 0.0708
-sigma_d = 0.125
+beta_star = 0.1  # Standard value is 0.09
+gamma = 0.5  # Standard value is 0.52
+beta_0 = 0.071  # Standard value is 0.0708
+sigma_d = 0.13  # Standard value is 0.12
 
 # Turbulent quantities
 nu_t = 1.1

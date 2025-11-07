@@ -30,7 +30,7 @@ class IncompressibleWallFunction
     IncompressibleWallFunction(
         const panzer::IntegrationRule& ir,
         const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const std::string& continuity_model_name);
+        const bool is_edac);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -56,9 +56,6 @@ class IncompressibleWallFunction
         _boundary_grad_temperature;
 
   private:
-    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _boundary_u_tau;
-    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _boundary_y_plus;
-    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _boundary_nu_t;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _lagrange_pressure;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_lagrange_pressure;
@@ -72,15 +69,7 @@ class IncompressibleWallFunction
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _normals;
 
-    Kokkos::Array<
-        PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
-        num_space_dim>
-        _grad_velocity;
-
-    double _rho;
-    double _nu;
     bool _solve_temp;
-    std::string _continuity_model_name;
     bool _is_edac;
 };
 

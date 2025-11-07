@@ -7,4 +7,5 @@ VertexCFD_add_tests(
   IncompressibleVortexInBox
   IncompressibleLaminarFlow
   IncompressibleTaylorGreenVortex
+  IncompressibleTurbulentFlow
   )

@@ -53,12 +53,16 @@ IncompressibleLocalTimeStepSize<EvalType, Traits, NumSpaceDim>::operator()(
     const double tol = 1.0e-8;
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
-            scalar_type one_over_dt = 0.0;
+            // Accumulate 1/dt
+            auto&& one_over_dt = _local_dt(cell, point);
+            one_over_dt = 0.0;
             for (int dim = 0; dim < num_grad_dim; ++dim)
             {
                 one_over_dt += SmoothMath::abs(_velocity[dim](cell, point), tol)
                                / _element_length(cell, point, dim);
             }
+
+            // Invert to compute dt
             _local_dt(cell, point) = 1.0 / one_over_dt;
         });
 }

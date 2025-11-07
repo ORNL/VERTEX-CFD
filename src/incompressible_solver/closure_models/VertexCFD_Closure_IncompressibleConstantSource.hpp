@@ -5,6 +5,7 @@
 
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
+#include <Panzer_GlobalData.hpp>
 
 #include <Phalanx_Evaluator_Derived.hpp>
 #include <Phalanx_Evaluator_WithBaseImpl.hpp>
@@ -34,24 +35,40 @@ class IncompressibleConstantSource
     IncompressibleConstantSource(
         const panzer::IntegrationRule& ir,
         const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& user_params);
+        const Teuchos::RCP<panzer::GlobalData>& global_data,
+        const Teuchos::ParameterList& closure_params);
 
-    void evaluateFields(typename Traits::EvalData workset) override;
+    void evaluateFields(typename Traits::EvalData /* workset */) override;
 
-    KOKKOS_INLINE_FUNCTION
-    void operator()(
-        const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const;
-
-    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _continuity_source;
     Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         _momentum_source;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _energy_source;
+    Teuchos::RCP<panzer::GlobalData> _global_data;
 
   private:
     bool _solve_temp;
-    Kokkos::Array<double, num_space_dim> _mom_input_source;
+    bool _solve_ind_less_mhd;
+    Kokkos::Array<scalar_type, num_space_dim> _mom_input_source;
     double _energy_input_source;
+
+    enum FlowDirection
+    {
+        x,
+        y,
+        z
+    };
+
+    FlowDirection _flow_direction;
+    int _flow_direction_idx;
+
+    bool _const_vol_flow;
+    scalar_type _m_target;
+    scalar_type _bottom_wall_area;
+    scalar_type _inlet_wall_area;
+    scalar_type _m_bc;
+    scalar_type _wall_shear_stress;
+    scalar_type _lorentz_force;
 };
 
 //---------------------------------------------------------------------------//

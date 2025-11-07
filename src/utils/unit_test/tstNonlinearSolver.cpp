@@ -48,7 +48,7 @@ bool solve(std::integral_constant<std::size_t, N>,
     // Make device data.
     auto x_dev = Kokkos::create_mirror_view(PHX::mem_space{}, x);
     Kokkos::deep_copy(x_dev, x);
-    Kokkos::View<bool[1], PHX::mem_space> result("solve_result");
+    const Kokkos::View<bool[1], PHX::mem_space> result("solve_result");
 
     // Solve.
     Kokkos::parallel_for(

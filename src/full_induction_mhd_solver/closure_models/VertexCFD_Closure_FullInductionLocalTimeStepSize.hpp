@@ -1,9 +1,9 @@
 #ifndef VERTEXCFD_CLOSURE_FULLINDUCTIONLOCALTIMESTEPSIZE_HPP
 #define VERTEXCFD_CLOSURE_FULLINDUCTIONLOCALTIMESTEPSIZE_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include "full_induction_mhd_solver/mhd_properties/VertexCFD_FullInductionMHDProperties.hpp"
+
+#include "utils/VertexCFD_Utils_MagneticDim.hpp"
 
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
@@ -37,7 +37,6 @@ class FullInductionLocalTimeStepSize
 
     FullInductionLocalTimeStepSize(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
         const MHDProperties::FullInductionMHDProperties& mhd_props);
 
     void evaluateFields(typename Traits::EvalData d) override;
@@ -50,16 +49,16 @@ class FullInductionLocalTimeStepSize
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _local_dt;
 
   private:
-    double _rho;
     double _magnetic_permeability;
     double _c_h;
 
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _rho;
     PHX::MDField<const double, panzer::Cell, panzer::Point, panzer::Dim>
         _element_length;
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         _velocity;
-    Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>, 3>
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, MagneticDim>
         _total_magnetic_field;
 };
 

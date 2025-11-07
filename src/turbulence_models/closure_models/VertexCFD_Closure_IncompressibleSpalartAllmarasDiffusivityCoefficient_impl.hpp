@@ -11,10 +11,9 @@ namespace ClosureModel
 template<class EvalType, class Traits>
 IncompressibleSpalartAllmarasDiffusivityCoefficient<EvalType, Traits>::
     IncompressibleSpalartAllmarasDiffusivityCoefficient(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop)
+        const panzer::IntegrationRule& ir)
     : _sa_var("spalart_allmaras_variable", ir.dl_scalar)
-    , _nu(fluid_prop.constantKinematicViscosity())
+    , _nu("kinematic_viscosity", ir.dl_scalar)
     , _cn1(16.0)
     , _sigma(2.0 / 3.0)
     , _one(1.0)
@@ -23,6 +22,7 @@ IncompressibleSpalartAllmarasDiffusivityCoefficient<EvalType, Traits>::
 {
     // Add dependent fields
     this->addDependentField(_sa_var);
+    this->addDependentField(_nu);
 
     // Add evaluated fields
     this->addEvaluatedField(_diffusivity_var);
@@ -54,13 +54,14 @@ IncompressibleSpalartAllmarasDiffusivityCoefficient<EvalType, Traits>::operator(
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
-            const scalar_type xi3 = pow(_sa_var(cell, point) / _nu, 3.0);
+            const scalar_type xi3
+                = pow(_sa_var(cell, point) / _nu(cell, point), 3.0);
             const scalar_type f_n = _sa_var(cell, point) < 0.0
                                         ? (_cn1 + xi3) / (_cn1 - xi3)
                                         : _one;
 
-            _diffusivity_var(cell, point) = (_nu + _sa_var(cell, point) * f_n)
-                                            / _sigma;
+            _diffusivity_var(cell, point)
+                = (_nu(cell, point) + _sa_var(cell, point) * f_n) / _sigma;
         });
 }
 

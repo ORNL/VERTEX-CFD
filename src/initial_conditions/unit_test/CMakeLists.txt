@@ -7,6 +7,7 @@ VertexCFD_add_tests(
   InitialConditionCircle
   InitialConditionConstant
   InitialConditionGaussian
+  InitialConditionSinusoidal
   InitialConditionStep
   MethodManufacturedSolutionIC
   )

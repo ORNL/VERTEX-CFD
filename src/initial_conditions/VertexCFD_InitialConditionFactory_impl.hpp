@@ -6,11 +6,17 @@
 #include "VertexCFD_InitialCondition_Gaussian.hpp"
 #include "VertexCFD_InitialCondition_InverseGaussian.hpp"
 #include "VertexCFD_InitialCondition_MethodManufacturedSolution.hpp"
+#include "VertexCFD_InitialCondition_Sinusoidal.hpp"
 #include "VertexCFD_InitialCondition_Step.hpp"
+
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
 #include "full_induction_mhd_solver/initial_conditions/VertexCFD_FullInductionInitialConditionFactory.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
+#endif
+
+#include "incompressible_lsvof_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleLSVOFBubble.hpp"
 #include "incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleLaminarFlow.hpp"
 #include "incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleTaylorGreenVortex.hpp"
+#include "incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleTurbulentChannel.hpp"
 #include "incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleVortexInBox.hpp"
 
 #include <Panzer_FieldLibrary.hpp>
@@ -63,25 +69,16 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
     fl.uniqueBases(bases);
 
     // Fluid properties.
-    Teuchos::ParameterList fluid_prop_list
-        = user_params.sublist("Fluid Properties");
     const bool build_temp_equ
         = user_params.isType<bool>("Build Temperature Equation")
               ? user_params.get<bool>("Build Temperature Equation")
               : false;
-    const bool build_ind_less_equ
-        = user_params.isType<bool>("Build Inductionless MHD Equation")
-              ? user_params.get<bool>("Build Inductionless MHD Equation")
-              : false;
-    fluid_prop_list.set<bool>("Build Temperature Equation", build_temp_equ);
-    fluid_prop_list.set<bool>("Build Inductionless MHD Equation",
-                              build_ind_less_equ);
-    FluidProperties::ConstantFluidProperties incompressible_fluidprop_params(
-        fluid_prop_list);
 
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
     // Full induction solver factory objects
     FullInductionICFactory<EvalType, NumSpaceDim> full_induction_factory;
     std::string full_ind_error_msg = "None";
+#endif
 
     // Loop over initial conditions
     const Teuchos::ParameterList& ic_params = block_params.sublist(block_id);
@@ -96,7 +93,7 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
 
         if (p.isType<std::string>("Type"))
         {
-            std::string type = p.get<std::string>("Type");
+            const std::string type = p.get<std::string>("Type");
 
             // Read initial conditions from corresponding fields of the input
             // mesh file.
@@ -121,7 +118,10 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
                 found_model = true;
             }
 
-            if (user_params.isSublist("Full Induction MHD Properties"))
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
+            if (std::string::npos
+                != full_induction_factory.availableInitialConditions().find(
+                    type))
             {
                 full_induction_factory.buildClosureModel(type,
                                                          bases,
@@ -131,6 +131,7 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
                                                          full_ind_error_msg,
                                                          evaluators);
             }
+#endif
 
             if (type == "Constant")
             {
@@ -236,7 +237,45 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
                         new IncompressibleLaminarFlow<EvalType,
                                                       panzer::Traits,
                                                       num_dim_space>(
-                            p, incompressible_fluidprop_params, *b));
+                            p, build_temp_equ, *b));
+                    evaluators->push_back(eval);
+                    found_model = true;
+                }
+            }
+
+            if (type == "IncompressibleTurbulentChannel")
+            {
+                for (const auto& b : bases)
+                {
+                    auto eval = Teuchos::rcp(
+                        new IncompressibleTurbulentChannel<EvalType,
+                                                           panzer::Traits,
+                                                           num_dim_space>(
+                            p, build_temp_equ, *b));
+                    evaluators->push_back(eval);
+                    found_model = true;
+                }
+            }
+
+            if (type == "Sinusoidal")
+            {
+                for (const auto& b : bases)
+                {
+                    auto eval = Teuchos::rcp(
+                        new Sinusoidal<EvalType, panzer::Traits>(p, *b));
+                    evaluators->push_back(eval);
+                    found_model = true;
+                }
+            }
+
+            if (type == "IncompressibleLSVOFBubble")
+            {
+                for (const auto& b : bases)
+                {
+                    auto eval = Teuchos::rcp(
+                        new IncompressibleLSVOFBubble<EvalType,
+                                                      panzer::Traits,
+                                                      num_dim_space>(p, *b));
                     evaluators->push_back(eval);
                     found_model = true;
                 }
@@ -253,14 +292,19 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
             msg += "From File\n";
             msg += "Gaussian\n";
             msg += "IncompressibleLaminarFlow\n";
+            msg += "IncompressibleLSVOFBubble\n";
             msg += "IncompressibleTaylorGreenVortex\n";
+            msg += "IncompressibleTurbulentFlow\n";
             msg += "IncompressibleVortexInBox\n";
             msg += "InverseGaussian\n";
             msg += "MethodManufacturedSolution\n";
+            msg += "Sinusoidal\n";
             msg += "Step\n";
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
             msg += "=================================\n";
             msg += "Full induction MHD closure models:\n";
             msg += full_ind_error_msg;
+#endif
             throw std::runtime_error(msg);
         }
     }

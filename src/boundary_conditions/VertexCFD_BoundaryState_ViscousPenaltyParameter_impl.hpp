@@ -16,39 +16,18 @@ ViscousPenaltyParameter<EvalType, Traits>::ViscousPenaltyParameter(
     const panzer::IntegrationRule& ir,
     const panzer::PureBasis& basis,
     const std::string& dof_name,
-    const Teuchos::ParameterList& user_params)
+    const double& penalty)
     : _penalty_param("viscous_penalty_parameter_" + dof_name, ir.dl_scalar)
-    , _dof_name(dof_name)
     , _basis_name(basis.name())
     , _num_space_dim(ir.spatial_dimension)
-    , _penalty(10.0)
+    , _penalty(penalty)
 {
+    // Note: Default penalty is set in BoundaryFluxBase
     // Add evaluated field
     this->addEvaluatedField(_penalty_param);
 
-    // Set default energy penalty
-    if (_dof_name == "temperature")
-        _penalty = 1000.0;
-
-    // Read in specific custom penalties if present
-    if (user_params.isSublist("Penalty Parameters"))
-    {
-        Teuchos::ParameterList penalty_list
-            = user_params.sublist("Penalty Parameters");
-
-        if ((_dof_name == "lagrange_pressure")
-            && (penalty_list.isType<double>("Continuity Equation")))
-            _penalty = penalty_list.get<double>("Continuity Equation");
-        if ((_dof_name == "temperature")
-            && (penalty_list.isType<double>("Energy Equation")))
-            _penalty = penalty_list.get<double>("Energy Equation");
-        if ((std::string::npos != _dof_name.find("velocity"))
-            && (penalty_list.isType<double>("Momentum Equation")))
-            _penalty = penalty_list.get<double>("Momentum Equation");
-    }
-
-    this->setName("Boundary State Viscous Penalty Parameter "
-                  + std::to_string(_num_space_dim) + "D");
+    this->setName("Boundary State Viscous Penalty Parameter \"" + dof_name
+                  + "\"" + std::to_string(_num_space_dim) + "D");
 }
 
 //---------------------------------------------------------------------------//

@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLESHEARVARIABLES_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLESHEARVARIABLES_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -31,9 +29,7 @@ class IncompressibleShearVariables
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleShearVariables(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop);
+    IncompressibleShearVariables(const panzer::IntegrationRule& ir);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -45,15 +41,14 @@ class IncompressibleShearVariables
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _u_tau;
 
   private:
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _rho;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _normals;
     Kokkos::Array<
         PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
         num_space_dim>
         _grad_velocity;
-
-    double _nu;
-    double _rho;
 };
 
 //---------------------------------------------------------------------------//

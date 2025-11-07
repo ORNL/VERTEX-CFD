@@ -65,8 +65,8 @@ IncompressibleTaylorGreenVortex<EvalType, Traits, NumSpaceDim>::operator()(
     const int cell = team.league_rank();
     const int num_basis = _lagrange_pressure.extent(1);
 
-    using std::cos;
-    using std::sin;
+    using Kokkos::cos;
+    using Kokkos::sin;
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_basis), [&](const int basis) {
@@ -76,6 +76,14 @@ IncompressibleTaylorGreenVortex<EvalType, Traits, NumSpaceDim>::operator()(
                                               * (cos(2.0 * x) + cos(2.0 * y));
             _velocity[0](cell, basis) = cos(x) * sin(y);
             _velocity[1](cell, basis) = -sin(x) * cos(y);
+
+            if (num_space_dim == 3)
+            {
+                const double z = _basis_coords(cell, basis, 2);
+                _lagrange_pressure(cell, basis) *= (0.25 * cos(2.0 * z + 2.0));
+                _velocity[0](cell, basis) *= cos(z);
+                _velocity[1](cell, basis) *= cos(z);
+            }
         });
 }
 

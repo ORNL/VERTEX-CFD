@@ -22,8 +22,8 @@ void constantTest()
 
     // Results views for testing on device.
     // long double is not available in CUDA.
-    Kokkos::View<double[1], PHX::mem_space> dbl_result("dbl_result");
-    Kokkos::View<float[1], PHX::mem_space> flt_result("flt_result");
+    const Kokkos::View<double[1], PHX::mem_space> dbl_result("dbl_result");
+    const Kokkos::View<float[1], PHX::mem_space> flt_result("flt_result");
 
     // Assign constant in a kernel.
     Kokkos::parallel_for(

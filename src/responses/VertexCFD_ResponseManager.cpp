@@ -3,12 +3,14 @@
 #include "utils/VertexCFD_Utils_KokkosFadFixup.hpp"
 
 #include "VertexCFD_ResponseManager.hpp"
+#include "VertexCFD_Response_Utils.hpp"
 
 #include <PanzerCore_config.hpp>
 #include <Panzer_ParameterLibraryUtilities.hpp>
 #include <Panzer_ResponseEvaluatorFactory_ExtremeValue.hpp>
 #include <Panzer_ResponseEvaluatorFactory_Functional.hpp>
 #include <Panzer_ResponseEvaluatorFactory_Probe.hpp>
+#include <Panzer_String_Utilities.hpp>
 
 #include <Thyra_VectorSpaceBase.hpp>
 #include <Thyra_VectorStdOps.hpp>
@@ -16,6 +18,7 @@
 #include <Teuchos_DefaultMpiComm.hpp>
 
 #include <algorithm>
+#include <limits>
 
 namespace VertexCFD
 {
@@ -202,9 +205,28 @@ void ResponseManager::activateResponse(const std::string& name)
 }
 
 //---------------------------------------------------------------------------//
+void ResponseManager::activateAll()
+{
+    std::fill(_is_active.begin(), _is_active.end(), true);
+}
+
+//---------------------------------------------------------------------------//
 void ResponseManager::deactivateAll()
 {
     std::fill(_is_active.begin(), _is_active.end(), false);
+}
+
+//---------------------------------------------------------------------------//
+bool ResponseManager::isActive(const int index)
+{
+    return _is_active.at(index);
+}
+
+//---------------------------------------------------------------------------//
+bool ResponseManager::isActive(const std::string& name)
+{
+    const int index = _name_map.at(name);
+    return isActive(index);
 }
 
 //---------------------------------------------------------------------------//
@@ -277,6 +299,97 @@ double ResponseManager::value(const std::string& name) const
 {
     const int index = _name_map.at(name);
     return value(index);
+}
+
+//---------------------------------------------------------------------------//
+Teuchos::RCP<ResponseManager>
+createResponseManager(Teuchos::RCP<PhysicsManager> physics_manager,
+                      Teuchos::ParameterList& response_params,
+                      std::vector<int>& response_output_freq)
+{
+    auto responses = Teuchos::rcp(new ResponseManager(physics_manager));
+
+    if (response_params.numParams() > 0)
+    {
+        // Allow setting output frequency, defaulting to once at the end.
+        const auto default_output_freq = response_params.get<int>(
+            "Output Frequency", std::numeric_limits<int>::max());
+
+        for (const auto& param : response_params)
+        {
+            const auto& name = param.first;
+
+            // Skip over any regular Parameters.
+            if (!response_params.isSublist(name))
+                continue;
+
+            auto& plist = response_params.sublist(name);
+
+            const auto field_names_list = plist.get<std::string>("Field Name");
+            std::vector<std::string> field_names;
+            panzer::StringTokenizer(field_names, field_names_list, ",", true);
+            const int num_fields = field_names.size();
+
+            // Allow overriding output frequency for this response.
+            const auto output_freq
+                = plist.get<int>("Output Frequency", default_output_freq);
+
+            // Get element blocks or sidesets for this response.
+            const auto workset_descriptors
+                = VertexCFD::Response::buildWorksetDescriptors(plist);
+
+            // Add the response and save response output frequency
+            if (plist.isSublist("Probe "
+                                "Coordinates"))
+            {
+                const auto probe_list = plist.sublist("Probe Coordinates");
+                for (int j = 0; j < num_fields; ++j)
+                {
+                    for (int i = 0; i < probe_list.numParams(); ++i)
+                    {
+                        const std::string si = std::to_string(i + 1);
+                        const std::string pb_nm = "Probe " + si;
+                        const std::string name_ji = name + " " + si + " - "
+                                                    + field_names[j];
+                        const auto point_i
+                            = probe_list.get<Teuchos::Array<double>>(pb_nm);
+
+                        responses->addProbeResponse(name_ji,
+                                                    field_names[j],
+                                                    point_i,
+                                                    workset_descriptors);
+
+                        response_output_freq.emplace_back(output_freq);
+                    }
+                }
+            }
+            else
+            {
+                for (int j = 0; j < num_fields; ++j)
+                {
+                    const std::string name_j = name + " - " + field_names[j];
+                    if (std::string::npos != name.find("Max"))
+                    {
+                        responses->addMaxValueResponse(
+                            name_j, field_names[j], workset_descriptors);
+                    }
+                    else if (std::string::npos != name.find("Min"))
+                    {
+                        responses->addMinValueResponse(
+                            name_j, field_names[j], workset_descriptors);
+                    }
+                    else
+                    {
+                        responses->addFunctionalResponse(
+                            name_j, field_names[j], workset_descriptors);
+                    }
+                    response_output_freq.emplace_back(output_freq);
+                }
+            }
+        }
+    }
+
+    return responses;
 }
 
 //---------------------------------------------------------------------------//

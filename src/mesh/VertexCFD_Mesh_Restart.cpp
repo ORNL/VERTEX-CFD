@@ -151,7 +151,7 @@ MPI_Datatype Restart::setupDofMapData(
 
     // Update the extent of the datatype. This new data type will need to be
     // committed.
-    MPI_Aint extent = global_num_elem * dofmap_offset * sizeof(uint64_t);
+    const MPI_Aint extent = global_num_elem * dofmap_offset * sizeof(uint64_t);
     MPI_Datatype dofmap_type;
     MPI_Type_create_resized(indexed, 0, extent, &dofmap_type);
     MPI_Type_free(&indexed);
@@ -295,7 +295,7 @@ RestartWriter::RestartWriter(
     uint64_t global_size = gids.size();
     MPI_Allreduce(
         MPI_IN_PLACE, &global_size, 1, MPI_UINT64_T, MPI_SUM, mpi_comm);
-    MPI_Aint extent = global_size * sizeof(double);
+    const MPI_Aint extent = global_size * sizeof(double);
     MPI_Type_create_resized(indexed, 0, extent, &_dof_type);
     MPI_Type_free(&indexed);
     MPI_Type_commit(&_dof_type);
@@ -342,7 +342,7 @@ void RestartWriter::writeSolution(
     // Open a binary data file.
     std::stringstream file_name;
     file_name << _file_prefix << "_" << index;
-    std::string restart_file_name = file_name.str() + ".restart.data";
+    const std::string restart_file_name = file_name.str() + ".restart.data";
     MPI_File restart_file;
     MPI_File_open(mpi_comm,
                   restart_file_name.c_str(),
@@ -436,8 +436,9 @@ RestartReader::RestartReader(const Teuchos::RCP<const Teuchos::Comm<int>>& comm,
 
     if (MPI_SUCCESS != error_code)
     {
-        std::string msg = "\n\nThe restart file " + _restart_file_name
-                          + "\ncould not be found in the working directory.\n";
+        const std::string msg
+            = "\n\nThe restart file " + _restart_file_name
+              + "\ncould not be found in the working directory.\n";
         throw std::logic_error(msg);
     }
 
@@ -501,8 +502,9 @@ void RestartReader::readSolution(
 
     if (MPI_SUCCESS != error_code)
     {
-        std::string msg = "\n\nThe DOFMAP file " + _dofmap_file_name
-                          + "\ncould not be found in the working directory.\n";
+        const std::string msg
+            = "\n\nThe DOFMAP file " + _dofmap_file_name
+              + "\ncould not be found in the working directory.\n";
         throw std::logic_error(msg);
     }
 
@@ -622,7 +624,7 @@ void RestartReader::readSolution(
                                   &restart_indexed);
 
     // Update the extent of the dof datatype.
-    MPI_Aint extent = global_size * sizeof(double);
+    const MPI_Aint extent = global_size * sizeof(double);
     MPI_Datatype dof_type;
     MPI_Type_create_resized(restart_indexed, 0, extent, &dof_type);
     MPI_Type_free(&restart_indexed);

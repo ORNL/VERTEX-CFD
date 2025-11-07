@@ -6,6 +6,8 @@ set(UTILS_HEADERS
   VertexCFD_Utils_ExplicitTemplateInstantiation.hpp
   VertexCFD_Utils_VectorField.hpp
   VertexCFD_Utils_ParameterPack.hpp
+  VertexCFD_Utils_PhaseIndex.hpp
+  VertexCFD_Utils_PhaseLayout.hpp
   VertexCFD_Utils_NonlinearSolver.hpp
   VertexCFD_Utils_ScalarToVector.hpp
   VertexCFD_Utils_SmoothMath.hpp
@@ -15,9 +17,15 @@ set(UTILS_HEADERS
   VertexCFD_Utils_Version.hpp
   VertexCFD_Utils_MatrixMath.hpp
   VertexCFD_Utils_VectorizeOutputFieldNames.hpp
+  VertexCFD_Utils_MagneticDim.hpp
+  VertexCFD_Utils_MagneticLayout.hpp
   )
 
 set(UTILS_SOURCES
+  VertexCFD_Utils_MagneticDim.cpp
+  VertexCFD_Utils_MagneticLayout.cpp
+  VertexCFD_Utils_PhaseIndex.cpp
+  VertexCFD_Utils_PhaseLayout.cpp
   VertexCFD_Utils_VelocityDim.cpp
   VertexCFD_Utils_VelocityLayout.cpp
   VertexCFD_Utils_Version.cpp
@@ -28,6 +36,8 @@ add_library(Utils ${UTILS_SOURCES})
 target_link_libraries(Utils PUBLIC
   MPI::MPI_CXX
   Kokkos::kokkos
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 
 target_include_directories(Utils

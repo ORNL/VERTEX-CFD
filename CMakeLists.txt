@@ -22,12 +22,6 @@ include(GNUInstallDirs)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-# Set the exodiff path relative to Trilinos installation path
-set(EXODIFF_PATH ${Trilinos_ROOT}/bin/exodiff)
-
-# Set the Trilinos lib path relative to Trilinos installation path
-set(TRILINOS_LIB ${Trilinos_ROOT}/lib64)
-
 option(NO_PARMETIS_SUPPORT "No parmetis support" ON)
 add_compile_definitions(NO_PARMETIS_SUPPORT)
 
@@ -45,12 +39,24 @@ find_package(CLANG_FORMAT)
 
 find_package(YAPF)
 
+option(VertexCFD_ENABLE_TENSORFLOW "Whether to build with Tensorflow support" OFF)
+if (VertexCFD_ENABLE_TENSORFLOW)
+  find_package(TensorFlow REQUIRED)
+  add_compile_definitions(VERTEXCFD_HAVE_TENSORFLOW)
+endif()
+
 find_package(MPI REQUIRED)
 
 find_package(Trilinos REQUIRED)
 if (Trilinos_VERSION VERSION_LESS 16 OR Trilinos_VERSION VERSION_GREATER_EQUAL 17)
     message(FATAL_ERROR "Incompatible Trilinos version ${Trilinos_VERSION}. Only Trilinos version 16 and above are supported.")
 endif ()
+
+# Set the exodiff path relative to Trilinos installation path
+set(EXODIFF_PATH ${Trilinos_DIR}/../../../bin/exodiff)
+
+# Set the Trilinos lib path relative to Trilinos installation path
+set(TRILINOS_LIB ${Trilinos_DIR}/../../../lib64)
 
 # FIXME Tacho requires rocblas, rocsparse, and rocsolver with HIP but doesn't
 # enforce this dependency explicitly through version 16.0.0
@@ -62,6 +68,12 @@ if (VertexCFD_ENABLE_HYPRE)
   find_package(HYPRE REQUIRED)
   find_package(HYPREDRV REQUIRED)
   add_compile_definitions(VERTEXCFD_HAVE_HYPRE)
+endif()
+
+option(VertexCFD_ENABLE_ARBORX "Whether to build with ArborX support" OFF)
+if (VertexCFD_ENABLE_ARBORX)
+  find_package(ArborX REQUIRED)
+  add_compile_definitions(VERTEXCFD_HAVE_ARBORX)
 endif()
 
 find_package(Python COMPONENTS Interpreter Development.Module)
@@ -114,21 +126,34 @@ if(VertexCFD_ENABLE_TESTING)
   enable_testing()
 endif()
 
+
+#------------------------------------------------------------------------------#
+# Documentation
+#------------------------------------------------------------------------------#
 if (VertexCFD_BUILD_DOC)
+
+  # doxygen
   find_package(Doxygen)
   if (DOXYGEN_FOUND)
-    # ignore dep packages like gtest/gmock
-    set(DOXYGEN_EXCLUDE_PATTERNS "*/_deps/*")
-    doxygen_add_docs( vertexcfddocs
+    # ignore build directory for in-souce (CI) builds
+    set(DOXYGEN_EXCLUDE_PATTERNS "*/build/*")
+    set(DOXYGEN_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/doxygen)
+    set(DOXYGEN_USE_MATHJAX YES)
+    set(DOXYGEN_MATHJAX_EXTENSIONS TeX/AMSmath TeX/AMSsymbols)
+    doxygen_add_docs( doxygen
       ${PROJECT_SOURCE_DIR}
       COMMENT "Generate doxygen pages"
     )
-  else (DOXYGEN_FOUND)
-    message(STATUS "Doxygen need to be installed to generate the doxygen documentation")
-  endif (DOXYGEN_FOUND)
-else (VertexCFD_BUILD_DOC)
-  message(STATUS "Doxygen documentation disabled!")
-endif (VertexCFD_BUILD_DOC)
+  else ()
+    message(STATUS "Doxygen needs to be installed to generate the doxygen documentation")
+  endif ()
+
+  # add sphinx docs
+  add_subdirectory(doc/manual)
+
+else ()
+  message(STATUS "Documentation generation disabled!")
+endif ()
 
 
 ##---------------------------------------------------------------------------##
@@ -156,6 +181,11 @@ else()
   set(VertexCFD_GIT_COMMIT_HASH "Not a git repository")
 endif()
 message(STATUS "VertexCFD Revision = '${VertexCFD_GIT_COMMIT_HASH}'")
+
+##---------------------------------------------------------------------------##
+## Set up flags for optional VERTEX-CFD physics components
+##---------------------------------------------------------------------------##
+option(VertexCFD_ENABLE_FULL_INDUCTION_MHD "Build full induction MHD solver" ON)
 
 ##---------------------------------------------------------------------------##
 ## Library
@@ -202,7 +232,7 @@ endif()
 ## Python Format
 ##---------------------------------------------------------------------------##
 if(YAPF_FOUND)
-  file(GLOB_RECURSE FORMAT_SOURCES *.py)
+  file(GLOB_RECURSE FORMAT_SOURCES src/*.py examples/*.py regression_test/*.py doc/*.py scripts/*.py)
   add_custom_target(format-python
     COMMAND ${YAPF_EXECUTABLE} -i -vv ${FORMAT_SOURCES}
     DEPENDS ${FORMAT_SOURCES})
@@ -212,10 +242,27 @@ if(YAPF_FOUND)
 endif()
 
 ##---------------------------------------------------------------------------##
+## XML Format
+##---------------------------------------------------------------------------##
+file(GLOB_RECURSE FORMAT_SOURCES examples/*.xml src/*.xml)
+set(EXCLUDE_DIRS_REGEX ${CMAKE_CURRENT_SOURCE_DIR}/src/parameters ${CMAKE_CURRENT_SOURCE_DIR}/doc)
+foreach(EXCLUDE_PATTERN IN LISTS EXCLUDE_DIRS_REGEX)
+	list(FILTER FORMAT_SOURCES EXCLUDE REGEX "${EXCLUDE_PATTERN}")
+endforeach()
+set(XML_EXECUTABLE ${CMAKE_CURRENT_SOURCE_DIR}/scripts/ci/xml-format.py)
+add_custom_target(format-xml
+  COMMAND python3 ${XML_EXECUTABLE} ${FORMAT_SOURCES}
+  DEPENDS ${FORMAT_SOURCES})
+add_custom_target(format-xml-dry-run
+  COMMAND python3 ${XML_EXECUTABLE} -d ${FORMAT_SOURCES}
+  DEPENDS ${FORMAT_SOURCES})
+
+##---------------------------------------------------------------------------##
 ## Python and Clang Format
 ##---------------------------------------------------------------------------##
+add_custom_target(format)
+add_dependencies(format format-xml)
 if(YAPF_FOUND OR CLANG_FORMAT_FOUND)
-  add_custom_target(format)
   if(CLANG_FORMAT_FOUND)
     add_dependencies(format format-cpp)
   endif()

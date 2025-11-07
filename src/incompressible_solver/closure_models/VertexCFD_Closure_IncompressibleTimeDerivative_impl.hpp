@@ -18,16 +18,17 @@ IncompressibleTimeDerivative<EvalType, Traits, NumSpaceDim>::
     : _dqdt_continuity("DQDT_continuity", ir.dl_scalar)
     , _dqdt_energy("DQDT_energy", ir.dl_scalar)
     , _dxdt_lagrange_pressure("DXDT_lagrange_pressure", ir.dl_scalar)
+    , _rho("density", ir.dl_scalar)
+    , _cp("specific_heat_capacity", ir.dl_scalar)
     , _dxdt_temperature("DXDT_temperature", ir.dl_scalar)
-    , _rho(fluid_prop.constantDensity())
     , _solve_temp(fluid_prop.solveTemperature())
-    , _rhoCp(fluid_prop.constantHeatCapacity())
     , _beta(fluid_prop.artificialCompressibility())
 {
     // Evaluated continuity
     this->addEvaluatedField(_dqdt_continuity);
 
     // Dependent and evaluated velocity-based fields
+    this->addDependentField(_rho);
     Utils::addEvaluatedVectorField(
         *this, ir.dl_scalar, _dqdt_momentum, "DQDT_momentum_");
     Utils::addDependentVectorField(
@@ -37,6 +38,7 @@ IncompressibleTimeDerivative<EvalType, Traits, NumSpaceDim>::
     // Dependent and evaluated temperature
     if (_solve_temp)
     {
+        this->addDependentField(_cp);
         this->addEvaluatedField(_dqdt_energy);
         this->addDependentField(_dxdt_temperature);
     }
@@ -71,11 +73,11 @@ IncompressibleTimeDerivative<EvalType, Traits, NumSpaceDim>::operator()(
 
             for (int dim = 0; dim < num_space_dim; ++dim)
                 _dqdt_momentum[dim](cell, point)
-                    = _rho * _dxdt_velocity[dim](cell, point);
+                    = _rho(cell, point) * _dxdt_velocity[dim](cell, point);
 
             if (_solve_temp)
             {
-                _dqdt_energy(cell, point) = _rhoCp
+                _dqdt_energy(cell, point) = _rho(cell, point) * _cp(cell, point)
                                             * _dxdt_temperature(cell, point);
             }
         });

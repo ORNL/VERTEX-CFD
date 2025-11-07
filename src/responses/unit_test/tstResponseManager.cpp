@@ -118,8 +118,8 @@ struct Helper
         // Finish physics.
         physics_manager->setupModel();
 
-        InitialConditionManager ic_manager(parameter_db,
-                                           physics_manager->meshManager());
+        const InitialConditionManager ic_manager(
+            parameter_db, physics_manager->meshManager());
 
         Teuchos::RCP<Thyra::VectorBase<double>> x;
         Teuchos::RCP<Thyra::VectorBase<double>> x_dot;
@@ -141,7 +141,7 @@ void testResponseManager(const int basis_order)
 
     // Volume responses over all element blocks.
     // Surface responses over all sidesets.
-    std::vector<panzer::WorksetDescriptor> sideset_descriptors = {
+    const std::vector<panzer::WorksetDescriptor> sideset_descriptors = {
         {"eblock-0_0", "top"},
         {"eblock-0_0", "bottom"},
         {"eblock-0_0", "left"},
@@ -329,6 +329,86 @@ TEST(MultipleResponseManagers, NameLookupBug)
     // "v_integral" is never set.
     EXPECT_DOUBLE_EQ(4.0, pl->getRealValue<Eval>("u integral"));
     EXPECT_DOUBLE_EQ(6.0, pl->getRealValue<Eval>("v integral"));
+}
+
+//---------------------------------------------------------------------------//
+// Check that we can turn responses on and off and get the correct response
+// names and frequencies
+TEST(ResponseManager, ActivateResponses)
+{
+    // Set up response function list
+    Teuchos::ParameterList params("Scalar Response Output");
+    params.set<int>("Output Frequency", 300);
+    params.sublist("Response0")
+        .set<int>("Output Frequency", 4)
+        .set<std::string>("Field Name", "density, pressure");
+    params.sublist("Response1").set<std::string>("Field Name", "velocity_0");
+    params.sublist("Response2")
+        .set<int>("Output Frequency", 2)
+        .set<std::string>("Field Name", "velocity_1");
+    params.sublist("Response3")
+        .set<int>("Output Frequency", 3)
+        .set<std::string>("Field Name", "temperature");
+
+    const Helper helper(1);
+    auto& physics_manager = helper.physics_manager;
+
+    // Initial response manager
+    std::vector<int> frequencies;
+    auto rm = VertexCFD::Response::createResponseManager(
+        physics_manager, params, frequencies);
+
+    // Test
+    EXPECT_EQ(5, frequencies.size());
+    EXPECT_EQ(frequencies[0], 4);
+    EXPECT_EQ(frequencies[1], 4);
+    EXPECT_EQ(frequencies[2], 300);
+    EXPECT_EQ(frequencies[3], 2);
+    EXPECT_EQ(frequencies[4], 3);
+
+    EXPECT_EQ("Response0 - density", rm->name(0));
+    EXPECT_EQ("Response0 - pressure", rm->name(1));
+    EXPECT_EQ("Response1 - velocity_0", rm->name(2));
+
+    EXPECT_TRUE(rm->isActive(0));
+    EXPECT_TRUE(rm->isActive(2));
+
+    EXPECT_TRUE(rm->isActive("Response0 - density"));
+    EXPECT_TRUE(rm->isActive("Response1 - velocity_0"));
+
+    rm->deactivateAll();
+
+    EXPECT_FALSE(rm->isActive(0));
+    EXPECT_FALSE(rm->isActive(2));
+
+    EXPECT_FALSE(rm->isActive("Response0 - density"));
+    EXPECT_FALSE(rm->isActive("Response1 - velocity_0"));
+
+    rm->activateResponse(0);
+
+    EXPECT_TRUE(rm->isActive(0));
+    EXPECT_FALSE(rm->isActive(2));
+
+    EXPECT_TRUE(rm->isActive("Response0 - density"));
+    EXPECT_FALSE(rm->isActive("Response1 - velocity_0"));
+
+    rm->deactivateAll();
+    rm->activateResponse("Response1 - velocity_0");
+
+    EXPECT_FALSE(rm->isActive(0));
+    EXPECT_TRUE(rm->isActive(2));
+
+    EXPECT_FALSE(rm->isActive("Response0 - density"));
+    EXPECT_TRUE(rm->isActive("Response1 - velocity_0"));
+
+    rm->deactivateAll();
+    rm->activateAll();
+
+    EXPECT_TRUE(rm->isActive(0));
+    EXPECT_TRUE(rm->isActive(2));
+
+    EXPECT_TRUE(rm->isActive("Response0 - density"));
+    EXPECT_TRUE(rm->isActive("Response1 - velocity_0"));
 }
 
 } // namespace Test

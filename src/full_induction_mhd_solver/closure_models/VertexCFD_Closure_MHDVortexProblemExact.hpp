@@ -29,7 +29,7 @@ class MHDVortexProblemExact : public panzer::EvaluatorWithBaseImpl<Traits>,
     static constexpr int num_space_dim = NumSpaceDim;
 
     MHDVortexProblemExact(const panzer::IntegrationRule& ir,
-                          const Teuchos::ParameterList& full_induction_params);
+                          const Teuchos::ParameterList& vortex_params);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;

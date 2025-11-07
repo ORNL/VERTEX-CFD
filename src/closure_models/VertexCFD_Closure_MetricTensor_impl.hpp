@@ -137,27 +137,27 @@ void MetricTensor<EvalType, Traits>::evaluateFields(
 
     if (_num_topo_dim == 1)
     {
-        Kokkos::MDRangePolicy<PHX::Device,
-                              Kokkos::Rank<2>,
-                              std::integral_constant<int, 1>>
+        const Kokkos::MDRangePolicy<PHX::Device,
+                                    Kokkos::Rank<2>,
+                                    std::integral_constant<int, 1>>
             policy({0, 0}, {num_cell, num_point});
 
         Kokkos::parallel_for(this->getName(), policy, *this);
     }
     else if (_num_topo_dim == 2)
     {
-        Kokkos::MDRangePolicy<PHX::Device,
-                              Kokkos::Rank<2>,
-                              std::integral_constant<int, 2>>
+        const Kokkos::MDRangePolicy<PHX::Device,
+                                    Kokkos::Rank<2>,
+                                    std::integral_constant<int, 2>>
             policy({0, 0}, {num_cell, num_point});
 
         Kokkos::parallel_for(this->getName(), policy, *this);
     }
     else if (_num_topo_dim == 3)
     {
-        Kokkos::MDRangePolicy<PHX::Device,
-                              Kokkos::Rank<2>,
-                              std::integral_constant<int, 3>>
+        const Kokkos::MDRangePolicy<PHX::Device,
+                                    Kokkos::Rank<2>,
+                                    std::integral_constant<int, 3>>
             policy({0, 0}, {num_cell, num_point});
 
         Kokkos::parallel_for(this->getName(), policy, *this);

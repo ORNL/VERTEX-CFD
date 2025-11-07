@@ -1,6 +1,5 @@
 #include "VertexCFD_EvaluatorTestHarness.hpp"
 #include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKOmegaDiffusivityCoefficient.hpp"
 
 #include <gtest/gtest.h>
@@ -21,6 +20,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _turb_kinetic_energy;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point>
         _turb_specific_dissipation_rate;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _nu;
 
     Dependencies(const panzer::IntegrationRule& ir,
                  const double k,
@@ -30,9 +30,11 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         , _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
         , _turb_specific_dissipation_rate("turb_specific_dissipation_rate",
                                           ir.dl_scalar)
+        , _nu("kinematic_viscosity", ir.dl_scalar)
     {
         this->addEvaluatedField(_turb_kinetic_energy);
         this->addEvaluatedField(_turb_specific_dissipation_rate);
+        this->addEvaluatedField(_nu);
         this->setName(
             "K-Omega Incompressible Diffusivity Coefficient Unit "
             "Test "
@@ -43,6 +45,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     {
         _turb_kinetic_energy.deep_copy(_k);
         _turb_specific_dissipation_rate.deep_copy(_w);
+        _nu.deep_copy(0.25);
     }
 };
 
@@ -72,24 +75,19 @@ void testEval()
         .sublist("K-Omega Parameters")
         .set<double>("sigma_w", sigma_w);
 
+    // Fluid properties
+    const double nu = 0.25;
+
     // Eval dependencies
     const auto deps
         = Teuchos::rcp(new Dependencies<EvalType>(ir, k_value, w_value));
     test_fixture.registerEvaluator<EvalType>(deps);
 
-    // Fluid properties
-    const double nu = 0.25;
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", nu);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", false);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
-
     // Initialize and register
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleKOmegaDiffusivityCoefficient<
             EvalType,
-            panzer::Traits>(ir, fluid_prop, user_params));
+            panzer::Traits>(ir, user_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_diffusivity_var_k);
     test_fixture.registerTestField<EvalType>(eval->_diffusivity_var_w);

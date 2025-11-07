@@ -15,13 +15,11 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleSpalartAllmarasSource<EvalType, Traits, NumSpaceDim>::
-    IncompressibleSpalartAllmarasSource(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop)
+    IncompressibleSpalartAllmarasSource(const panzer::IntegrationRule& ir)
     : _sa_var("spalart_allmaras_variable", ir.dl_scalar)
     , _distance("distance", ir.dl_scalar)
     , _grad_sa_var("GRAD_spalart_allmaras_variable", ir.dl_vector)
-    , _nu(fluid_prop.constantKinematicViscosity())
+    , _nu("kinematic_viscosity", ir.dl_scalar)
     , _sigma(2.0 / 3.0)
     , _kappa(0.41)
     , _c_b1(0.1355)
@@ -43,6 +41,7 @@ IncompressibleSpalartAllmarasSource<EvalType, Traits, NumSpaceDim>::
     this->addDependentField(_sa_var);
     this->addDependentField(_distance);
     this->addDependentField(_grad_sa_var);
+    this->addDependentField(_nu);
 
     Utils::addDependentVectorField(
         *this, ir.dl_vector, _grad_velocity, "GRAD_velocity_");
@@ -107,7 +106,7 @@ IncompressibleSpalartAllmarasSource<EvalType, Traits, NumSpaceDim>::operator()(
             const scalar_type S = SmoothMath::max(sqrt(S2), smooth_tol, 0.0);
 
             // Functions for production term
-            const scalar_type chi = sa_var / _nu;
+            const scalar_type chi = sa_var / _nu(cell, point);
             const scalar_type f_v1 = pow(chi, 3.0)
                                      / (pow(chi, 3.0) + pow(_c_v1, 3.0));
             const scalar_type f_v2 = 1.0 - chi / (1.0 + chi * f_v1);

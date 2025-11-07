@@ -1,6 +1,6 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-
 #include "incompressible_solver/initial_conditions/VertexCFD_InitialCondition_IncompressibleLaminarFlow.hpp"
+
+#include "VertexCFD_EvaluatorTestHarness.hpp"
 
 #include <Teuchos_ParameterList.hpp>
 
@@ -22,7 +22,7 @@ void testEval(const bool build_temp_equ)
 
     // Set non-trivial coordinates for the degree of freedom
     const int num_coord = test_fixture.cell_topo->getNodeCount();
-    Kokkos::View<double**, Kokkos::HostSpace> x(
+    const Kokkos::View<double**, Kokkos::HostSpace> x(
         "coordinate", num_space_dim, num_coord);
     auto basis_coord_view
         = test_fixture.workset->bases[0]->basis_coordinates.get_static_view();
@@ -45,23 +45,14 @@ void testEval(const bool build_temp_equ)
         = build_temp_equ ? 4.0 : std::numeric_limits<double>::quiet_NaN();
     if (build_temp_equ)
         ic_params.set("Temperature", temp_ref);
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.375);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", build_temp_equ);
-    if (build_temp_equ)
-    {
-        fluid_prop_list.set("Thermal conductivity", 0.5);
-        fluid_prop_list.set("Specific heat capacity", 0.6);
-    }
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
 
     // Register and evaluate fields
     auto eval = Teuchos::rcp(
-        new InitialCondition::IncompressibleLaminarFlow<EvalType,
-                                                        panzer::Traits,
-                                                        num_space_dim>(
-            ic_params, fluid_prop, *test_fixture.basis_ir_layout->getBasis()));
+        new InitialCondition::
+            IncompressibleLaminarFlow<EvalType, panzer::Traits, num_space_dim>(
+                ic_params,
+                build_temp_equ,
+                *test_fixture.basis_ir_layout->getBasis()));
     test_fixture.registerEvaluator<EvalType>(eval);
 
     test_fixture.registerTestField<EvalType>(eval->_lagrange_pressure);
@@ -85,18 +76,18 @@ void testEval(const bool build_temp_equ)
 
     // Reference values
     const double phi_ref = 0.0;
-    const double u_ref_2d[4] = {4.48405612244898,
-                                4.436224489795919,
-                                4.356505102040816,
-                                4.244897959183674};
-    const double u_ref_3d[8] = {1.195578231292517,
-                                1.7482993197278913,
-                                2.2159863945578238,
-                                2.5986394557823127,
-                                2.896258503401361,
-                                3.1088435374149666,
-                                3.2363945578231297,
-                                3.278911564625851};
+    const double u_ref_2d[4] = {4.499362244897959,
+                                4.4770408163265305,
+                                4.422831632653061,
+                                4.336734693877551};
+    const double u_ref_3d[8] = {1.2159863945578238,
+                                1.8027210884353746,
+                                2.304421768707483,
+                                2.72108843537415,
+                                3.052721088435374,
+                                3.2993197278911564,
+                                3.460884353741497,
+                                3.537414965986395};
     const double v_ref = 0.0;
     const double w_ref = 0.0;
 

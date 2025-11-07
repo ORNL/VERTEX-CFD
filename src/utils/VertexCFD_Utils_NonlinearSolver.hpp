@@ -196,7 +196,7 @@ KOKKOS_INLINE_FUNCTION bool updateSolution(
     static_assert(N == NumDeriv, "Jacobian must be square");
 
     // Invert the Jacobian and check for degeneracy.
-    bool success = invJ(J_inv, f_eval, degen_j_tol);
+    const bool success = invJ(J_inv, f_eval, degen_j_tol);
     if (!success)
     {
         return false;
@@ -245,11 +245,12 @@ solve(Kokkos::Array<Scalar, N>& x,
 
     // Iterate until converged or maximum iteration count is reached.
     Kokkos::Array<Kokkos::Array<Scalar, N>, N> J_inv;
-    value_type j_tol = 10.0 * Kokkos::Experimental::epsilon<value_type>::value;
+    const value_type j_tol
+        = 10.0 * Kokkos::Experimental::epsilon<value_type>::value;
     for (int k = 0; k < max_iters; ++k)
     {
         // Update the solution.
-        bool success = Impl::updateSolution(x, J_inv, f_eval, j_tol);
+        const bool success = Impl::updateSolution(x, J_inv, f_eval, j_tol);
 
         // Check for degeneracy of the Jacobian. If it is degenerate then the
         // problem is ill-conditioned and we don't expect convergence.

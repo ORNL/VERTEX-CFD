@@ -32,7 +32,8 @@ void GeneralScalarParameter<EvalType>::update(
     auto param_values = general_scalar_params.find(_name);
     if (param_values == general_scalar_params.end())
     {
-        std::string msg = "GeneralScalar parameter " + _name + " not found";
+        const std::string msg = "GeneralScalar parameter " + _name
+                                + " not found";
         throw std::runtime_error(msg);
     }
 
@@ -57,9 +58,10 @@ void GeneralScalarParameter<EvalType>::update(
         }
         else
         {
-            std::string msg = "GeneralScalar parameter " + _name
-                              + " does not have a value for block " + block_name
-                              + " and is also missing a default value";
+            const std::string msg = "GeneralScalar parameter " + _name
+                                    + " does not have a value for block "
+                                    + block_name
+                                    + " and is also missing a default value";
             throw std::runtime_error(msg);
         }
     }

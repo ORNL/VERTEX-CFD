@@ -26,13 +26,13 @@ TEST(MeshManager, file_test)
         Teuchos::DefaultComm<int>::getComm());
 
     // Make an empty parameter database and build mesh parmaeters.
-    Parameter::ParameterDatabase parameter_db(comm);
+    const Parameter::ParameterDatabase parameter_db(comm);
     auto mesh_params = parameter_db.meshParameters();
     mesh_params->set("Mesh Input Type", "File");
     auto& file_params = mesh_params->sublist("File");
-    std::string mesh_location = VERTEXCFD_DRIVER_TEST_MESH_DIR;
-    std::string mesh_file = "test_mesh_manager.exo";
-    std::string filepath = mesh_location + mesh_file;
+    const std::string mesh_location = VERTEXCFD_DRIVER_TEST_MESH_DIR;
+    const std::string mesh_file = "test_mesh_manager.exo";
+    const std::string filepath = mesh_location + mesh_file;
     file_params.set("File Name", filepath);
     file_params.set("Decomp Method", "RCB");
 
@@ -76,7 +76,7 @@ void testInlineMesh(const std::string element_type)
     }
 
     // Make an empty parameter database and build mesh parameters.
-    Parameter::ParameterDatabase parameter_db(comm);
+    const Parameter::ParameterDatabase parameter_db(comm);
     auto mesh_params = parameter_db.meshParameters();
     mesh_params->set("Mesh Input Type", "Inline");
     auto& inline_params = mesh_params->sublist("Inline");
@@ -148,19 +148,19 @@ TEST(MeshManager, bad_elem_type_test)
         Teuchos::DefaultComm<int>::getComm());
 
     // Make an empty parameter database and build mesh parmaeters.
-    Parameter::ParameterDatabase parameter_db(comm);
+    const Parameter::ParameterDatabase parameter_db(comm);
     auto mesh_params = parameter_db.meshParameters();
     mesh_params->set("Mesh Input Type", "Inline");
     auto& inline_params = mesh_params->sublist("Inline");
     inline_params.set("Element Type", "BadElem");
 
     // Create the mesh.
-    std::string msg
+    const std::string msg
         = "Invalid inline element type. Valid options are 'Tri3', "
           "'Quad4', 'Tet4' and 'Hex8'";
     EXPECT_THROW(
         try {
-            MeshManager mesh_manager(parameter_db, comm);
+            const MeshManager mesh_manager(parameter_db, comm);
         } catch (const std::runtime_error& e) {
             EXPECT_EQ(msg, e.what());
             throw;
@@ -176,16 +176,16 @@ TEST(MeshManager, bad_mesh_type_test)
         Teuchos::DefaultComm<int>::getComm());
 
     // Make an empty parameter database and build mesh parmaeters.
-    Parameter::ParameterDatabase parameter_db(comm);
+    const Parameter::ParameterDatabase parameter_db(comm);
     auto mesh_params = parameter_db.meshParameters();
     mesh_params->set("Mesh Input Type", "Throw");
 
     // Create the mesh.
-    std::string msg
+    const std::string msg
         = "Invalid mesh input type. Valid options are 'File' and 'Inline'";
     EXPECT_THROW(
         try {
-            MeshManager mesh_manager(parameter_db, comm);
+            const MeshManager mesh_manager(parameter_db, comm);
         } catch (const std::runtime_error& e) {
             EXPECT_EQ(msg, e.what());
             throw;

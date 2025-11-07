@@ -6,8 +6,8 @@ k = 2.5
 omegas = [1, 10]
 
 # Wilcox k-w model constants
-beta_star = 0.09
-C_lim = 7.0 / 8.0
+beta_star = 0.1  # Standard value is 0.09
+C_lim = 0.88  # Standard value is 0.875 = 7.0 / 8.0
 
 # 2D and 3D velocity gradients
 grad_vel_2D = np.array([[-0.25, 0.5], [-0.5, 1.0]])

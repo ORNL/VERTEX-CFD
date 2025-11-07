@@ -1,0 +1,7 @@
+#include "utils/VertexCFD_Utils_ExplicitTemplateInstantiation.hpp"
+
+#include "VertexCFD_BoundaryState_ElectricCurrentDensityInsulating.hpp"
+#include "VertexCFD_BoundaryState_ElectricCurrentDensityInsulating_impl.hpp"
+
+VERTEXCFD_INSTANTIATE_TEMPLATE_CLASS_EVAL_TRAITS_NUMSPACEDIM(
+    VertexCFD::BoundaryCondition::ElectricCurrentDensityInsulating)

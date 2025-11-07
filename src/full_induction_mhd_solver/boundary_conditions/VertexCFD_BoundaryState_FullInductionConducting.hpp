@@ -77,6 +77,20 @@ class FullInductionConducting : public panzer::EvaluatorWithBaseImpl<Traits>,
         _external_magnetic_field;
 
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _resistivity;
+
+    using scratch_view_B
+        = Kokkos::View<scalar_type*,
+                       typename PHX::DevLayout<scalar_type>::type,
+                       typename PHX::exec_space::scratch_memory_space,
+                       Kokkos::MemoryUnmanaged>;
+    // We know at compile time the size of the second dimension (num_space_dim)
+    // but using a compile-time dimension triggers a bug in shmem_size when
+    // scalar_type is a Sacado data type.
+    using scratch_view_gradB
+        = Kokkos::View<scalar_type**,
+                       typename PHX::DevLayout<scalar_type>::type,
+                       typename PHX::exec_space::scratch_memory_space,
+                       Kokkos::MemoryUnmanaged>;
 };
 
 //---------------------------------------------------------------------------//

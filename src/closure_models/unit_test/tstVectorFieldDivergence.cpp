@@ -111,44 +111,44 @@ void testEval(const int num_grad_dim,
 }
 
 //-----------------------------------------------------------------//
-TEST(Vector2DDivergence2D, residual_test)
+TEST(Vector2DDivergence2D, Residual)
 {
     testEval<panzer::Traits::Residual, 2>(2, "foo", false);
 }
 
-TEST(Vector2DDivergence2D, jacobian_test)
+TEST(Vector2DDivergence2D, Jacobian)
 {
     testEval<panzer::Traits::Jacobian, 2>(2, "foo", false);
 }
 
 //-----------------------------------------------------------------//
-TEST(Vector3DDivergence2D, residual_test)
+TEST(Vector3DDivergence2D, Residual)
 {
     testEval<panzer::Traits::Residual, 3>(2, "foo", false);
 }
 
-TEST(Vector3DDivergence2D, jacobian_test)
+TEST(Vector3DDivergence2D, Jacobian)
 {
     testEval<panzer::Traits::Jacobian, 3>(2, "foo", false);
 }
 //-----------------------------------------------------------------//
-TEST(Vector3DDivergence3D, residual_test)
+TEST(Vector3DDivergence3D, Residual)
 {
     testEval<panzer::Traits::Residual, 3>(3, "bar", false);
 }
 
-TEST(Vector3DDivergence3D, jacobian_test)
+TEST(Vector3DDivergence3D, Jacobian)
 {
     testEval<panzer::Traits::Jacobian, 3>(3, "bar", false);
 }
 
 //-----------------------------------------------------------------//
-TEST(Vector3DAbsDivergence3D, residual_test)
+TEST(Vector3DAbsDivergence3D, Residual)
 {
     testEval<panzer::Traits::Residual, 3>(3, "bar", true);
 }
 
-TEST(Vector3DAbsDivergence3D, jacobian_test)
+TEST(Vector3DAbsDivergence3D, Jacobian)
 {
     testEval<panzer::Traits::Jacobian, 3>(3, "bar", true);
 }
@@ -158,7 +158,8 @@ void testFactory(const std::string& abs_pre = "")
 {
     constexpr int num_grad_dim = NumGradDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.type_name = abs_pre + "VectorFieldDivergence";
@@ -169,32 +170,32 @@ void testFactory(const std::string& abs_pre = "")
         num_grad_dim>();
 }
 
-TEST(VectorFieldDivergence_Factory2D, residual_test)
+TEST(VectorFieldDivergence_Factory2D, Residual)
 {
     testFactory<panzer::Traits::Residual, 2>();
 }
 
-TEST(VectorFieldDivergence_Factory2D, jacobian_test)
+TEST(VectorFieldDivergence_Factory2D, Jacobian)
 {
     testFactory<panzer::Traits::Jacobian, 2>();
 }
 
-TEST(VectorFieldDivergence_Factory3D, residual_test)
+TEST(VectorFieldDivergence_Factory3D, Residual)
 {
     testFactory<panzer::Traits::Residual, 3>();
 }
 
-TEST(VectorFieldDivergence_Factory3D, jacobian_test)
+TEST(VectorFieldDivergence_Factory3D, Jacobian)
 {
     testFactory<panzer::Traits::Jacobian, 3>();
 }
 
-TEST(VectorFieldAbsDivergence_Factory3D, residual_test)
+TEST(VectorFieldAbsDivergence_Factory3D, Residual)
 {
     testFactory<panzer::Traits::Residual, 3>("Abs");
 }
 
-TEST(VectorFieldAbsDivergence_Factory3D, jacobian_test)
+TEST(VectorFieldAbsDivergence_Factory3D, Jacobian)
 {
     testFactory<panzer::Traits::Jacobian, 3>("Abs");
 }

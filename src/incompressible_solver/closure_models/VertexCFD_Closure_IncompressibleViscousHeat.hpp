@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLEVISCOUSHEAT_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLEVISCOUSHEAT_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -31,10 +29,7 @@ class IncompressibleViscousHeat
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleViscousHeat(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const std::string& gradient_prefix = "");
+    IncompressibleViscousHeat(const panzer::IntegrationRule& ir);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -52,8 +47,8 @@ class IncompressibleViscousHeat
         _viscous_heat_momentum_source;
 
   private:
-    const double _rho;
-    const double _nu;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _rho;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
 
     Kokkos::Array<
         PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,

@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_COMPUTE_VOLUME_HPP
 #define VERTEXCFD_COMPUTE_VOLUME_HPP
 
-#include "equation_sets/VertexCFD_EquationSet_Factory.hpp"
-
 #include <Panzer_BCStrategy_Factory.hpp>
 #include <Panzer_FieldManagerBuilder.hpp>
 #include <Panzer_GlobalIndexer.hpp>

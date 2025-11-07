@@ -38,18 +38,8 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _velocity_1;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _velocity_2;
 
-    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _boundary_u_tau;
-    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _boundary_y_plus;
-    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _boundary_nu_t;
-
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> _normals;
 
-    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
-        _grad_velocity_0;
-    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
-        _grad_velocity_1;
-    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
-        _grad_velocity_2;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_temperature;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
@@ -73,13 +63,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         , _velocity_0("velocity_0", ir.dl_scalar)
         , _velocity_1("velocity_1", ir.dl_scalar)
         , _velocity_2("velocity_2", ir.dl_scalar)
-        , _boundary_u_tau("BOUNDARY_friction_velocity", ir.dl_scalar)
-        , _boundary_y_plus("BOUNDARY_y_plus", ir.dl_scalar)
-        , _boundary_nu_t("BOUNDARY_turbulent_eddy_viscosity", ir.dl_scalar)
         , _normals("Side Normal", ir.dl_vector)
-        , _grad_velocity_0("GRAD_velocity_0", ir.dl_vector)
-        , _grad_velocity_1("GRAD_velocity_1", ir.dl_vector)
-        , _grad_velocity_2("GRAD_velocity_2", ir.dl_vector)
         , _grad_temperature("GRAD_temperature", ir.dl_vector)
         , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
     {
@@ -89,15 +73,9 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         this->addEvaluatedField(_velocity_0);
         this->addEvaluatedField(_velocity_1);
         this->addEvaluatedField(_velocity_2);
-        this->addEvaluatedField(_boundary_u_tau);
-        this->addEvaluatedField(_boundary_y_plus);
-        this->addEvaluatedField(_boundary_nu_t);
 
         this->addEvaluatedField(_normals);
 
-        this->addEvaluatedField(_grad_velocity_0);
-        this->addEvaluatedField(_grad_velocity_1);
-        this->addEvaluatedField(_grad_velocity_2);
         if (_build_temp_equ)
             this->addEvaluatedField(_grad_temperature);
         if (_continuity_model == ContinuityModel::EDAC)
@@ -113,9 +91,6 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         _velocity_0.deep_copy(_u_0);
         _velocity_1.deep_copy(_u_1);
         _velocity_2.deep_copy(_u_2);
-        _boundary_u_tau.deep_copy(2.0);
-        _boundary_y_plus.deep_copy(13.0);
-        _boundary_nu_t.deep_copy(5.0);
         if (_build_temp_equ)
             _temperature.deep_copy(_u_0 + _u_1);
 
@@ -129,7 +104,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     void operator()(const int c) const
     {
         const int num_point = _lagrange_pressure.extent(1);
-        const int num_space_dim = _grad_velocity_0.extent(2);
+        const int num_space_dim = _normals.extent(2);
 
         using std::pow;
 
@@ -142,14 +117,19 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
 
                 _normals(c, qp, d) = 0.02 * dimqp;
 
-                _grad_velocity_0(c, qp, d) = 0.250 * dimqp;
-                _grad_velocity_1(c, qp, d) = 0.500 * dimqp;
-                _grad_velocity_2(c, qp, d) = 0.125 * dimqp;
-
                 if (_build_temp_equ)
                     _grad_temperature(c, qp, d) = (_u_0 + _u_1) * dimqp;
                 if (_continuity_model == ContinuityModel::EDAC)
                     _grad_lagrange_pressure(c, qp, d) = (_u_0 - _u_1);
+            }
+
+            if (_continuity_model == ContinuityModel::EDAC)
+            {
+                _grad_lagrange_pressure(c, qp, 0) = 4.2;
+                _grad_lagrange_pressure(c, qp, 1) = 1.7;
+
+                if (num_space_dim == 3)
+                    _grad_lagrange_pressure(c, qp, 2) = -3.5;
             }
         }
     }
@@ -166,14 +146,14 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
     EvaluatorTestFixture test_fixture(
         num_space_dim, integration_order, basis_order);
 
-    std::string continuity_model_name = "";
+    bool is_edac = false;
     switch (continuity_model)
     {
         case (ContinuityModel::AC):
-            continuity_model_name = "AC";
+            is_edac = false;
             break;
         case (ContinuityModel::EDAC):
-            continuity_model_name = "EDAC";
+            is_edac = true;
             break;
     }
 
@@ -203,7 +183,7 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
     const auto wf_eval = Teuchos::rcp(
         new BoundaryCondition::
             IncompressibleWallFunction<EvalType, panzer::Traits, num_space_dim>(
-                *test_fixture.ir, fluid_prop, continuity_model_name));
+                *test_fixture.ir, fluid_prop, is_edac));
     test_fixture.registerEvaluator<EvalType>(wf_eval);
 
     // Add required test fields.
@@ -239,27 +219,18 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
         = test_fixture.getTestFieldData<EvalType>(
             wf_eval->_boundary_lagrange_pressure);
 
-    // Create expected velocity gradient
-    const double grad_u_2D[3] = {-0.25, 0.020512820512820513, _nanval};
-    const double grad_u_3D[3] = {-0.25, 0.020512820512820513, -0.75};
-    const double* grad_u = (num_space_dim == 3) ? grad_u_3D : grad_u_2D;
-
-    const double grad_v_2D[3] = {-0.5, 1.0, _nanval};
-    const double grad_v_3D[3] = {-0.5, 1.0, -1.5};
-    const double* grad_v = (num_space_dim == 3) ? grad_v_3D : grad_v_2D;
-
-    const double grad_w_2D[3] = {_nanval, _nanval, _nanval};
-    const double grad_w_3D[3] = {-0.125, 0.25, -0.375};
-    const double* grad_w = (num_space_dim == 3) ? grad_w_3D : grad_w_2D;
-
-    const double* grad_vel[3] = {grad_u, grad_v, grad_w};
-
+    // Create expected gradients
     const double grad_temp_2D[3] = {0.998, -1.996, _nanval};
     const double grad_temp_3D[3] = {0.9944, -1.9888, 2.9832};
     const double* grad_temp = (num_space_dim == 3) ? grad_temp_3D
                                                    : grad_temp_2D;
 
     const double* vel = grad_temp;
+
+    const double grad_press_2D[3] = {4.19968, 1.70064, _nanval};
+    const double grad_press_3D[3] = {4.20388, 1.69224, -3.48836};
+    const double* grad_press = (num_space_dim == 3) ? grad_press_3D
+                                                    : grad_press_2D;
 
     // Loop over quadrature points and mesh dimension
     const int num_point = boundary_lagrange_pressure_result.extent(1);
@@ -295,8 +266,7 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
                         wf_eval->_boundary_grad_velocity[vel_dim]);
 
                 EXPECT_DOUBLE_EQ(
-                    grad_vel[vel_dim][d],
-                    fieldValue(boundary_grad_velocity_d_result, 0, qp, d));
+                    0.0, fieldValue(boundary_grad_velocity_d_result, 0, qp, d));
             }
 
             if (build_temp_equ)
@@ -311,12 +281,11 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
 
             if (continuity_model == ContinuityModel::EDAC)
             {
-                const double exp_val = u_0 - u_1;
                 const auto boundary_grad_lagrange_pressure_result
                     = test_fixture.getTestFieldData<EvalType>(
                         wf_eval->_boundary_grad_lagrange_pressure);
                 EXPECT_DOUBLE_EQ(
-                    exp_val,
+                    grad_press[d],
                     fieldValue(
                         boundary_grad_lagrange_pressure_result, 0, qp, d));
             }

@@ -74,8 +74,8 @@ void InitialConditionManager::applyInitialConditions(
         auto physics_blocks = physics_manager.physicsBlocks();
         auto user_params = _parameter_db->userParameters();
         auto ic_params = _parameter_db->initialConditionParameters();
-        bool write_graph = user_params->get<bool>("Output Graph");
-        VertexCFD::InitialCondition::FactoryTemplateBuilder<num_space_dim>
+        const bool write_graph = user_params->get<bool>("Output Graph");
+        const VertexCFD::InitialCondition::FactoryTemplateBuilder<num_space_dim>
             ic_builder(_mesh_manager->mesh());
         panzer::ClosureModelFactory_TemplateManager<panzer::Traits> ic_factory;
         ic_factory.buildObjects(ic_builder);
@@ -90,9 +90,9 @@ void InitialConditionManager::applyInitialConditions(
                                                    write_graph,
                                                    "",
                                                    phx_ic_field_managers);
-        Teuchos::RCP<panzer::LinearObjContainer> linear_object_container
+        const Teuchos::RCP<panzer::LinearObjContainer> linear_object_container
             = linear_object_factory->buildLinearObjContainer();
-        Teuchos::RCP<panzer::ThyraObjContainer<double>> thyra_loc
+        const Teuchos::RCP<panzer::ThyraObjContainer<double>> thyra_loc
             = Teuchos::rcp_dynamic_cast<panzer::ThyraObjContainer<double>>(
                 linear_object_container);
         thyra_loc->set_x_th(x);

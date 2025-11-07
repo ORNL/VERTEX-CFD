@@ -1,6 +1,7 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLELSVOFSCALARCONVECTIVEFLUX_IMPL_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLELSVOFSCALARCONVECTIVEFLUX_IMPL_HPP
 
+#include "utils/VertexCFD_Utils_PhaseLayout.hpp"
 #include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
@@ -14,26 +15,27 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleLSVOFScalarConvectiveFlux<EvalType, Traits, NumSpaceDim>::
-    IncompressibleLSVOFScalarConvectiveFlux(
-        const panzer::IntegrationRule& ir,
-        const Teuchos::ParameterList& closure_params,
-        const std::string& flux_prefix,
-        const std::string& field_prefix)
-    : _scalar_name(closure_params.get<std::string>("Field Name"))
-    , _scalar_equation_name(closure_params.get<std::string>("Equation Name"))
-    , _scalar_flux(flux_prefix + "CONVECTIVE_FLUX_" + _scalar_equation_name,
+    IncompressibleLSVOFScalarConvectiveFlux(const panzer::IntegrationRule& ir,
+                                            const int& phase_index,
+                                            const int& num_lsvof_dofs,
+                                            const std::string& equation_name,
+                                            const std::string& flux_prefix,
+                                            const std::string& field_prefix)
+    : _scalar_flux(flux_prefix + "CONVECTIVE_FLUX_" + equation_name,
                    ir.dl_vector)
-    , _scalar(field_prefix + _scalar_name, ir.dl_scalar)
+    , _phase_index(phase_index)
+    , _phase_layout(Utils::buildPhaseLayout(ir.dl_scalar, num_lsvof_dofs))
+    , _volume_fractions(field_prefix + "volume_fractions", _phase_layout)
 {
     // Evaluated fields
     this->addEvaluatedField(_scalar_flux);
 
     // Dependent fields
-    this->addDependentField(_scalar);
+    this->addDependentField(_volume_fractions);
     Utils::addDependentVectorField(
         *this, ir.dl_scalar, _velocity, field_prefix + "velocity_");
 
-    this->setName(_scalar_equation_name + " Incompressible Convective Flux "
+    this->setName(equation_name + " Incompressible Convective Flux "
                   + std::to_string(num_space_dim) + "D");
 }
 
@@ -60,8 +62,9 @@ IncompressibleLSVOFScalarConvectiveFlux<EvalType, Traits, NumSpaceDim>::operator
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             for (int dim = 0; dim < num_space_dim; ++dim)
             {
-                _scalar_flux(cell, point, dim) = _scalar(cell, point)
-                                                 * _velocity[dim](cell, point);
+                _scalar_flux(cell, point, dim)
+                    = _volume_fractions(cell, point, _phase_index)
+                      * _velocity[dim](cell, point);
             }
         });
 }

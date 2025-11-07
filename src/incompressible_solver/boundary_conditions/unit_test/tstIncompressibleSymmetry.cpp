@@ -153,14 +153,14 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
     EvaluatorTestFixture test_fixture(
         num_space_dim, integration_order, basis_order);
 
-    std::string continuity_model_name = "";
+    bool is_edac = false;
     switch (continuity_model)
     {
         case (ContinuityModel::AC):
-            continuity_model_name = "AC";
+            is_edac = false;
             break;
         case (ContinuityModel::EDAC):
-            continuity_model_name = "EDAC";
+            is_edac = true;
             break;
     }
 
@@ -190,7 +190,7 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
     auto symm_eval = Teuchos::rcp(
         new BoundaryCondition::
             IncompressibleSymmetry<EvalType, panzer::Traits, num_space_dim>(
-                *test_fixture.ir, fluid_prop, continuity_model_name));
+                *test_fixture.ir, fluid_prop, is_edac));
     test_fixture.registerEvaluator<EvalType>(symm_eval);
 
     // Add required test fields.
@@ -264,7 +264,7 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
         const double u_bnd = u_0 - u_dot_n * n0;
         const double v_bnd = u_1 - u_dot_n * n1;
         const double w_bnd = num_space_dim == 3 ? u_2 - u_dot_n * n2 : 0.0;
-        double vel_bnd[3] = {u_bnd, v_bnd, w_bnd};
+        const double vel_bnd[3] = {u_bnd, v_bnd, w_bnd};
 
         double grad_T_dot_n = 0.0;
         if (build_temp_equ)

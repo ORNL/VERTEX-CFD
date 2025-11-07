@@ -5,8 +5,6 @@ VertexCFD_add_tests(
   LIBS VertexCFD
   NAMES
   TurbulenceBoundaryEddyViscosity
-  TurbulenceExtrapolate
-  TurbulenceFixed
   TurbulenceInletOutlet
   TurbulenceKEpsilonWallFunction
   TurbulenceKOmegaWallResolved

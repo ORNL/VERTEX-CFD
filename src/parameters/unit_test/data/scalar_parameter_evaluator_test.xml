@@ -62,10 +62,6 @@
     <Parameter name="Output Graph"  type="bool" value="false"/>
     <Parameter name="Workset Size"  type="int" value="256"/>
     <Parameter name="Build Viscous Flux" type="bool"   value="false"/>
-    <ParameterList name="Fluid Properties">
-      <Parameter name="Kinematic viscosity"  type="double" value="0.1"/>
-      <Parameter name="Artificial compressibility"  type="double" value="100.0"/>
-    </ParameterList>
   </ParameterList>
 
   <ParameterList name="Initial Conditions">
@@ -93,6 +89,10 @@
 
   <ParameterList name="Closure Models">
     <ParameterList name="fluids">
+      <ParameterList name="Fluid Properties">
+        <Parameter name="Kinematic viscosity"  type="double" value="0.1"/>
+        <Parameter name="Artificial compressibility"  type="double" value="100.0"/>
+      </ParameterList>
       <ParameterList name="dQdT">
         <Parameter name="Type"  type="string" value="IncompressibleTimeDerivative"/>
       </ParameterList>

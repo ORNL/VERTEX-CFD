@@ -85,11 +85,11 @@ void testScalarParameterObserver()
     Teuchos::ParameterList plist;
 
     // Add a global parameter.
-    Parameter::ScalarParameterInput global_input = {"Global Parameter"};
+    const Parameter::ScalarParameterInput global_input = {"Global Parameter"};
     plist.set("global_param", global_input);
 
     // Add a general parameter.
-    Parameter::GeneralScalarParameterInput general_input
+    const Parameter::GeneralScalarParameterInput general_input
         = {"General Parameter"};
     plist.set("general_param", general_input);
 

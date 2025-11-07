@@ -278,7 +278,7 @@ void test_custom_cell()
     const int nodes_per_cell = 3;
     const int num_space_dim = 2;
 
-    EvaluatorTestFixture::host_coords_view coords(
+    const EvaluatorTestFixture::host_coords_view coords(
         "coords", num_cell, nodes_per_cell, num_space_dim);
     coords(0, 0, 0) = 0.0;
     coords(0, 0, 1) = 0.0;
@@ -422,7 +422,7 @@ TEST(EvaluatorTestHarness, default_cell_bad_space_dim)
         = "Invalid spatial dimensions (4): must be 1, 2, or 3.";
     EXPECT_THROW(
         try {
-            EvaluatorTestFixture test_fixture(
+            const EvaluatorTestFixture test_fixture(
                 num_space_dim, integration_order, basis_order);
         } catch (const std::logic_error& e) {
             EXPECT_EQ(msg, e.what());
@@ -438,7 +438,7 @@ TEST(EvaluatorTestHarness, custom_cell_bad_space_dim)
     const int num_cell = 1;
     const int nodes_per_cell = 3;
     const int num_space_dim = 3;
-    EvaluatorTestFixture::host_coords_view coords(
+    const EvaluatorTestFixture::host_coords_view coords(
         "coords", num_cell, nodes_per_cell, num_space_dim);
     const int integration_order = 1;
     const int basis_order = 1;
@@ -448,7 +448,7 @@ TEST(EvaluatorTestHarness, custom_cell_bad_space_dim)
           "Triangle_3 expects 2 dimensions, but 3 were provided.";
     EXPECT_THROW(
         try {
-            EvaluatorTestFixture test_fixture(
+            const EvaluatorTestFixture test_fixture(
                 shards::getCellTopologyData<shards::Triangle<3>>(),
                 coords,
                 integration_order,
@@ -467,7 +467,7 @@ TEST(EvaluatorTestHarness, custom_cell_bad_node_count)
     const int num_cell = 1;
     const int nodes_per_cell = 4;
     const int num_space_dim = 2;
-    EvaluatorTestFixture::host_coords_view coords(
+    const EvaluatorTestFixture::host_coords_view coords(
         "coords", num_cell, nodes_per_cell, num_space_dim);
     const int integration_order = 1;
     const int basis_order = 1;
@@ -477,7 +477,7 @@ TEST(EvaluatorTestHarness, custom_cell_bad_node_count)
           "Triangle_3 expects 3 nodes, but 4 were provided.";
     EXPECT_THROW(
         try {
-            EvaluatorTestFixture test_fixture(
+            const EvaluatorTestFixture test_fixture(
                 shards::getCellTopologyData<shards::Triangle<3>>(),
                 coords,
                 integration_order,

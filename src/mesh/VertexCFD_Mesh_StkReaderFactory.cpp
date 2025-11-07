@@ -14,8 +14,6 @@
 #include <Teuchos_RCPStdSharedPtrConversions.hpp>
 #include <Teuchos_StandardParameterEntryValidators.hpp>
 
-#include <Trilinos_version.h>
-
 namespace VertexCFD
 {
 namespace Mesh
@@ -88,9 +86,7 @@ StkReaderFactory::buildUncommitedMesh(stk::ParallelMachine parallel_mach) const
     stk::io::StkMeshIoBroker* mesh_data
         = new stk::io::StkMeshIoBroker(parallel_mach);
 
-#if TRILINOS_MAJOR_MINOR_VERSION >= 140000
     mesh_data->use_simple_fields();
-#endif
 
     // Tell IOSS to keep variable names as is; do not convert to lower case.
     mesh_data->property_add(Ioss::Property("LOWER_CASE_VARIABLE_NAMES", false));
@@ -115,20 +111,12 @@ StkReaderFactory::buildUncommitedMesh(stk::ParallelMachine parallel_mach) const
         mesh_data->add_mesh_database(file_name_, "cgns", stk::io::READ_MESH);
 
     mesh_data->create_input_mesh();
-#if TRILINOS_MAJOR_MINOR_VERSION >= 130500
     auto metaData = Teuchos::rcp(mesh_data->meta_data_ptr());
-#else
-    auto metaData = mesh_data->meta_data_rcp();
-#endif
 
     auto mesh = Teuchos::rcp(new panzer_stk::STK_Interface(metaData));
     mesh->initializeFromMetaData();
     mesh->instantiateBulkData(parallel_mach);
-#if TRILINOS_MAJOR_MINOR_VERSION >= 130500
     mesh_data->set_bulk_data(Teuchos::get_shared_ptr(mesh->getBulkData()));
-#else
-    mesh_data->set_bulk_data(mesh->getBulkData());
-#endif
 
     // read in other transient fields, these will be useful later when
     // trying to read other fields for use in solve
@@ -161,7 +149,7 @@ void StkReaderFactory::completeMeshConstruction(
 
     // grab mesh data pointer to build the bulk data
     stk::mesh::MetaData& metaData = *mesh.getMetaData();
-    stk::mesh::BulkData& bulkData = *mesh.getBulkData();
+    const stk::mesh::BulkData& bulkData = *mesh.getBulkData();
     stk::io::StkMeshIoBroker* mesh_data = const_cast<stk::io::StkMeshIoBroker*>(
         metaData.get_attribute<stk::io::StkMeshIoBroker>());
 
@@ -180,27 +168,20 @@ void StkReaderFactory::completeMeshConstruction(
     // turned on from the input file.
     if (user_mesh_scaling_)
     {
-#if TRILINOS_MAJOR_MINOR_VERSION >= 140000
         stk::mesh::Field<double>* coord_field = metaData.get_field<double>(
             stk::topology::NODE_RANK, "coordinates");
-#else
-        stk::mesh::Field<double>* coord_field
-            = metaData.get_field<stk::mesh::Field<double>>(
-                stk::topology::NODE_RANK, "coordinates");
-#endif
-
-        stk::mesh::Selector select_all_local
+        const stk::mesh::Selector select_all_local
             = metaData.locally_owned_part() | metaData.globally_shared_part();
-        stk::mesh::BucketVector const& my_node_buckets
+        const stk::mesh::BucketVector& my_node_buckets
             = bulkData.get_buckets(stk::topology::NODE_RANK, select_all_local);
 
-        int mesh_dim = mesh.getDimension();
+        const int mesh_dim = mesh.getDimension();
 
         // Scale the mesh
         const double inv_msf = 1.0 / mesh_scale_factor_;
         for (size_t i = 0; i < my_node_buckets.size(); ++i)
         {
-            stk::mesh::Bucket& b = *(my_node_buckets[i]);
+            const stk::mesh::Bucket& b = *(my_node_buckets[i]);
             double* coordinate_data = field_data(*coord_field, b);
 
             for (size_t j = 0; j < b.size(); ++j)
@@ -218,13 +199,8 @@ void StkReaderFactory::completeMeshConstruction(
     int restart_index = restart_index_;
     if (restart_index < 0)
     {
-#if TRILINOS_MAJOR_MINOR_VERSION >= 140500
-        std::pair<int, double> lastTimeStep
+        const std::pair<int, double> lastTimeStep
             = mesh_data->get_input_ioss_region()->get_max_time();
-#else
-        std::pair<int, double> lastTimeStep
-            = mesh_data->get_input_io_region()->get_max_time();
-#endif
         restart_index = 1 + restart_index + lastTimeStep.first;
     }
 
@@ -236,14 +212,8 @@ void StkReaderFactory::completeMeshConstruction(
 
     if (user_mesh_scaling_)
     {
-#if TRILINOS_MAJOR_MINOR_VERSION >= 140000
         stk::mesh::Field<double>* coord_field = metaData.get_field<double>(
             stk::topology::NODE_RANK, "coordinates");
-#else
-        stk::mesh::Field<double>* coord_field
-            = metaData.get_field<stk::mesh::Field<double>>(
-                stk::topology::NODE_RANK, "coordinates");
-#endif
         std::vector<const stk::mesh::FieldBase*> fields;
         fields.push_back(coord_field);
 
@@ -254,13 +224,8 @@ void StkReaderFactory::completeMeshConstruction(
     // would be no inital time
     if (restart_index > 0)
     {
-#if TRILINOS_MAJOR_MINOR_VERSION >= 140500
         mesh.setInitialStateTime(
             mesh_data->get_input_ioss_region()->get_state_time(restart_index));
-#else
-        mesh.setInitialStateTime(
-            mesh_data->get_input_io_region()->get_state_time(restart_index));
-#endif
     }
     else
     {
@@ -333,16 +298,10 @@ void StkReaderFactory::setParameterList(
     }
 
     // read in periodic boundary conditions
-#if TRILINOS_MAJOR_MINOR_VERSION >= 130500
     parsePeriodicBCList(Teuchos::rcpFromRef(param_list->sublist("Periodic "
                                                                 "BCs")),
                         this->periodicBCVec_,
                         this->useBBoxSearch_);
-#else
-    parsePeriodicBCList(Teuchos::rcpFromRef(param_list->sublist("Periodic "
-                                                                "BCs")),
-                        this->periodicBCVec_);
-#endif
 
     levels_of_refinement_
         = param_list->get<int>("Levels of Uniform Refinement");
@@ -415,20 +374,15 @@ void StkReaderFactory::registerElementBlocks(
     // here we use the Ioss interface because they don't add
     // "bonus" element blocks and its easier to determine
     // "real" element blocks versus STK-only blocks
-#if TRILINOS_MAJOR_MINOR_VERSION >= 140500
     const Ioss::ElementBlockContainer& elem_blocks
         = mesh_data.get_input_ioss_region()->get_element_blocks();
-#else
-    const Ioss::ElementBlockContainer& elem_blocks
-        = mesh_data.get_input_io_region()->get_element_blocks();
-#endif
     for (const auto& entity : elem_blocks)
     {
         // Ioss::GroupingEntity* entity = *itr;
         const std::string& name = entity->name();
 
         const stk::mesh::Part* part = femMetaData->get_part(name);
-        shards::CellTopology cellTopo
+        const shards::CellTopology cellTopo
             = stk::mesh::get_cell_topology(femMetaData->get_topology(*part));
         const CellTopologyData* ct = cellTopo.getCellTopologyData();
 
@@ -440,13 +394,13 @@ void StkReaderFactory::registerElementBlocks(
 //---------------------------------------------------------------------------//
 void StkReaderFactory::registerSidesets(panzer_stk::STK_Interface& mesh) const
 {
-    Teuchos::RCP<stk::mesh::MetaData> metaData = mesh.getMetaData();
+    const Teuchos::RCP<stk::mesh::MetaData> metaData = mesh.getMetaData();
     const stk::mesh::PartVector& parts = metaData->get_parts();
 
     for (const auto& part : parts)
     {
         const stk::mesh::PartVector& subsets = part->subsets();
-        shards::CellTopology cellTopo
+        const shards::CellTopology cellTopo
             = stk::mesh::get_cell_topology(metaData->get_topology(*part));
         const CellTopologyData* ct = cellTopo.getCellTopologyData();
 
@@ -463,8 +417,9 @@ void StkReaderFactory::registerSidesets(panzer_stk::STK_Interface& mesh) const
 
             // grab cell topology and name of subset part
             const stk::mesh::Part* ss_part = subsets[0];
-            shards::CellTopology ss_cellTopo = stk::mesh::get_cell_topology(
-                metaData->get_topology(*ss_part));
+            const shards::CellTopology ss_cellTopo
+                = stk::mesh::get_cell_topology(
+                    metaData->get_topology(*ss_part));
             const CellTopologyData* ss_ct = ss_cellTopo.getCellTopologyData();
 
             // only add subset parts that have no topology
@@ -477,14 +432,14 @@ void StkReaderFactory::registerSidesets(panzer_stk::STK_Interface& mesh) const
 //---------------------------------------------------------------------------//
 void StkReaderFactory::registerNodesets(panzer_stk::STK_Interface& mesh) const
 {
-    Teuchos::RCP<stk::mesh::MetaData> metaData = mesh.getMetaData();
+    const Teuchos::RCP<stk::mesh::MetaData> metaData = mesh.getMetaData();
     const stk::mesh::PartVector& parts = metaData->get_parts();
 
     stk::mesh::PartVector::const_iterator partItr;
     for (partItr = parts.begin(); partItr != parts.end(); ++partItr)
     {
         const stk::mesh::Part* part = *partItr;
-        shards::CellTopology cellTopo
+        const shards::CellTopology cellTopo
             = stk::mesh::get_cell_topology(metaData->get_topology(*part));
         const CellTopologyData* ct = cellTopo.getCellTopologyData();
 

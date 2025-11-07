@@ -1,7 +1,6 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleRealizableKEpsilonSource.hpp"
 
 #include <gtest/gtest.h>
@@ -21,6 +20,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> grad_vel_1;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> grad_vel_2;
 
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> nu;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> nu_t;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> turb_kinetic_energy;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> turb_dissipation_rate;
@@ -29,6 +29,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         : grad_vel_0("GRAD_velocity_0", ir.dl_vector)
         , grad_vel_1("GRAD_velocity_1", ir.dl_vector)
         , grad_vel_2("GRAD_velocity_2", ir.dl_vector)
+        , nu("kinematic_viscosity", ir.dl_scalar)
         , nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
         , turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
         , turb_dissipation_rate("turb_dissipation_rate", ir.dl_scalar)
@@ -36,6 +37,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         this->addEvaluatedField(grad_vel_0);
         this->addEvaluatedField(grad_vel_1);
         this->addEvaluatedField(grad_vel_2);
+        this->addEvaluatedField(nu);
         this->addEvaluatedField(nu_t);
         this->addEvaluatedField(turb_kinetic_energy);
         this->addEvaluatedField(turb_dissipation_rate);
@@ -71,6 +73,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
                                                             : _nanval;
             }
 
+            nu(c, qp) = 0.25;
             nu_t(c, qp) = 3.0;
             turb_kinetic_energy(c, qp) = 4.0;
             turb_dissipation_rate(c, qp) = 5.0;
@@ -93,19 +96,12 @@ void testEval()
     const auto deps = Teuchos::rcp(new Dependencies<EvalType>(ir));
     test_fixture.registerEvaluator<EvalType>(deps);
 
-    // Fluid properties
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.25);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", false);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
-
     // Initialize and register
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleRealizableKEpsilonSource<EvalType,
                                                                  panzer::Traits,
                                                                  NumSpaceDim>(
-            ir, fluid_prop));
+            ir));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_k_source);
     test_fixture.registerTestField<EvalType>(eval->_e_source);

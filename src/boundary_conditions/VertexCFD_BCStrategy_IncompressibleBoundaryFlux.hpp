@@ -2,6 +2,7 @@
 #define VERTEXCFD_BOUNDARYCONDITION_INCOMPRESSIBLEBOUNDARYFLUX_HPP
 
 #include "VertexCFD_BCStrategy_BoundaryFluxBase.hpp"
+#include "VertexCFD_BCStrategy_BoundaryFluxBase_impl.hpp"
 
 #include <Panzer_BCStrategy.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
@@ -64,12 +65,20 @@ class IncompressibleBoundaryFlux
     std::unordered_map<std::string, std::string> _equ_dof_ns_pair;
     std::unordered_map<std::string, std::string> _equ_dof_ep_pair;
     std::unordered_map<std::string, std::string> _equ_dof_tm_pair;
-    std::unordered_map<std::string, std::string> _equ_dof_fim_pair;
+
+    enum class ConModel
+    {
+        AC,
+        EDAC,
+        EDACTempNC
+    };
+    ConModel _continuity_model;
+
     bool _build_viscous_flux;
     bool _build_temp_equ;
+    bool _internal_interface;
     bool _build_ind_less_equ;
     bool _turbulence_model;
-    bool _build_full_induction_model;
     std::string _turbulence_model_name;
     std::string _continuity_model_name;
 };

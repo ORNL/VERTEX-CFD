@@ -1,7 +1,6 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleSpalartAllmarasEddyViscosity.hpp"
 
 #include <gtest/gtest.h>
@@ -17,13 +16,16 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     using scalar_type = typename EvalType::ScalarT;
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> sa_var;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> nu;
     const double _sa_var_value;
 
     Dependencies(const panzer::IntegrationRule& ir, const double sa_var_value)
         : sa_var("spalart_allmaras_variable", ir.dl_scalar)
+        , nu("kinematic_viscosity", ir.dl_scalar)
         , _sa_var_value(sa_var_value)
     {
         this->addEvaluatedField(sa_var);
+        this->addEvaluatedField(nu);
         this->setName(
             "Spalart-Allmaras Incompressible Eddy Viscosity Unit "
             "Test "
@@ -33,6 +35,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     void evaluateFields(typename panzer::Traits::EvalData /**d**/) override
     {
         sa_var.deep_copy(_sa_var_value);
+        nu.deep_copy(0.25);
     }
 };
 
@@ -52,18 +55,11 @@ void testEval(const double sa_var_value)
         = Teuchos::rcp(new Dependencies<EvalType>(ir, sa_var_value));
     test_fixture.registerEvaluator<EvalType>(deps);
 
-    // Closure parameters
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.25);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", false);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
-
     // Initialize and register
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleSpalartAllmarasEddyViscosity<
             EvalType,
-            panzer::Traits>(ir, fluid_prop));
+            panzer::Traits>(ir));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_nu_t);
     test_fixture.evaluate<EvalType>();

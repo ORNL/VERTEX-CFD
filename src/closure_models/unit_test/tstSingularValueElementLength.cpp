@@ -31,7 +31,7 @@ template<class EvalType>
 void testEval(const std::string method)
 {
     // Setup test fixture.
-    int num_space_dim = 2;
+    const int num_space_dim = 2;
     const int integration_order = 2;
     const int basis_order = 1;
     EvaluatorTestFixture test_fixture(
@@ -85,7 +85,7 @@ void testEval(const std::string method)
     // Check the MFEM element length.
     auto element_length_result = test_fixture.getTestFieldData<EvalType>(
         singular_value_element_length_eval->_element_length);
-    int num_point = element_length_result.extent(1);
+    const int num_point = element_length_result.extent(1);
     // Reference values 'sigma'
     Kokkos::Array<double, 4> sigma;
     sigma[0] = method == "singular_value_max" ? 9.0 : 4.0;
@@ -164,7 +164,8 @@ void testFactory()
     test_fixture.eval_name = "Singular Value Element Length";
     test_fixture.model_params.set("Element Length Method",
                                   "singular_value_min");
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.template buildAndTest<

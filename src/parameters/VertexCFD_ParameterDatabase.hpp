@@ -65,7 +65,10 @@ class ParameterDatabase
 
   private:
     // Read an xml file with parameters and extract sublists.
-    void readParameterFile(const std::string& xml_file);
+    void readParameterXmlFile(const std::string& xml_file);
+
+    // Read an yaml file with parameters and extract sublists.
+    void readParameterYamlFile(const std::string& xml_file);
 
     // Get the sublists from the input parameters.
     void extractSublists();

@@ -19,19 +19,18 @@ template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleRotatingAnnulusExact<EvalType, Traits, NumSpaceDim>::
     IncompressibleRotatingAnnulusExact(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& user_params)
+        const Teuchos::ParameterList& closure_params)
     : _temperature("Exact_temperature", ir.dl_scalar)
     , _lagrange_pressure("Exact_lagrange_pressure", ir.dl_scalar)
-    , _nu(fluid_prop.constantKinematicViscosity())
-    , _rho(fluid_prop.constantDensity())
-    , _k(fluid_prop.constantThermalConductivity())
-    , _ro(user_params.get<double>("Outer radius"))
-    , _ri(user_params.get<double>("Inner radius"))
+    , _nu(closure_params.get<double>("Kinematic viscosity"))
+    , _rho(closure_params.get<double>("Density"))
+    , _k(closure_params.get<double>("Thermal conductivity"))
+    , _ro(closure_params.get<double>("Outer radius"))
+    , _ri(closure_params.get<double>("Inner radius"))
     , _kappa(_ri / _ro)
-    , _omega(user_params.get<double>("Angular velocity"))
-    , _To(user_params.get<double>("Outer wall temperature"))
-    , _Ti(user_params.get<double>("Inner wall temperature"))
+    , _omega(closure_params.get<double>("Angular velocity"))
+    , _To(closure_params.get<double>("Outer wall temperature"))
+    , _Ti(closure_params.get<double>("Inner wall temperature"))
     , _ir_degree(ir.cubature_degree)
 {
     using std::pow;

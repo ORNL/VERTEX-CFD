@@ -1,11 +1,12 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionResistiveFlux.hpp"
 
 #include "full_induction_mhd_solver/mhd_properties/VertexCFD_FullInductionMHDProperties.hpp"
 
-#include "utils/VertexCFD_Utils_VectorField.hpp"
+#include "utils/VertexCFD_Utils_MagneticDim.hpp"
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
 
 #include <gtest/gtest.h>
 
@@ -22,11 +23,10 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     const Kokkos::Array<double, 3> _b;
     const double _res;
 
-    Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>, 3> mag;
-    Kokkos::Array<
-        PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
-        3>
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, MagneticDim> mag;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim, MagneticDim>
         grad_mag;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> div_mag;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> eta;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> grad_eta;
 
@@ -36,15 +36,17 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
                  const std::string& grad_pre)
         : _b(b)
         , _res(res)
+        , mag("total_magnetic_field",
+              Utils::buildMagneticLayout(ir.dl_scalar, 3))
+        , grad_mag(grad_pre + "GRAD_total_magnetic_field",
+                   Utils::buildMagneticGradLayout(ir.dl_vector, 3))
+        , div_mag(grad_pre + "divergence_total_magnetic_field", ir.dl_scalar)
         , eta("resistivity", ir.dl_scalar)
         , grad_eta("GRAD_resistivity", ir.dl_vector)
     {
-        Utils::addEvaluatedVectorField(
-            *this, ir.dl_scalar, mag, "total_magnetic_field_");
-        Utils::addEvaluatedVectorField(*this,
-                                       ir.dl_vector,
-                                       grad_mag,
-                                       grad_pre + "GRAD_total_magnetic_field_");
+        this->addEvaluatedField(mag);
+        this->addEvaluatedField(grad_mag);
+        this->addEvaluatedField(div_mag);
         this->addEvaluatedField(eta);
         this->addEvaluatedField(grad_eta);
 
@@ -68,17 +70,19 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         {
             for (int field_dim = 0; field_dim < 3; ++field_dim)
             {
-                mag[field_dim](c, qp) = _b[field_dim];
+                mag(c, qp, field_dim) = _b[field_dim];
             }
             eta(c, qp) = _res;
+            div_mag(c, qp) = 0.0;
             for (int grad_dim = 0; grad_dim < num_space_dim; ++grad_dim)
             {
                 const int b_mult = pow(-1, grad_dim) * (grad_dim + 1);
                 for (int field_dim = 0; field_dim < 3; ++field_dim)
                 {
-                    grad_mag[field_dim](c, qp, grad_dim) = _b[field_dim]
+                    grad_mag(c, qp, grad_dim, field_dim) = _b[field_dim]
                                                            * b_mult;
                 }
+                div_mag(c, qp) += grad_mag(c, qp, grad_dim, grad_dim);
                 const int eta_mult = pow(-1, grad_dim + 1) * (grad_dim + 2);
                 grad_eta(c, qp, grad_dim) = _res * eta_mult;
             }
@@ -110,10 +114,10 @@ void testEval(const Teuchos::ParameterList& test_params,
     // Initialize class object to test
     Teuchos::ParameterList full_induction_params
         = test_params.sublist("Full Induction MHD Properties");
-    full_induction_params.set("Vacuum Magnetic Permeability", 0.05);
-    full_induction_params.set("Build Resistive Flux", true);
-    MHDProperties::FullInductionMHDProperties mhd_props
-        = MHDProperties::FullInductionMHDProperties(full_induction_params);
+    full_induction_params.set("Vacuum Magnetic Permeability", 0.05)
+        .set("Build Resistive Flux", true);
+    const MHDProperties::FullInductionMHDProperties mhd_props(
+        full_induction_params);
     const auto build_magn_corr = mhd_props.buildMagnCorr();
 
     auto eval = Teuchos::rcp(
@@ -202,13 +206,13 @@ void testEval2D(const bool build_magn_corr, const bool var_resistivity)
     const Teuchos::Array<double> exp_ind_2_flux({nanval, nanval, nanval});
 
     Teuchos::ParameterList full_ind_params;
-    full_ind_params.set("Build Magnetic Correction Potential Equation",
-                        build_magn_corr);
+    full_ind_params
+        .set("Build Magnetic Correction Potential Equation", build_magn_corr)
+        .set("Variable Resistivity", var_resistivity);
     if (build_magn_corr)
     {
         full_ind_params.set("Hyperbolic Divergence Cleaning Speed", 1.1);
     }
-    full_ind_params.set("Variable Resistivity", var_resistivity);
     if (!var_resistivity)
     {
         full_ind_params.set("Resistivity", 1.5);
@@ -223,7 +227,7 @@ void testEval2D(const bool build_magn_corr, const bool var_resistivity)
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionResistiveFluxNoCleaning2D, residual_test)
+TEST(InductionResistiveFluxNoCleaning2D, Residual)
 {
     // For now, tests with variable resistivity will throw an error.
     // Test for the appropriate error here, but retain the old test
@@ -242,7 +246,7 @@ TEST(InductionResistiveFluxNoCleaning2D, residual_test)
     // testEval2D<panzer::Traits::Residual>(false, true);
 }
 
-TEST(InductionResistiveFluxNoCleaning2D, jacobian_test)
+TEST(InductionResistiveFluxNoCleaning2D, Jacobian)
 {
     // For now, tests with variable resistivity will throw an error.
     // Test for the appropriate error here, but retain the old test
@@ -262,7 +266,7 @@ TEST(InductionResistiveFluxNoCleaning2D, jacobian_test)
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionResistiveFluxDivCleaning2D, residual_test)
+TEST(InductionResistiveFluxDivCleaning2D, Residual)
 {
     // For now, tests with variable resistivity will throw an error.
     // Test for the appropriate error here, but retain the old test
@@ -281,7 +285,7 @@ TEST(InductionResistiveFluxDivCleaning2D, residual_test)
     // testEval2D<panzer::Traits::Residual>(true, true);
 }
 
-TEST(InductionResistiveFluxDivCleaning2D, jacobian_test)
+TEST(InductionResistiveFluxDivCleaning2D, Jacobian)
 {
     // For now, tests with variable resistivity will throw an error.
     // Test for the appropriate error here, but retain the old test
@@ -301,14 +305,25 @@ TEST(InductionResistiveFluxDivCleaning2D, jacobian_test)
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionResistiveFluxConstantResistivity2D, residual_test)
+TEST(InductionResistiveFluxConstantResistivity2D, Residual)
 {
     testEval2D<panzer::Traits::Residual>(false, false);
 }
 
-TEST(InductionResistiveFluxConstantResistivity2D, jacobian_test)
+TEST(InductionResistiveFluxConstantResistivity2D, Jacobian)
 {
     testEval2D<panzer::Traits::Jacobian>(false, false);
+}
+
+//-----------------------------------------------------------------//
+TEST(InductionResistiveFluxConstantResistivityMagnCorr2D, Residual)
+{
+    testEval2D<panzer::Traits::Residual>(true, false);
+}
+
+TEST(InductionResistiveFluxConstantResistivityMagnCorr2D, Jacobian)
+{
+    testEval2D<panzer::Traits::Jacobian>(true, false);
 }
 
 //-----------------------------------------------------------------//
@@ -335,13 +350,13 @@ void testEval3D(const bool build_magn_corr, const bool var_resistivity)
                                                 : exp_ind_2_flux_const_eta;
 
     Teuchos::ParameterList full_ind_params;
-    full_ind_params.set("Build Magnetic Correction Potential Equation",
-                        build_magn_corr);
+    full_ind_params
+        .set("Build Magnetic Correction Potential Equation", build_magn_corr)
+        .set("Variable Resistivity", var_resistivity);
     if (build_magn_corr)
     {
         full_ind_params.set("Hyperbolic Divergence Cleaning Speed", 1.1);
     }
-    full_ind_params.set("Variable Resistivity", var_resistivity);
     if (!var_resistivity)
     {
         full_ind_params.set("Resistivity", 1.5);
@@ -356,7 +371,7 @@ void testEval3D(const bool build_magn_corr, const bool var_resistivity)
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionResistiveFluxNoCleaning3D, residual_test)
+TEST(InductionResistiveFluxNoCleaning3D, Residual)
 {
     // For now, tests with variable resistivity will throw an error.
     // Test for the appropriate error here, but retain the old test
@@ -375,7 +390,7 @@ TEST(InductionResistiveFluxNoCleaning3D, residual_test)
     // testEval3D<panzer::Traits::Residual>(false, true);
 }
 
-TEST(InductionResistiveFluxNoCleaning3D, jacobian_test)
+TEST(InductionResistiveFluxNoCleaning3D, Jacobian)
 {
     // For now, tests with variable resistivity will throw an error.
     // Test for the appropriate error here, but retain the old test
@@ -395,7 +410,7 @@ TEST(InductionResistiveFluxNoCleaning3D, jacobian_test)
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionResistiveFluxDivCleaning3D, residual_test)
+TEST(InductionResistiveFluxDivCleaning3D, Residual)
 {
     // For now, tests with variable resistivity will throw an error.
     // Test for the appropriate error here, but retain the old test
@@ -414,7 +429,7 @@ TEST(InductionResistiveFluxDivCleaning3D, residual_test)
     // testEval3D<panzer::Traits::Residual>(true, true);
 }
 
-TEST(InductionResistiveFluxDivCleaning3D, jacobian_test)
+TEST(InductionResistiveFluxDivCleaning3D, Jacobian)
 {
     // For now, tests with variable resistivity will throw an error.
     // Test for the appropriate error here, but retain the old test
@@ -434,12 +449,12 @@ TEST(InductionResistiveFluxDivCleaning3D, jacobian_test)
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionResistiveFluxConstantResistivity3D, residual_test)
+TEST(InductionResistiveFluxConstantResistivity3D, Residual)
 {
     testEval3D<panzer::Traits::Residual>(false, false);
 }
 
-TEST(InductionResistiveFluxConstantResistivity3D, jacobian_test)
+TEST(InductionResistiveFluxConstantResistivity3D, Jacobian)
 {
     testEval3D<panzer::Traits::Jacobian>(false, false);
 }
@@ -450,12 +465,11 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.sublist("Full Induction MHD Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties")
         .set("Vacuum Magnetic Permeability", 0.1)
         .set("Build Magnetic Correction Potential Equation", false);
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 1.5)
-        .set("Artificial compressibility", 0.1);
+    test_fixture.factory_type = "Full Induction MHD";
     test_fixture.type_name = "InductionResistiveFlux";
     test_fixture.eval_name = "Induction Resistive Flux "
                              + std::to_string(num_space_dim) + "D";
@@ -464,22 +478,22 @@ void testFactory()
         num_space_dim>();
 }
 
-TEST(InductionResistiveFlux_Factory2D, residual_test)
+TEST(InductionResistiveFlux_Factory2D, Residual)
 {
     testFactory<panzer::Traits::Residual, 2>();
 }
 
-TEST(InductionResistiveFlux_Factory2D, jacobian_test)
+TEST(InductionResistiveFlux_Factory2D, Jacobian)
 {
     testFactory<panzer::Traits::Jacobian, 2>();
 }
 
-TEST(InductionResistiveFlux_Factory3D, residual_test)
+TEST(InductionResistiveFlux_Factory3D, Residual)
 {
     testFactory<panzer::Traits::Residual, 3>();
 }
 
-TEST(InductionResistiveFlux_Factory3D, jacobian_test)
+TEST(InductionResistiveFlux_Factory3D, Jacobian)
 {
     testFactory<panzer::Traits::Jacobian, 3>();
 }

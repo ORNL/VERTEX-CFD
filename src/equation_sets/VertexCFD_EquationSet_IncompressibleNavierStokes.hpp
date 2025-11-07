@@ -44,7 +44,6 @@ class IncompressibleNavierStokes
     std::unordered_map<std::string, std::string> _equ_dof_ns_pair;
     std::unordered_map<std::string, std::string> _equ_dof_ep_pair;
     std::unordered_map<std::string, std::string> _equ_dof_tm_pair;
-    std::unordered_map<std::string, std::string> _equ_dof_fim_pair;
     std::unordered_map<std::string, std::unordered_map<std::string, bool>>
         _equ_source_term;
     bool _build_viscous_flux;
@@ -54,10 +53,17 @@ class IncompressibleNavierStokes
     bool _build_buoyancy_source;
     bool _build_viscous_heat;
     std::string _turbulence_model;
-    bool _build_full_induction_model;
-    bool _build_resistive_flux;
-    bool _build_magn_corr;
+    std::string _stabilization_method;
     bool _build_godunov_powell_source;
+    bool _build_joule_heating_source;
+
+    enum class ConModel
+    {
+        AC,
+        EDAC,
+        EDACTempNC
+    };
+    ConModel _continuity_model;
 };
 
 //---------------------------------------------------------------------------//

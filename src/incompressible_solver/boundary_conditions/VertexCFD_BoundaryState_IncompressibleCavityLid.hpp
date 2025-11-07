@@ -34,7 +34,7 @@ class IncompressibleCavityLid : public panzer::EvaluatorWithBaseImpl<Traits>,
         const panzer::IntegrationRule& ir,
         const FluidProperties::ConstantFluidProperties& fluid_prop,
         const Teuchos::ParameterList& bc_params,
-        const std::string& continuity_model_name);
+        const bool is_edac);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;
@@ -80,7 +80,6 @@ class IncompressibleCavityLid : public panzer::EvaluatorWithBaseImpl<Traits>,
     PHX::MDField<const double, panzer::Cell, panzer::Point, panzer::Dim> _ip_coords;
 
     bool _solve_temp;
-    std::string _continuity_model_name;
     bool _is_edac;
     int _wall_dir;
     int _vel_dir;

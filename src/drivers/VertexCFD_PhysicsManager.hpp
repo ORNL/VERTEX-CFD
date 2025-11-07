@@ -8,6 +8,7 @@
 #include <Panzer_BCStrategy_Factory.hpp>
 #include <Panzer_ClosureModel_Factory.hpp>
 #include <Panzer_EquationSet_Factory.hpp>
+#include <Panzer_EquationSet_Factory_Composite.hpp>
 #include <Panzer_GlobalData.hpp>
 #include <Panzer_GlobalIndexer.hpp>
 #include <Panzer_LinearObjFactory.hpp>
@@ -66,7 +67,7 @@ class PhysicsManager
     Teuchos::RCP<MeshManager> _mesh_manager;
     double _t_init;
     Teuchos::RCP<panzer::GlobalData> _global_data;
-    Teuchos::RCP<panzer::EquationSetFactory> _eq_set_factory;
+    Teuchos::RCP<panzer::EquationSet_FactoryComposite> _eq_set_factory;
     std::vector<Teuchos::RCP<panzer::PhysicsBlock>> _physics_blocks;
     int _integration_order;
     Teuchos::RCP<panzer::GlobalIndexer> _dof_manager;

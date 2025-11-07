@@ -33,11 +33,16 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     double _w;
     bool _build_temp_equ;
     bool _build_turbulence_model;
+    bool _unscaled_density;
     ContinuityModel _continuity_model;
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> velocity_0;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> velocity_1;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> velocity_2;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> rho;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> nu;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> k;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> cp;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> nu_t;
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> grad_vel_0;
@@ -56,16 +61,22 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
                  const double w,
                  const bool build_temp_equ,
                  const bool build_turbulence_model,
+                 const bool unscaled_density,
                  const ContinuityModel continuity_model)
         : _u(u)
         , _v(v)
         , _w(w)
         , _build_temp_equ(build_temp_equ)
         , _build_turbulence_model(build_turbulence_model)
+        , _unscaled_density(unscaled_density)
         , _continuity_model(continuity_model)
         , velocity_0("velocity_0", ir.dl_scalar)
         , velocity_1("velocity_1", ir.dl_scalar)
         , velocity_2("velocity_2", ir.dl_scalar)
+        , rho("density", ir.dl_scalar)
+        , nu("kinematic_viscosity", ir.dl_scalar)
+        , k("thermal_conductivity", ir.dl_scalar)
+        , cp("specific_heat_capacity", ir.dl_scalar)
         , nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
         , grad_vel_0("GRAD_velocity_0", ir.dl_vector)
         , grad_vel_1("GRAD_velocity_1", ir.dl_vector)
@@ -76,6 +87,8 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         this->addEvaluatedField(velocity_0);
         this->addEvaluatedField(velocity_1);
         this->addEvaluatedField(velocity_2);
+        this->addEvaluatedField(rho);
+        this->addEvaluatedField(nu);
 
         if (_build_turbulence_model)
         {
@@ -87,7 +100,11 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         this->addEvaluatedField(grad_vel_2);
 
         if (_build_temp_equ)
+        {
+            this->addEvaluatedField(k);
+            this->addEvaluatedField(cp);
             this->addEvaluatedField(grad_temperature);
+        }
 
         this->addEvaluatedField(grad_lagrange_pressure);
 
@@ -117,7 +134,11 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
                 grad_vel_1(c, qp, dim) = _v * dimqp;
                 grad_vel_2(c, qp, dim) = _w * dimqp;
                 if (_build_temp_equ)
+                {
+                    k(c, qp) = 0.5;
+                    cp(c, qp) = 0.2;
                     grad_temperature(c, qp, dim) = (_u + _v) * dimqp;
+                }
 
                 grad_lagrange_pressure(c, qp, dim)
                     = _continuity_model == ContinuityModel::EDAC
@@ -128,11 +149,11 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
             velocity_0(c, qp) = _u;
             velocity_1(c, qp) = _v;
             velocity_2(c, qp) = _w;
+            rho(c, qp) = _unscaled_density ? 3.0 : 1.0;
+            nu(c, qp) = 0.375;
 
             if (_build_turbulence_model)
-            {
                 nu_t(c, qp) = 4.0;
-            }
         }
     }
 };
@@ -158,30 +179,34 @@ void testEval(const bool unscaled_density,
     const double w = num_space_dim == 3 ? 0.125 : nan_val;
     const double Pr_t = 0.8;
 
-    const auto deps = Teuchos::rcp(new Dependencies<EvalType>(
-        ir, u, v, w, build_temp_equ, build_turbulence_model, continuity_model));
+    const auto deps
+        = Teuchos::rcp(new Dependencies<EvalType>(ir,
+                                                  u,
+                                                  v,
+                                                  w,
+                                                  build_temp_equ,
+                                                  build_turbulence_model,
+                                                  unscaled_density,
+                                                  continuity_model));
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Initialize class object to test
-    double rho = 1.0;
     const double nu = 0.375;
     const double cp = 0.2;
     const double beta = 2.0;
     const double kappa = build_temp_equ ? 0.5 : nan_val;
+    const double gamma = build_temp_equ ? 3.0 : nan_val;
 
     Teuchos::ParameterList fluid_prop_list;
+    fluid_prop_list.set("Density", unscaled_density ? 3.0 : 1.0);
     fluid_prop_list.set("Kinematic viscosity", nu);
     fluid_prop_list.set("Artificial compressibility", beta);
     fluid_prop_list.set("Build Temperature Equation", build_temp_equ);
-    if (unscaled_density)
-    {
-        rho = 3.0;
-        fluid_prop_list.set("Density", rho);
-    }
     if (build_temp_equ)
     {
         fluid_prop_list.set("Thermal conductivity", kappa);
         fluid_prop_list.set("Specific heat capacity", cp);
+        fluid_prop_list.set("Heat Capacity Ratio", gamma);
     }
 
     Teuchos::ParameterList user_params;
@@ -210,10 +235,19 @@ void testEval(const bool unscaled_density,
     const int num_point = ir.num_points;
 
     const double exp_cont_flux_3d_ac[3] = {0.0, 0.0, 0.0};
-    const double exp_cont_flux_3d_edac[3]
+    const double exp_cont_flux_3d_edac_isothermal[3]
         = {unscaled_density ? -0.421875 : -0.140625,
            unscaled_density ? 0.84375 : 0.28125,
            unscaled_density ? -1.265625 : -0.421875};
+
+    const double exp_cont_flux_3d_edac_energy[3]
+        = {unscaled_density ? -0.9375 : -2.8125,
+           unscaled_density ? 1.875 : 5.625,
+           unscaled_density ? -2.8125 : -8.4375};
+
+    const double* exp_cont_flux_3d_edac
+        = (build_temp_equ ? exp_cont_flux_3d_edac_energy
+                          : exp_cont_flux_3d_edac_isothermal);
 
     const double exp_cont_flux_2d_ac[3]
         = {exp_cont_flux_3d_ac[0], exp_cont_flux_3d_ac[1], nan_val};
@@ -275,7 +309,8 @@ void testEval(const bool unscaled_density,
     {
         for (int dim = 0; dim < num_space_dim; dim++)
         {
-            EXPECT_EQ(exp_cont_flux[dim], fieldValue(fc_cont, 0, qp, dim));
+            EXPECT_DOUBLE_EQ(exp_cont_flux[dim],
+                             fieldValue(fc_cont, 0, qp, dim));
             EXPECT_EQ(exp_mom_0_flux[dim], fieldValue(fc_mom_0, 0, qp, dim));
             const auto fc_mom_1 = test_fixture.getTestFieldData<EvalType>(
                 eval->_momentum_flux[1]);
@@ -567,7 +602,8 @@ void testFactory()
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.user_params.set("Build Temperature Equation", false);
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.type_name = "IncompressibleViscousFlux";

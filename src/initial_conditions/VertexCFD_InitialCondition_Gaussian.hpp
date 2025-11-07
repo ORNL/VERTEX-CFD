@@ -45,12 +45,20 @@ class Gaussian : public panzer::EvaluatorWithBaseImpl<Traits>,
 
   private:
     std::string _basis_name;
-    Kokkos::View<double*, view_layout, PHX::mem_space> _a;
-    Kokkos::View<double*, view_layout, PHX::mem_space> _b;
-    Kokkos::View<double*, view_layout, PHX::mem_space> _c;
+    Kokkos::Array<double, num_space_dim> _a;
+    Kokkos::Array<double, num_space_dim> _b;
+    Kokkos::Array<double, num_space_dim> _c;
     double _d;
     int _basis_index;
     PHX::MDField<double, panzer::Cell, panzer::BASIS, panzer::Dim> _basis_coords;
+
+    enum Scaling
+    {
+        scaled,
+        unscaled
+    };
+
+    Scaling _scaling;
 };
 
 //---------------------------------------------------------------------------//

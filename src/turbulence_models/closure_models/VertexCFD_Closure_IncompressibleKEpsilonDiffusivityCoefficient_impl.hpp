@@ -12,12 +12,11 @@ template<class EvalType, class Traits>
 IncompressibleKEpsilonDiffusivityCoefficient<EvalType, Traits>::
     IncompressibleKEpsilonDiffusivityCoefficient(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
         const double sigma_k,
         const double sigma_e,
         const std::string field_prefix)
-    : _nu_t(field_prefix + "turbulent_eddy_viscosity", ir.dl_scalar)
-    , _nu(fluid_prop.constantKinematicViscosity())
+    : _nu("kinematic_viscosity", ir.dl_scalar)
+    , _nu_t(field_prefix + "turbulent_eddy_viscosity", ir.dl_scalar)
     , _sigma_k(sigma_k)
     , _sigma_e(sigma_e)
     , _num_grad_dim(ir.spatial_dimension)
@@ -25,6 +24,7 @@ IncompressibleKEpsilonDiffusivityCoefficient<EvalType, Traits>::
     , _diffusivity_var_e("diffusivity_turb_dissipation_rate", ir.dl_scalar)
 {
     // Add dependent fields
+    this->addDependentField(_nu);
     this->addDependentField(_nu_t);
 
     // Add evaluated fields
@@ -55,13 +55,13 @@ IncompressibleKEpsilonDiffusivityCoefficient<EvalType, Traits>::operator()(
     const int cell = team.league_rank();
     const int num_point = _diffusivity_var_k.extent(1);
 
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, 0, num_point),
-                         [&](const int point) {
-                             _diffusivity_var_k(cell, point)
-                                 = (_nu + _nu_t(cell, point) / _sigma_k);
-                             _diffusivity_var_e(cell, point)
-                                 = (_nu + _nu_t(cell, point) / _sigma_e);
-                         });
+    Kokkos::parallel_for(
+        Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
+            _diffusivity_var_k(cell, point)
+                = (_nu(cell, point) + _nu_t(cell, point) / _sigma_k);
+            _diffusivity_var_e(cell, point)
+                = (_nu(cell, point) + _nu_t(cell, point) / _sigma_e);
+        });
 }
 
 //---------------------------------------------------------------------------//

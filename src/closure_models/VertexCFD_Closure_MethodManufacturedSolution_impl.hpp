@@ -122,20 +122,22 @@ MethodManufacturedSolution<EvalType, Traits, NumSpaceDim>::operator()(
             // function = B + A * sin(2*pi*f_x*(x-phi_x)) *
             // sin(2*pi*f_y*(y-phi_y))
             //                  * sin(2*pi*f_z*(z-phi_z)) for 3D
-            auto set_function =
-                [=](const Kokkos::Array<double, num_coeff> coeff,
-                    const Kokkos::Array<double, num_space_dim> x) {
-                    double val = coeff[0]
-                                 * sin(2.0 * pi * coeff[2] * (x[0] - coeff[3]))
-                                 * sin(2.0 * pi * coeff[4] * (x[1] - coeff[5]));
-                    double return_val = num_space_dim == 2
-                                            ? val + coeff[1]
-                                            : val
-                                                      * sin(2.0 * pi * coeff[6]
-                                                            * (x[2] - coeff[7]))
-                                                  + coeff[1];
-                    return return_val;
-                };
+            auto set_function
+                = [=](const Kokkos::Array<double, num_coeff> coeff,
+                      const Kokkos::Array<double, num_space_dim> x) {
+                      const double val
+                          = coeff[0]
+                            * sin(2.0 * pi * coeff[2] * (x[0] - coeff[3]))
+                            * sin(2.0 * pi * coeff[4] * (x[1] - coeff[5]));
+                      const double return_val
+                          = num_space_dim == 2
+                                ? val + coeff[1]
+                                : val
+                                          * sin(2.0 * pi * coeff[6]
+                                                * (x[2] - coeff[7]))
+                                      + coeff[1];
+                      return return_val;
+                  };
 
             Kokkos::Array<double, num_space_dim> x;
             for (int dim = 0; dim < num_space_dim; ++dim)

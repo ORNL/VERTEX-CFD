@@ -86,6 +86,13 @@ void testEval(const bool limited)
     EvaluatorTestFixture test_fixture(
         num_space_dim, integration_order, basis_order);
 
+    // Create parameter list for user-defined constants
+    Teuchos::ParameterList user_params;
+    user_params.sublist("Turbulence Parameters")
+        .sublist("K-Omega Parameters")
+        .set<double>("C_lim", 0.88)
+        .set<double>("beta_star", 0.1);
+
     const auto& ir = *test_fixture.ir;
 
     // Eval dependencies
@@ -96,7 +103,8 @@ void testEval(const bool limited)
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleKOmegaEddyViscosity<EvalType,
                                                             panzer::Traits,
-                                                            NumSpaceDim>(ir));
+                                                            NumSpaceDim>(
+            ir, user_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_nu_t);
     test_fixture.evaluate<EvalType>();
@@ -109,7 +117,7 @@ void testEval(const bool limited)
     double exp_var = 0.25;
     if (limited)
     {
-        exp_var = num_space_dim == 3 ? 0.393932564311835 : 0.5879951490600304;
+        exp_var = num_space_dim == 3 ? 0.4128820565413407 : 0.6162797097120913;
     }
 
     // Assert values

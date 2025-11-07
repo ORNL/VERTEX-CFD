@@ -4,6 +4,11 @@
 #include "closure_models/VertexCFD_ClosureModelFactory.hpp"
 #include "drivers/VertexCFD_MeshManager.hpp"
 
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
+#include "full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory.hpp"
+#include "full_induction_mhd_solver/closure_models/VertexCFD_SolidFullInductionClosureModelFactory.hpp"
+#endif
+
 #include <Panzer_FieldLibrary.hpp>
 #include <Panzer_IntegrationDescriptor.hpp>
 #include <Panzer_IntegrationRule.hpp>
@@ -19,6 +24,7 @@
 
 #include <gtest/gtest.h>
 
+#include <optional>
 #include <string>
 
 namespace VertexCFD
@@ -34,18 +40,17 @@ struct ClosureModelFactoryTestFixture
     int eval_index = 0;
     std::string type_name{"!!! UNDEFINED !!!"};
     std::string eval_name{"!!! UNDEFINED !!!"};
+    std::optional<std::string> factory_type;
     Teuchos::ParameterList user_params{"User Data"};
     Teuchos::ParameterList model_params{"Model Data"};
+    Teuchos::ParameterList closure_params{"Closure Models"};
+    const std::string model_id{"Test Model"};
 
     ClosureModelFactoryTestFixture()
     {
-        // These gas properties are currently always required in the factory.
-        user_params.sublist("Fluid Properties")
-            .set("Kinematic viscosity", 0.1)
-            .set("Artificial compressibility", 2.0);
         auto comm = Teuchos::rcp_dynamic_cast<const Teuchos::MpiComm<int>>(
             Teuchos::DefaultComm<int>::getComm());
-        Parameter::ParameterDatabase parameter_db(comm);
+        const Parameter::ParameterDatabase parameter_db(comm);
 
         auto mesh_params = parameter_db.meshParameters();
         mesh_params->set("Mesh Input Type", "Inline");
@@ -62,9 +67,9 @@ struct ClosureModelFactoryTestFixture
         mesh_details.set("Zf", 1.0);
         mesh_details.set("Z Elements", 1);
 
-        Teuchos::RCP<MeshManager> mesh_manager{
+        const Teuchos::RCP<MeshManager> mesh_manager{
             Teuchos::rcp(new MeshManager(parameter_db, comm))};
-        user_params.set<Teuchos::RCP<MeshManager> const>("MeshManager",
+        user_params.set<const Teuchos::RCP<MeshManager>>("MeshManager",
                                                          mesh_manager);
         mesh_manager->completeMeshConstruction();
     }
@@ -74,14 +79,21 @@ struct ClosureModelFactoryTestFixture
     {
         constexpr int num_space_dim = NumSpaceDim;
 
-        const std::string model_id{"Test Model"};
-
+        // Set up closure parameter model
         model_params.set("Type", type_name);
-
-        Teuchos::ParameterList closure_params{"Closure Models"};
         closure_params
             .sublist(model_id)                // Model ID sublist
-            .set("Model Data", model_params); // sublist for this closure model
+            .set("Model Data", model_params); // sublist for Model Data
+        if (factory_type)
+        {
+            closure_params.sublist(model_id).set("Closure Factory Type",
+                                                 *factory_type);
+        }
+        else // Navier-Stokes case
+        {
+            num_evaluators = 2;
+            eval_index = 1;
+        }
 
         // Set up a trivial integration_rule for the factory.
         const panzer::IntegrationDescriptor integration_desc(
@@ -96,7 +108,7 @@ struct ClosureModelFactoryTestFixture
         // constructed in the argument list.
         PHX::FieldManager<panzer::Traits> fm;
 
-        ClosureModel::Factory<EvalType, num_space_dim> factory;
+        const ClosureModel::Factory<EvalType, num_space_dim> factory{};
         auto evaluators = factory.buildClosureModels(
             model_id,
             closure_params,
@@ -106,6 +118,36 @@ struct ClosureModelFactoryTestFixture
             user_params,
             Teuchos::null, // unused (global_data)
             fm);
+
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
+        const ClosureModel::FullInductionFactory<EvalType, num_space_dim>
+            fim_factory{};
+        auto fim_evals = fim_factory.buildClosureModels(
+            model_id,
+            closure_params,
+            panzer::FieldLayoutLibrary{}, // unused
+            integration_rule,
+            Teuchos::ParameterList{}, // unused (default_params)
+            user_params,
+            Teuchos::null, // unused (global_data)
+            fm);
+        evaluators->insert(
+            evaluators->end(), fim_evals->begin(), fim_evals->end());
+
+        const ClosureModel::SolidFullInductionFactory<EvalType, num_space_dim>
+            sfim_factory{};
+        auto sfim_evals = sfim_factory.buildClosureModels(
+            model_id,
+            closure_params,
+            panzer::FieldLayoutLibrary{}, // unused
+            integration_rule,
+            Teuchos::ParameterList{}, // unused (default_params)
+            user_params,
+            Teuchos::null, // unused (global_data)
+            fm);
+        evaluators->insert(
+            evaluators->end(), sfim_evals->begin(), sfim_evals->end());
+#endif
 
         // Make sure the factory returned something.
         ASSERT_FALSE(evaluators.is_null());

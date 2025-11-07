@@ -155,12 +155,13 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    Teuchos::Array<double> ext_magn_vct(3);
-    Teuchos::ParameterList user_params;
+    const Teuchos::Array<double> ext_magn_vct(3);
+    const Teuchos::ParameterList user_params;
     test_fixture.user_params.set("Build Inductionless MHD Equation", true);
     test_fixture.user_params.set("External Magnetic Field Value", ext_magn_vct);
     test_fixture.user_params.set("Build Temperature Equation", false);
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0)
         .set("Electrical conductivity", 3.0);

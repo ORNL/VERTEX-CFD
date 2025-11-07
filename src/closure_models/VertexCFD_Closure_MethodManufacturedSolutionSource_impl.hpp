@@ -1,7 +1,7 @@
 #ifndef VERTEXCFD_CLOSURE_METHODMANUFACTUREDSOLUTIONSOURCE_IMPL_HPP
 #define VERTEXCFD_CLOSURE_METHODMANUFACTUREDSOLUTIONSOURCE_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include "utils/VertexCFD_Utils_Constants.hpp"
 
@@ -20,16 +20,15 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 MethodManufacturedSolutionSource<EvalType, Traits, NumSpaceDim>::
-    MethodManufacturedSolutionSource(
-        const panzer::IntegrationRule& ir,
-        const bool build_viscous_flux,
-        const FluidProperties::ConstantFluidProperties& fluid_prop)
+    MethodManufacturedSolutionSource(const panzer::IntegrationRule& ir,
+                                     const bool build_viscous_flux,
+                                     const Teuchos::ParameterList& closure_params)
     : _continuity_mms_source("MMS_SOURCE_continuity", ir.dl_scalar)
     , _energy_mms_source("MMS_SOURCE_energy", ir.dl_scalar)
     , _ir_degree(ir.cubature_degree)
     , _build_viscous_flux(build_viscous_flux)
-    , _rho(fluid_prop.constantDensity())
-    , _nu(fluid_prop.constantKinematicViscosity())
+    , _rho(closure_params.get<double>("Density"))
+    , _nu(closure_params.get<double>("Kinematic Viscosity"))
     , _kappa(0.0)
 {
     this->addEvaluatedField(_continuity_mms_source);
@@ -109,7 +108,7 @@ void MethodManufacturedSolutionSource<EvalType, Traits, NumSpaceDim>::evaluateFi
     typename Traits::EvalData workset)
 {
     _ip_coords = workset.int_rules[_ir_index]->ip_coordinates;
-    Kokkos::RangePolicy<PHX::Device> policy(0, workset.num_cells);
+    const Kokkos::RangePolicy<PHX::Device> policy(0, workset.num_cells);
     Kokkos::parallel_for(this->getName(), policy, *this);
 }
 

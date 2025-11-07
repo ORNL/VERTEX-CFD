@@ -61,7 +61,7 @@ KOKKOS_INLINE_FUNCTION void MeasureElementLength<EvalType, Traits>::operator()(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             using std::pow;
             // Compute element size
-            double h = pow(_cell_det(cell, point), 1.0 / num_space_dim);
+            const double h = pow(_cell_det(cell, point), 1.0 / num_space_dim);
 
             // Set value of the element length (same value for all
             // directions)

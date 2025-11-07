@@ -163,7 +163,7 @@ Teuchos::RCP<Epetra_CrsGraph> CDR_Model<Scalar>::createGraph()
     // Declare required variables
     int row;
     int column;
-    int OverlapNumMyElements = x_ghosted_map_->NumMyElements();
+    const int OverlapNumMyElements = x_ghosted_map_->NumMyElements();
 
     // Loop Over # of Finite Elements on Processor
     for (int ne = 0; ne < OverlapNumMyElements - 1; ne++)
@@ -240,14 +240,15 @@ template<class Scalar>
 Teuchos::RCP<Thyra::LinearOpWithSolveBase<double>>
 CDR_Model<Scalar>::create_W() const
 {
-    Teuchos::RCP<const Thyra::LinearOpWithSolveFactoryBase<double>> W_factory
+    const Teuchos::RCP<const Thyra::LinearOpWithSolveFactoryBase<double>> W_factory
         = this->get_W_factory();
 
     TEUCHOS_TEST_FOR_EXCEPTION(is_null(W_factory),
                                std::runtime_error,
                                "W_factory in CDR_Model has a null W_factory!");
 
-    Teuchos::RCP<Thyra::LinearOpBase<double>> matrix = this->create_W_op();
+    const Teuchos::RCP<Thyra::LinearOpBase<double>> matrix
+        = this->create_W_op();
 
     Teuchos::RCP<Thyra::LinearOpWithSolveBase<double>> W
         = Thyra::linearOpWithSolve<double>(*W_factory, matrix);
@@ -258,7 +259,7 @@ CDR_Model<Scalar>::create_W() const
 template<class Scalar>
 Teuchos::RCP<Thyra::LinearOpBase<Scalar>> CDR_Model<Scalar>::create_W_op() const
 {
-    Teuchos::RCP<Epetra_CrsMatrix> W_epetra
+    const Teuchos::RCP<Epetra_CrsMatrix> W_epetra
         = Teuchos::rcp(new Epetra_CrsMatrix(::Copy, *W_graph_));
 
     return Thyra::nonconstEpetraLinearOp(W_epetra);
@@ -268,13 +269,13 @@ template<class Scalar>
 Teuchos::RCP<::Thyra::PreconditionerBase<Scalar>>
 CDR_Model<Scalar>::create_W_prec() const
 {
-    Teuchos::RCP<Epetra_CrsMatrix> W_epetra
+    const Teuchos::RCP<Epetra_CrsMatrix> W_epetra
         = Teuchos::rcp(new Epetra_CrsMatrix(::Copy, *W_graph_));
 
     const Teuchos::RCP<Thyra::LinearOpBase<Scalar>> W_op
         = Thyra::nonconstEpetraLinearOp(W_epetra);
 
-    Teuchos::RCP<Thyra::DefaultPreconditioner<Scalar>> prec
+    const Teuchos::RCP<Thyra::DefaultPreconditioner<Scalar>> prec
         = Teuchos::rcp(new Thyra::DefaultPreconditioner<Scalar>);
 
     prec->initializeRight(W_op);
@@ -339,7 +340,8 @@ void CDR_Model<Scalar>::evalModelImpl(
         RCP<Epetra_CrsMatrix> J;
         if (nonnull(W_out))
         {
-            RCP<Epetra_Operator> W_epetra = Thyra::get_Epetra_Operator(*W_out);
+            const RCP<Epetra_Operator> W_epetra
+                = Thyra::get_Epetra_Operator(*W_out);
             J = rcp_dynamic_cast<Epetra_CrsMatrix>(W_epetra);
             TEUCHOS_ASSERT(nonnull(J));
         }
@@ -347,7 +349,7 @@ void CDR_Model<Scalar>::evalModelImpl(
         RCP<Epetra_CrsMatrix> M_inv;
         if (nonnull(W_prec_out))
         {
-            RCP<Epetra_Operator> M_epetra = Thyra::get_Epetra_Operator(
+            const RCP<Epetra_Operator> M_epetra = Thyra::get_Epetra_Operator(
                 *(W_prec_out->getNonconstRightPrecOp()));
             M_inv = rcp_dynamic_cast<Epetra_CrsMatrix>(M_epetra);
             TEUCHOS_ASSERT(nonnull(M_inv));
@@ -362,7 +364,7 @@ void CDR_Model<Scalar>::evalModelImpl(
         // solves.
         if (comm_->MyPID() == 0)
         {
-            RCP<Thyra::VectorBase<Scalar>> x
+            const RCP<Thyra::VectorBase<Scalar>> x
                 = Teuchos::rcp_const_cast<Thyra::VectorBase<Scalar>>(
                     inArgs.get_x());
             (*Thyra::get_Epetra_Vector(*x_owned_map_, x))[0] = 1.0;
@@ -395,7 +397,7 @@ void CDR_Model<Scalar>::evalModelImpl(
         Epetra_Vector& x = *x_ptr;
 
         int ierr = 0;
-        int OverlapNumMyElements = x_ghosted_map_->NumMyElements();
+        const int OverlapNumMyElements = x_ghosted_map_->NumMyElements();
 
         double xx[2];
         double uu[2];
@@ -431,7 +433,7 @@ void CDR_Model<Scalar>::evalModelImpl(
                 // Loop over Nodes in Element
                 for (int i = 0; i < 2; i++)
                 {
-                    int row = x_ghosted_map_->GID(ne + i);
+                    const int row = x_ghosted_map_->GID(ne + i);
                     // printf("Proc=%d GlobalRow=%d LocalRow=%d Owned=%d\n",
                     //     MyPID, row, ne+i,x_owned_map_.MyGID(row));
                     if (x_owned_map_->MyGID(row))
@@ -457,8 +459,8 @@ void CDR_Model<Scalar>::evalModelImpl(
                         {
                             if (x_owned_map_->MyGID(row))
                             {
-                                int column = x_ghosted_map_->GID(ne + j);
-                                double jac
+                                const int column = x_ghosted_map_->GID(ne + j);
+                                const double jac
                                     = basis.wt * basis.dz
                                       * (alpha * basis.phi[i]
                                              * basis.phi[j] // transient
@@ -484,12 +486,12 @@ void CDR_Model<Scalar>::evalModelImpl(
                         {
                             if (x_owned_map_->MyGID(row))
                             {
-                                int column = x_ghosted_map_->GID(ne + j);
+                                const int column = x_ghosted_map_->GID(ne + j);
                                 // The prec will be the diagonal of J. No need
                                 // to assemble the other entries
                                 if (row == column)
                                 {
-                                    double jac
+                                    const double jac
                                         = basis.wt * basis.dz
                                           * (alpha * basis.phi[i]
                                                  * basis.phi[j] // transient
@@ -591,7 +593,7 @@ Basis::~Basis()
 // Calculates a linear 1D basis
 void Basis::computeBasis(int gp, double* z, double* u, double* u_dot)
 {
-    int N = 2;
+    const int N = 2;
     if (gp == 0)
     {
         eta = -1.0 / sqrt(3.0);

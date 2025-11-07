@@ -1,6 +1,7 @@
 #ifndef VERTEXCFD_INCOMPRESSIBLECLOSUREMODELFACTORY_HPP
 #define VERTEXCFD_INCOMPRESSIBLECLOSUREMODELFACTORY_HPP
 
+#include <Panzer_GlobalData.hpp>
 #include <Panzer_Traits.hpp>
 
 #include <Phalanx_Evaluator.hpp>
@@ -20,6 +21,7 @@ class IncompressibleFactory
     void buildClosureModel(
         const std::string& closure_type,
         const Teuchos::RCP<panzer::IntegrationRule>& ir,
+        const Teuchos::RCP<panzer::GlobalData>& global_data,
         const Teuchos::ParameterList& user_params,
         const Teuchos::ParameterList& closure_params,
         const bool use_turbulence_model,

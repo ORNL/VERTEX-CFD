@@ -4,8 +4,19 @@ include(${TEST_HARNESS_DIR}/TestHarness.cmake)
 VertexCFD_add_tests(
   LIBS VertexCFD
   NAMES
+  IncompressibleCLSEpsilon
+  IncompressibleLSVOFArtificialCompression
+  IncompressibleLSVOFBubbleExact
+  IncompressibleLSVOFBuoyancySource
   IncompressibleLSVOFConvectiveFlux
+  IncompressibleLSVOFErrorNorms
+  IncompressibleLSVOFNthPhaseFraction
   IncompressibleLSVOFScalarConvectiveFlux
+  IncompressibleLSVOFScalarTimeDerivative
+  IncompressibleLSVOFSurfaceTensionForce
+  IncompressibleLSVOFTimeDerivative
+  IncompressibleLSVOFVariableProperties
   IncompressibleLSVOFViscousFlux
+  IncompressibleLSVOFVortexVelocity
   )
 

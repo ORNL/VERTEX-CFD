@@ -1,5 +1,5 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConstantSource.hpp"
 
@@ -92,9 +92,11 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     const Teuchos::Array<double> ind_input_source(num_space_dim);
     test_fixture.model_params.set("Induction Source", ind_input_source);
-    test_fixture.user_params.sublist("Full Induction MHD Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties")
         .set("Vacuum Magnetic Permeability", 0.1)
         .set("Build Magnetic Correction Potential Equation", false);
+    test_fixture.factory_type = "Full Induction MHD";
     test_fixture.type_name = "InductionConstantSource";
     test_fixture.eval_name = "Induction Constant Source "
                              + std::to_string(num_space_dim) + "D";

@@ -1,7 +1,8 @@
 #ifndef VERTEXCFD_CLOSURE_INDUCTIONCONVECTIVEFLUX_IMPL_HPP
 #define VERTEXCFD_CLOSURE_INDUCTIONCONVECTIVEFLUX_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 
@@ -19,6 +20,9 @@ InductionConvectiveFlux<EvalType, Traits, NumSpaceDim>::InductionConvectiveFlux(
     : _magnetic_correction_potential_flux(
           flux_prefix + "CONVECTIVE_FLUX_magnetic_correction_potential",
           ir.dl_vector)
+    , _total_magnetic_field(
+          "total_magnetic_field",
+          Utils::buildMagneticLayout(ir.dl_scalar, num_magnetic_field_dim))
     , _scalar_magnetic_potential(field_prefix + "scalar_magnetic_potential",
                                  ir.dl_scalar)
     , _magnetic_pressure("magnetic_pressure", ir.dl_scalar)
@@ -32,8 +36,6 @@ InductionConvectiveFlux<EvalType, Traits, NumSpaceDim>::InductionConvectiveFlux(
                                                  "momentum_");
 
     // Evaluated fields
-    this->addEvaluatedField(_magnetic_correction_potential_flux);
-
     Utils::addEvaluatedVectorField(*this, ir.dl_vector, _induction_flux,
                                  flux_prefix + "CONVECTIVE_FLUX_"
                                                "induction_");
@@ -46,8 +48,7 @@ InductionConvectiveFlux<EvalType, Traits, NumSpaceDim>::InductionConvectiveFlux(
     // Dependent fields
     Utils::addDependentVectorField(
         *this, ir.dl_scalar, _velocity, field_prefix + "velocity_");
-    Utils::addDependentVectorField(
-        *this, ir.dl_scalar, _total_magnetic_field, "total_magnetic_field_");
+    this->addDependentField(_total_magnetic_field);
     this->addDependentField(_magnetic_pressure);
 
     if (_solve_magn_corr)
@@ -85,8 +86,8 @@ InductionConvectiveFlux<EvalType, Traits, NumSpaceDim>::operator()(
                 for (int vec_dim = 0; vec_dim < num_space_dim; ++vec_dim)
                 {
                     _momentum_flux[vec_dim](cell, point, flux_dim)
-                        -= _total_magnetic_field[flux_dim](cell, point)
-                           * _total_magnetic_field[vec_dim](cell, point)
+                        -= _total_magnetic_field(cell, point, flux_dim)
+                           * _total_magnetic_field(cell, point, vec_dim)
                            / _magnetic_permeability;
                     if (vec_dim != flux_dim)
                     {
@@ -94,8 +95,8 @@ InductionConvectiveFlux<EvalType, Traits, NumSpaceDim>::operator()(
                         // equation.
                         _induction_flux[vec_dim](cell, point, flux_dim)
                             = _velocity[flux_dim](cell, point)
-                                  * _total_magnetic_field[vec_dim](cell, point)
-                              - _total_magnetic_field[flux_dim](cell, point)
+                                  * _total_magnetic_field(cell, point, vec_dim)
+                              - _total_magnetic_field(cell, point, flux_dim)
                                     * _velocity[vec_dim](cell, point);
                     }
                 }
@@ -109,7 +110,7 @@ InductionConvectiveFlux<EvalType, Traits, NumSpaceDim>::operator()(
                     _induction_flux[flux_dim](cell, point, flux_dim)
                         = _c_h * _scalar_magnetic_potential(cell, point);
                     _magnetic_correction_potential_flux(cell, point, flux_dim)
-                        = _c_h * _total_magnetic_field[flux_dim](cell, point);
+                        = _c_h * _total_magnetic_field(cell, point, flux_dim);
                 }
                 else
                 {

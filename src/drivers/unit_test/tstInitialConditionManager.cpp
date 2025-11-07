@@ -89,7 +89,7 @@ void InitialConditionManagerND()
         Teuchos::DefaultComm<int>::getComm());
 
     // Parse input.
-    int argc = 2;
+    const int argc = 2;
     const std::string option = "--i=";
     const std::string location = VERTEXCFD_DRIVER_TEST_INPUT_DIR;
     const std::string file = "simple_box_" + std::to_string(num_space_dim)
@@ -131,7 +131,7 @@ void testRestartMultiD()
         Teuchos::DefaultComm<int>::getComm());
 
     // Parse input.
-    int argc = 2;
+    const int argc = 2;
     const std::string option = "--i=";
     const std::string input_location = VERTEXCFD_DRIVER_TEST_DATA_DIR;
     const std::string input_file = "simple_box_" + num_space_dim_string

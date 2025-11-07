@@ -1,8 +1,7 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressiblePlanarPoiseuilleExact.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <gtest/gtest.h>
 
@@ -33,29 +32,23 @@ void testEval()
     const auto& ir = *test_fixture.ir;
 
     // Set list of parameters to pass to the test evaluator
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Planar Poiseuille Exact")
-        .set("H min", -4.0)
+    Teuchos::ParameterList closure_params;
+    closure_params.set("H min", -4.0)
         .set("H max", 4.0)
         .set("Lower wall temperature", 305.0)
         .set("Upper wall temperature", 300.0)
-        .set("Momentum source", 24000.0);
-
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 50.0);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", true);
-    fluid_prop_list.set("Thermal conductivity", 0.5);
-    fluid_prop_list.set("Specific heat capacity", 100.0);
-
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+        .set("Momentum source", 24000.0)
+        .set("Density", 1.0)
+        .set("Kinematic viscosity", 50.0)
+        .set("Thermal conductivity", 0.5)
+        .set("Specific heat capacity", 100.0);
 
     // Create test evaluator
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressiblePlanarPoiseuilleExact<EvalType,
                                                               panzer::Traits,
                                                               num_space_dim>(
-            ir, fluid_prop, user_params));
+            ir, closure_params));
 
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_lagrange_pressure);
@@ -124,15 +117,19 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "IncompressiblePlanarPoiseuilleExact";
     test_fixture.eval_name = "Exact Solution Planar Poiseuille";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
-    test_fixture.user_params.sublist("Planar Poiseuille Exact")
-        .set("H min", -4.0)
+    test_fixture.model_params.set("H min", -4.0)
         .set("H max", 4.0)
         .set("Lower wall temperature", 305.0)
         .set("Upper wall temperature", 300.0)
-        .set("Momentum source", 24000.0);
+        .set("Momentum source", 24000.0)
+        .set("Density", 1.0)
+        .set("Kinematic viscosity", 0.1)
+        .set("Thermal conductivity", 0.5)
+        .set("Specific heat capacity", 2.0);
     test_fixture.template buildAndTest<
         ClosureModel::IncompressiblePlanarPoiseuilleExact<EvalType,
                                                           panzer::Traits,

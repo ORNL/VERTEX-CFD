@@ -5,6 +5,9 @@
 #include <Teuchos_CommandLineProcessor.hpp>
 #include <Teuchos_ParameterEntryXMLConverterDB.hpp>
 #include <Teuchos_XMLParameterListHelpers.hpp>
+#include <Teuchos_YamlParameterListCoreHelpers.hpp>
+#include <Teuchos_YamlParameterListHelpers.hpp>
+#include <Teuchos_YamlParser_decl.hpp>
 
 namespace VertexCFD
 {
@@ -51,11 +54,14 @@ ParameterDatabase::ParameterDatabase(
 //---------------------------------------------------------------------------//
 ParameterDatabase::ParameterDatabase(
     const Teuchos::RCP<const Teuchos::MpiComm<int>>& comm,
-    const std::string& xml_file)
+    const std::string& input_file)
     : _comm(comm)
 {
     // Parse file.
-    readParameterFile(xml_file);
+    if (std::string::npos != input_file.find(".xml"))
+        readParameterXmlFile(input_file);
+    else
+        readParameterYamlFile(input_file);
 }
 
 //---------------------------------------------------------------------------//
@@ -65,18 +71,68 @@ ParameterDatabase::ParameterDatabase(
     char* argv[])
     : _comm(comm)
 {
-    // Get the input file from the command line arguments.
+    // Get the input file from the command line arguments and additional
+    // options
     Teuchos::CommandLineProcessor clp;
-    std::string input_file = "input.xml";
-    clp.setOption("i", &input_file, "XML Input File");
+    std::string input_file = "input_file";
+    bool convert_to_yaml = false;
+    bool convert_to_xml = false;
+    clp.setOption("i", &input_file, "Input File");
+    clp.setOption("conversion-to-yaml",
+                  "no-conversion-to-yaml",
+                  &convert_to_yaml,
+                  "Convert XML file to YAML file");
+    clp.setOption("conversion-to-xml",
+                  "no-conversion-to-xml",
+                  &convert_to_xml,
+                  "Convert YAML file to XML file");
     clp.parse(argc, argv, &std::cerr);
 
-    // Parse file.
-    readParameterFile(input_file);
+    // Parse input file after checking its format and write the equivalent
+    // XML/YAML format
+    if (std::string::npos != input_file.find(".xml"))
+    {
+        // Parse file XML file
+        readParameterXmlFile(input_file);
+        // Create YAML file
+        if (convert_to_yaml)
+        {
+            const std::string base_input_file
+                = input_file.substr(0, input_file.length() - 4);
+            const auto pList = Teuchos::getParametersFromXmlFile(input_file);
+            const std::string output_yaml_file_name(base_input_file
+                                                    + "_generated.yaml");
+            Teuchos::writeParameterListToYamlFile(*pList,
+                                                  output_yaml_file_name);
+        }
+    }
+    else if (std::string::npos != input_file.find(".yaml"))
+    {
+        // Parse YAML file.
+        readParameterYamlFile(input_file);
+        // Create XML file
+        if (convert_to_xml)
+        {
+            const std::string base_input_file
+                = input_file.substr(0, input_file.length() - 5);
+            const auto pList = Teuchos::getParametersFromYamlFile(input_file);
+            const std::string output_yaml_file_name(base_input_file
+                                                    + "_generated.xml");
+            Teuchos::writeParameterListToXmlFile(*pList, output_yaml_file_name);
+        }
+    }
+    else
+    {
+        std::string msg
+            = "\n\nERROR: Vertex-CFD only supports input files of XML and "
+              "YMAL "
+              "formats.\n\n";
+        throw std::runtime_error(msg);
+    }
 }
 
 //---------------------------------------------------------------------------//
-void ParameterDatabase::readParameterFile(const std::string& xml_file)
+void ParameterDatabase::readParameterXmlFile(const std::string& xml_file)
 {
     // Add custom input types.
     TEUCHOS_ADD_TYPE_CONVERTER(ScalarParameterInput);
@@ -92,12 +148,28 @@ void ParameterDatabase::readParameterFile(const std::string& xml_file)
 }
 
 //---------------------------------------------------------------------------//
+void ParameterDatabase::readParameterYamlFile(const std::string& yaml_file)
+{
+    // Add custom input types.
+    TEUCHOS_ADD_TYPE_CONVERTER(ScalarParameterInput);
+    TEUCHOS_ADD_TYPE_CONVERTER(GeneralScalarParameterInput);
+
+    // Build a parameter list from the inputs
+    _input_params = Teuchos::parameterList("Input Parameters");
+    Teuchos::updateParametersFromYamlFileAndBroadcast(
+        yaml_file, _input_params.ptr(), *_comm);
+
+    // Get the sublists.
+    extractSublists();
+}
+
+//---------------------------------------------------------------------------//
 Teuchos::RCP<Teuchos::ParameterList>
 ParameterDatabase::requiredSublist(const std::string& name)
 {
     if (!_input_params->isSublist(name))
     {
-        std::string msg = "Sublist " + name + " missing from input";
+        const std::string msg = "Sublist " + name + " missing from input";
         throw std::logic_error(msg);
     }
     return Teuchos::parameterList(_input_params->sublist(name));

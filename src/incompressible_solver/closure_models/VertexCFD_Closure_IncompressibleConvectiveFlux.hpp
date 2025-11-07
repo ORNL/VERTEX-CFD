@@ -34,6 +34,7 @@ class IncompressibleConvectiveFlux
     IncompressibleConvectiveFlux(
         const panzer::IntegrationRule& ir,
         const FluidProperties::ConstantFluidProperties& fluid_prop,
+        const Teuchos::ParameterList& user_params,
         const std::string& flux_prefix = "",
         const std::string& field_prefix = "");
 
@@ -51,17 +52,29 @@ class IncompressibleConvectiveFlux
         PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
         num_space_dim>
         _momentum_flux;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _energy_source;
 
   private:
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _lagrange_pressure;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _rho;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _cp;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _temperature;
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         _velocity;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
+        _grad_temp;
 
-    double _rho;
-    double _rhoCp;
+    double _beta;
     bool _solve_temp;
+
+    enum ConModel
+    {
+        AC,
+        EDAC,
+        EDACTempNC
+    };
+    ConModel _continuity_model;
 };
 
 //---------------------------------------------------------------------------//

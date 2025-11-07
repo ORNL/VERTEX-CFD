@@ -29,7 +29,7 @@ class IncompressibleFreeSlip : public panzer::EvaluatorWithBaseImpl<Traits>,
     IncompressibleFreeSlip(
         const panzer::IntegrationRule& ir,
         const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const std::string& continuity_model_name);
+        const bool is_edac);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -74,7 +74,6 @@ class IncompressibleFreeSlip : public panzer::EvaluatorWithBaseImpl<Traits>,
         _grad_velocity;
 
     bool _solve_temp;
-    std::string _continuity_model_name;
     bool _is_edac;
 };
 

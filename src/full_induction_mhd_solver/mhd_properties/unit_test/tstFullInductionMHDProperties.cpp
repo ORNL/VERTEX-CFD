@@ -26,7 +26,7 @@ class FullInductionMHDPropertiesTest : public ::testing::Test
 // Set up default (minimal inputs)
 void FullInductionMHDPropertiesTest::SetUp()
 {
-    Teuchos::ParameterList mhd_params;
+    const Teuchos::ParameterList mhd_params;
     mhd_props = std::make_unique<FullInductionMHDProperties>(mhd_params);
 }
 

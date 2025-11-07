@@ -14,25 +14,19 @@ template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleWallFunction<EvalType, Traits, NumSpaceDim>::IncompressibleWallFunction(
     const panzer::IntegrationRule& ir,
     const FluidProperties::ConstantFluidProperties& fluid_prop,
-    const std::string& continuity_model_name)
+    const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
     , _boundary_grad_lagrange_pressure("BOUNDARY_GRAD_lagrange_pressure",
                                        ir.dl_vector)
     , _boundary_temperature("BOUNDARY_temperature", ir.dl_scalar)
     , _boundary_grad_temperature("BOUNDARY_GRAD_temperature", ir.dl_vector)
-    , _boundary_u_tau("BOUNDARY_friction_velocity", ir.dl_scalar)
-    , _boundary_y_plus("BOUNDARY_y_plus", ir.dl_scalar)
-    , _boundary_nu_t("BOUNDARY_turbulent_eddy_viscosity", ir.dl_scalar)
     , _lagrange_pressure("lagrange_pressure", ir.dl_scalar)
     , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
     , _temperature("temperature", ir.dl_scalar)
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
     , _normals("Side Normal", ir.dl_vector)
-    , _rho(fluid_prop.constantDensity())
-    , _nu(fluid_prop.constantKinematicViscosity())
     , _solve_temp(fluid_prop.solveTemperature())
-    , _continuity_model_name(continuity_model_name)
-    , _is_edac(continuity_model_name == "EDAC" ? true : false)
+    , _is_edac(is_edac)
 {
     this->addEvaluatedField(_boundary_lagrange_pressure);
     if (_is_edac)
@@ -53,20 +47,12 @@ IncompressibleWallFunction<EvalType, Traits, NumSpaceDim>::IncompressibleWallFun
         this->addEvaluatedField(_boundary_grad_temperature);
     }
 
-    // Turbulence quantites obtained from corresponding wall function boundary
-    // state used for turbulence quantities.
-    this->addDependentField(_boundary_u_tau);
-    this->addDependentField(_boundary_y_plus);
-    this->addDependentField(_boundary_nu_t);
     Utils::addDependentVectorField(*this, ir.dl_scalar, _velocity, "velocity_");
     this->addDependentField(_lagrange_pressure);
     if (_is_edac)
         this->addDependentField(_grad_lagrange_pressure);
 
     this->addDependentField(_normals);
-
-    Utils::addDependentVectorField(
-        *this, ir.dl_vector, _grad_velocity, "GRAD_velocity_");
 
     this->setName("Boundary State Incompressible Wall Function "
                   + std::to_string(num_space_dim) + "D");
@@ -122,32 +108,20 @@ IncompressibleWallFunction<EvalType, Traits, NumSpaceDim>::operator()(
                         = _grad_temperature(cell, point, dim);
                 }
 
-                // NOTE:this only works for 2D cases with an inward-facing
-                // wall normal in the POSITIVE Y direction
                 for (int vel_dim = 0; vel_dim < num_space_dim; ++vel_dim)
                 {
-                    // Set du/dy according to wall function formulation
-                    if ((dim == 1) && (vel_dim == 0))
-                    {
-                        _boundary_grad_velocity[vel_dim](cell, point, dim)
-                            = _boundary_u_tau(cell, point)
-                              / _boundary_y_plus(cell, point)
-                              * _velocity[vel_dim](cell, point)
-                              / (_rho * (_nu + _boundary_nu_t(cell, point)));
-                    }
-                    // Set other components to interior values
-                    else
-                    {
-                        _boundary_grad_velocity[vel_dim](cell, point, dim)
-                            = _grad_velocity[vel_dim](cell, point, dim);
-                    }
-
-                    // Subtract normal component from velocity and temperature
-                    // gradient fields
+                    // Set no-penetration velocity condition
                     _boundary_velocity[dim](cell, point)
                         -= _velocity[vel_dim](cell, point)
                            * _normals(cell, point, vel_dim)
                            * _normals(cell, point, dim);
+
+                    // Set boundary velocity gradient to arbitrary value (zero)
+                    // The boundary velocity gradient is required for the
+                    // viscous flux closure, which is called on the boundary
+                    // for the continuity and energy equations even if a wall
+                    // function is used for velocity.
+                    _boundary_grad_velocity[dim](cell, point, vel_dim) = 0.0;
 
                     if (_solve_temp)
                     {
@@ -156,6 +130,14 @@ IncompressibleWallFunction<EvalType, Traits, NumSpaceDim>::operator()(
                         // function for the energy equation.
                         _boundary_grad_temperature(cell, point, dim)
                             -= _grad_temperature(cell, point, vel_dim)
+                               * _normals(cell, point, vel_dim)
+                               * _normals(cell, point, dim);
+                    }
+
+                    if (_is_edac)
+                    {
+                        _boundary_grad_lagrange_pressure(cell, point, dim)
+                            -= _grad_lagrange_pressure(cell, point, vel_dim)
                                * _normals(cell, point, vel_dim)
                                * _normals(cell, point, dim);
                     }

@@ -3,6 +3,8 @@
 
 #include "full_induction_mhd_solver/mhd_properties/VertexCFD_FullInductionMHDProperties.hpp"
 
+#include "utils/VertexCFD_Utils_MagneticDim.hpp"
+
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -55,7 +57,7 @@ class GodunovPowellSource : public panzer::EvaluatorWithBaseImpl<Traits>,
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         _velocity;
-    Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>, 3>
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, MagneticDim>
         _total_magnetic_field;
 };
 

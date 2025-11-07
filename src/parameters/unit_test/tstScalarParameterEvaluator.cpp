@@ -138,12 +138,12 @@ void testScalarParameterEvaluator()
     //
     // Note that p1 is not included to trigger the default evaluation.
     Teuchos::ParameterList plist;
-    Parameter::ScalarParameterInput input_2 = {"Parameter2"};
+    const Parameter::ScalarParameterInput input_2 = {"Parameter2"};
     plist.set("p2", input_2);
     plist.set("p3", 9.2);
-    Parameter::GeneralScalarParameterInput input_4 = {"GeneralParam1"};
+    const Parameter::GeneralScalarParameterInput input_4 = {"GeneralParam1"};
     plist.set("p4", input_4);
-    Parameter::GeneralScalarParameterInput input_5 = {"GeneralParam2"};
+    const Parameter::GeneralScalarParameterInput input_5 = {"GeneralParam2"};
     plist.set("p5", input_5);
     auto param_eval
         = Teuchos::rcp(new EvaluatorWithParameter<EvalType, panzer::Traits>(

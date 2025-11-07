@@ -19,25 +19,21 @@ template<class EvalType, class Traits, int NumSpaceDim>
 IncompressiblePlanarPoiseuilleExact<EvalType, Traits, NumSpaceDim>::
     IncompressiblePlanarPoiseuilleExact(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& user_params)
+        const Teuchos::ParameterList& closure_params)
     : _temperature("Exact_temperature", ir.dl_scalar)
     , _lagrange_pressure("Exact_lagrange_pressure", ir.dl_scalar)
-    , _nu(fluid_prop.constantKinematicViscosity())
-    , _rho(fluid_prop.constantDensity())
-    , _k(fluid_prop.constantThermalConductivity())
-    , _cp(fluid_prop.constantHeatCapacity())
+    , _nu(closure_params.get<double>("Kinematic viscosity"))
+    , _rho(closure_params.get<double>("Density"))
+    , _k(closure_params.get<double>("Thermal conductivity"))
+    , _cp(closure_params.get<double>("Specific heat capacity"))
     , _ir_degree(ir.cubature_degree)
 {
     // Read parameters from planar Poiseuille sublist
-    const Teuchos::ParameterList pp_list
-        = user_params.sublist("Planar Poiseuille Exact");
-
-    _h_min = pp_list.get<double>("H min");
-    _h_max = pp_list.get<double>("H max");
-    _T_l = pp_list.get<double>("Lower wall temperature");
-    _T_u = pp_list.get<double>("Upper wall temperature");
-    _S_u = pp_list.get<double>("Momentum source");
+    _h_min = closure_params.get<double>("H min");
+    _h_max = closure_params.get<double>("H max");
+    _T_l = closure_params.get<double>("Lower wall temperature");
+    _T_u = closure_params.get<double>("Upper wall temperature");
+    _S_u = closure_params.get<double>("Momentum source");
 
     // Evaluated fields
     this->addEvaluatedField(_temperature);
@@ -78,7 +74,7 @@ IncompressiblePlanarPoiseuilleExact<EvalType, Traits, NumSpaceDim>::operator()(
     const int cell = team.league_rank();
     const int num_point = _temperature.extent(1);
 
-    using std::pow;
+    using Kokkos::pow;
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {

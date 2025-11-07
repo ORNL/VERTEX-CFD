@@ -24,7 +24,7 @@ Step<EvalType, Traits>::Step(const Teuchos::ParameterList& params,
     _left_value = params.get<double>("Left Value");
     _right_value = params.get<double>("Right Value");
     _origin = params.get<double>("Origin");
-    std::string dof_name = params.get<std::string>("Equation Set Name");
+    const std::string dof_name = params.get<std::string>("Equation Set Name");
     _ic = PHX::MDField<scalar_type, panzer::Cell, panzer::BASIS>(
         dof_name, basis.functional);
     this->addEvaluatedField(_ic);

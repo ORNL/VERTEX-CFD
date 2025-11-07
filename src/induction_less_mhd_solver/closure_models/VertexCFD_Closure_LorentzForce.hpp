@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_LORENTZFORCE_HPP
 #define VERTEXCFD_CLOSURE_LORENTZFORCE_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -31,8 +29,7 @@ class LorentzForce : public panzer::EvaluatorWithBaseImpl<Traits>,
     static constexpr int num_space_dim = NumSpaceDim;
     static constexpr int field_size = 3;
 
-    LorentzForce(const panzer::IntegrationRule& ir,
-                 const FluidProperties::ConstantFluidProperties& fluid_prop);
+    LorentzForce(const panzer::IntegrationRule& ir);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -45,7 +42,7 @@ class LorentzForce : public panzer::EvaluatorWithBaseImpl<Traits>,
         _lorentz_force;
 
   private:
-    double _sigma;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _sigma;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_electric_potential;
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,

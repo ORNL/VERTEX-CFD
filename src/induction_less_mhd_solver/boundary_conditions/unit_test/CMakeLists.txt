@@ -5,5 +5,6 @@ VertexCFD_add_tests(
   LIBS VertexCFD
   NAMES
   TimeTransientElectricPotentialFixed
+  ElectricCurrentDensityInsulating
   ElectricPotentialInsulatingWall
   )

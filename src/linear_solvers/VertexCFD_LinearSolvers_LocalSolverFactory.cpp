@@ -43,7 +43,7 @@ LocalSolverFactory::buildSolver(const Teuchos::ParameterList& params)
 #endif
     else
     {
-        std::string msg = "Unrecognized local solver " + name;
+        const std::string msg = "Unrecognized local solver " + name;
         throw std::runtime_error(msg);
     }
 }

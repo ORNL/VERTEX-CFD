@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_METHODMANUFACTUREDSOLUTIONSOURCE_HPP
 #define VERTEXCFD_CLOSURE_METHODMANUFACTUREDSOLUTIONSOURCE_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -32,7 +30,7 @@ class MethodManufacturedSolutionSource
     MethodManufacturedSolutionSource(
         const panzer::IntegrationRule& ir,
         const bool build_viscous_flux,
-        const FluidProperties::ConstantFluidProperties& fluid_prop);
+        const Teuchos::ParameterList& closure_params);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;

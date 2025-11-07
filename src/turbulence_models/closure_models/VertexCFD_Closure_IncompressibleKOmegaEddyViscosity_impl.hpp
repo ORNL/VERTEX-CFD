@@ -13,7 +13,8 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleKOmegaEddyViscosity<EvalType, Traits, NumSpaceDim>::
-    IncompressibleKOmegaEddyViscosity(const panzer::IntegrationRule& ir)
+    IncompressibleKOmegaEddyViscosity(const panzer::IntegrationRule& ir,
+                                      const Teuchos::ParameterList& user_params)
     : _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
     , _turb_specific_dissipation_rate("turb_specific_dissipation_rate",
                                       ir.dl_scalar)
@@ -21,6 +22,28 @@ IncompressibleKOmegaEddyViscosity<EvalType, Traits, NumSpaceDim>::
     , _beta_star(0.09)
     , _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
 {
+    // Check for user-defined coefficients or parameters
+    if (user_params.isSublist("Turbulence Parameters"))
+    {
+        const Teuchos::ParameterList turb_list
+            = user_params.sublist("Turbulence Parameters");
+
+        if (turb_list.isSublist("K-Omega Parameters"))
+        {
+            const Teuchos::ParameterList k_w_list
+                = turb_list.sublist("K-Omega Parameters");
+
+            if (k_w_list.isType<double>("C_lim"))
+            {
+                _C_lim = k_w_list.get<double>("C_lim");
+            }
+
+            if (k_w_list.isType<double>("beta_star"))
+            {
+                _beta_star = k_w_list.get<double>("beta_star");
+            }
+        }
+    }
     // Add dependent fields
     this->addDependentField(_turb_kinetic_energy);
     this->addDependentField(_turb_specific_dissipation_rate);
@@ -52,8 +75,8 @@ KOKKOS_INLINE_FUNCTION void
 IncompressibleKOmegaEddyViscosity<EvalType, Traits, NumSpaceDim>::operator()(
     const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const
 {
-    using std::pow;
-    using std::sqrt;
+    using Kokkos::pow;
+    using Kokkos::sqrt;
 
     const int cell = team.league_rank();
     const int num_point = _nu_t.extent(1);
@@ -61,16 +84,18 @@ IncompressibleKOmegaEddyViscosity<EvalType, Traits, NumSpaceDim>::operator()(
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
-            scalar_type Sij_Sij = 0.0;
+            _nu_t(cell, point) = 0.0;
             for (int i = 0; i < num_space_dim; ++i)
             {
-                Sij_Sij += pow(_grad_velocity[i](cell, point, i), 2.0);
+                _nu_t(cell, point)
+                    += pow(_grad_velocity[i](cell, point, i), 2.0);
                 for (int j = i + 1; j < num_space_dim; ++j)
                 {
-                    Sij_Sij += 0.5
-                               * pow(_grad_velocity[i](cell, point, j)
-                                         + _grad_velocity[j](cell, point, i),
-                                     2.0);
+                    _nu_t(cell, point)
+                        += 0.5
+                           * pow(_grad_velocity[i](cell, point, j)
+                                     + _grad_velocity[j](cell, point, i),
+                                 2.0);
                 }
             }
             _nu_t(cell, point)
@@ -78,7 +103,7 @@ IncompressibleKOmegaEddyViscosity<EvalType, Traits, NumSpaceDim>::operator()(
                   / SmoothMath::max(
                       SmoothMath::max(
                           _turb_specific_dissipation_rate(cell, point),
-                          _C_lim * sqrt(2.0 * Sij_Sij / _beta_star),
+                          _C_lim * sqrt(2.0 * _nu_t(cell, point) / _beta_star),
                           0.0),
                       max_tol,
                       0.0);

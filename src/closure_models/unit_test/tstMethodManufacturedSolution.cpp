@@ -66,7 +66,7 @@ void testEval(const Kokkos::Array<double, size> expected_sol)
         = test_fixture.getTestFieldData<EvalType>(mms_eval->_temperature);
 
     // Check the scaled MMS solutions
-    int num_point = lagrange_pressure_result.extent(1);
+    const int num_point = lagrange_pressure_result.extent(1);
     for (int qp = 0; qp < num_point; ++qp)
     {
         EXPECT_DOUBLE_EQ(expected_sol[0],
@@ -137,7 +137,8 @@ void testFactory()
     const int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "MethodManufacturedSolution";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     if (num_space_dim == 2)

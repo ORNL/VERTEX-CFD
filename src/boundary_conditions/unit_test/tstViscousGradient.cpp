@@ -114,7 +114,7 @@ void testEval(const int num_space_dim)
     auto boundary_scaled_grad_result = test_fixture.getTestFieldData<EvalType>(
         viscous_gradient_eval->_scaled_grad);
 
-    int num_point = boundary_grad_result.extent(1);
+    const int num_point = boundary_grad_result.extent(1);
 
     // Loop over quadrature points and mesh dimension
     for (int qp = 0; qp < num_point; ++qp)

@@ -8,6 +8,7 @@
 #include "VertexCFD_PhysicsManager.hpp"
 
 #include "mesh/VertexCFD_Mesh_ExodusWriter.hpp"
+#include "mesh/VertexCFD_Mesh_GeometryData.hpp"
 #include "mesh/VertexCFD_Mesh_Restart.hpp"
 #include "observers/VertexCFD_Compute_ErrorNorms.hpp"
 #include "observers/VertexCFD_Compute_Volume.hpp"
@@ -25,17 +26,14 @@
 #include "responses/VertexCFD_ResponseManager.hpp"
 #include "responses/VertexCFD_Response_Utils.hpp"
 
-#include <Trilinos_version.h>
-
 #include <Tempus_IntegratorBasic.hpp>
 #include <Tempus_IntegratorObserverComposite.hpp>
 
 #include <NOX.H>
-#include <NOX_Observer_Vector.hpp>
-#if TRILINOS_MAJOR_MINOR_VERSION >= 160000
 #include <NOX_Observer_ReusePreconditionerFactory.hpp>
-#endif
+#include <NOX_Observer_Vector.hpp>
 
+#include <Panzer_ExplicitModelEvaluator.hpp>
 #include <Panzer_InitialCondition_Builder.hpp>
 #include <Panzer_NodeType.hpp>
 #include <Panzer_PauseToAttach.hpp>
@@ -106,7 +104,7 @@ void run_vertexcfd(
     auto profiling_params = parameter_db->profilingParameters();
 
     // Setup timers.
-    bool use_timers = Teuchos::nonnull(profiling_params);
+    const bool use_timers = Teuchos::nonnull(profiling_params);
     Teuchos::RCP<Teuchos::StackedTimer> stacked_timer;
     if (use_timers)
     {
@@ -143,96 +141,30 @@ void run_vertexcfd(
     auto physics = physics_manager->modelEvaluator();
     auto integration_order = physics_manager->integrationOrder();
 
+    // Create Sideset Geometry Object if needed
+    if (user_params->isType<std::string>("Wall Names"))
+    {
+        // Extract the wall names from input to be used to construct the
+        // Sideset Geometry object
+        std::vector<std::string> wall_names;
+        const auto wall_names_list
+            = user_params->get<std::string>("Wall Names");
+        panzer::StringTokenizer(wall_names, wall_names_list, ",", true);
+
+        // Create a SidesetGeometry instance needed for wall distance
+        auto sideset_geometry
+            = Teuchos::rcp(new VertexCFD::Mesh::Topology::SidesetGeometry(
+                mesh_manager->mesh(), wall_names));
+        user_params->set("Sideset Geometry", sideset_geometry);
+    }
+
     // Setup volume/surface responses.
     std::vector<int> response_output_freq;
-    auto responses = Teuchos::rcp(
-        new VertexCFD::Response::ResponseManager(physics_manager));
+    Teuchos::RCP<VertexCFD::Response::ResponseManager> responses;
     if (Teuchos::nonnull(response_output_params))
     {
-        if (response_output_params->numParams() > 0)
-        {
-            // Allow setting output frequency, defaulting to once at the end.
-            const auto default_output_freq = response_output_params->get<int>(
-                "Output Frequency", std::numeric_limits<int>::max());
-
-            for (auto param_itr = response_output_params->begin();
-                 param_itr != response_output_params->end();
-                 ++param_itr)
-            {
-                const auto& name = param_itr->first;
-
-                // Skip over any regular Parameters.
-                if (!response_output_params->isSublist(name))
-                    continue;
-
-                auto& plist = response_output_params->sublist(name);
-
-                const auto field_names_list
-                    = plist.get<std::string>("Field Name");
-                std::vector<std::string> field_names;
-                panzer::StringTokenizer(
-                    field_names, field_names_list, ",", true);
-                const int num_fields = field_names.size();
-
-                // Allow overriding output frequency for this response.
-                const auto output_freq
-                    = plist.get<int>("Output Frequency", default_output_freq);
-
-                // Get element blocks or sidesets for this response.
-                const auto workset_descriptors
-                    = VertexCFD::Response::buildWorksetDescriptors(plist);
-
-                // Add the response and save response output frequency
-                if (plist.isSublist("Probe "
-                                    "Coordinates"))
-                {
-                    const auto probe_list = plist.sublist("Probe Coordinates");
-                    for (int j = 0; j < num_fields; ++j)
-                    {
-                        for (int i = 0; i < probe_list.numParams(); ++i)
-                        {
-                            const std::string si = std::to_string(i + 1);
-                            const std::string pb_nm = "Probe " + si;
-                            const std::string name_ji = name + " " + si + " - "
-                                                        + field_names[j];
-                            const auto point_i
-                                = probe_list.get<Teuchos::Array<double>>(pb_nm);
-
-                            responses->addProbeResponse(name_ji,
-                                                        field_names[j],
-                                                        point_i,
-                                                        workset_descriptors);
-
-                            response_output_freq.emplace_back(output_freq);
-                        }
-                    }
-                }
-                else
-                {
-                    for (int j = 0; j < num_fields; ++j)
-                    {
-                        const std::string name_j = name + " - "
-                                                   + field_names[j];
-                        if (std::string::npos != name.find("Max"))
-                        {
-                            responses->addMaxValueResponse(
-                                name_j, field_names[j], workset_descriptors);
-                        }
-                        else if (std::string::npos != name.find("Min"))
-                        {
-                            responses->addMinValueResponse(
-                                name_j, field_names[j], workset_descriptors);
-                        }
-                        else
-                        {
-                            responses->addFunctionalResponse(
-                                name_j, field_names[j], workset_descriptors);
-                        }
-                        response_output_freq.emplace_back(output_freq);
-                    }
-                }
-            }
-        }
+        responses = VertexCFD::Response::createResponseManager(
+            physics_manager, *response_output_params, response_output_freq);
     }
 
     // Setup time step control. This adds a response, so must be built before
@@ -283,7 +215,7 @@ void run_vertexcfd(
                                               *output_params));
 
         // Create io response evaluators.
-        panzer_stk::IOClosureModelFactory_TemplateBuilder<panzer::Traits>
+        const panzer_stk::IOClosureModelFactory_TemplateBuilder<panzer::Traits>
             io_cm_builder(*cm_factory, mesh, *output_params);
         panzer::ClosureModelFactory_TemplateManager<panzer::Traits> io_cm_factory;
         io_cm_factory.buildObjects(io_cm_builder);
@@ -306,7 +238,6 @@ void run_vertexcfd(
     nox_observer_vector->pushBack(nox_iteration_observer);
 
     // If available/requested, make an observer to reuse preconditioner
-#if TRILINOS_MAJOR_MINOR_VERSION >= 160000
     auto& nox_params = solver_params->sublist("Default Stepper")
                            .sublist("Default Solver")
                            .sublist("NOX");
@@ -316,7 +247,6 @@ void run_vertexcfd(
             nox_params.sublist("Reuse Preconditioner"));
         nox_observer_vector->pushBack(nox_prec_reuse_observer);
     }
-#endif
 
     // Register observer vector with NOX parameters
     solver_params->sublist("Default Stepper")
@@ -326,8 +256,7 @@ void run_vertexcfd(
         .set<Teuchos::RCP<NOX::Observer>>("User Defined Pre/Post Operator",
                                           nox_observer_vector);
 
-    // Setup time integrator -- toggle interface on Trilinos version
-#if TRILINOS_MAJOR_MINOR_VERSION >= 130100
+    // Setup time integrator
     // Remove Tempus entries that are deprecated in Trilinos 13.2
     auto integrator_params
         = Teuchos::sublist(solver_params, "Default Integrator");
@@ -338,9 +267,32 @@ void run_vertexcfd(
     tsc_params->remove("Integrator Step Type", false);
     auto integrator
         = Tempus::createIntegratorBasic<double>(solver_params, physics);
-#else
-    auto integrator = Tempus::integratorBasic<double>(solver_params, physics);
-#endif
+
+    if (integrator->getStepper()->isExplicit())
+    {
+        bool lump_explicit_mass = false;
+        bool constant_mass_matrix = true;
+        if (solver_params->isSublist("Assembly"))
+        {
+            const Teuchos::ParameterList& assembly_params
+                = solver_params->sublist("Assembly");
+            if (assembly_params.isType<bool>("Lump Explicit Mass"))
+            {
+                lump_explicit_mass
+                    = assembly_params.get<bool>("Lump Explicit Mass");
+            }
+            if (assembly_params.isType<bool>("Constant Mass Matrix"))
+            {
+                constant_mass_matrix
+                    = assembly_params.get<bool>("Constant Mass Matrix");
+            }
+        }
+
+        const auto explicit_physics
+            = Teuchos::RCP(new panzer::ExplicitModelEvaluator<double>(
+                physics, constant_mass_matrix, lump_explicit_mass));
+        integrator->setModel(explicit_physics);
+    }
 
     // Build a composite observer containing all of our tempus observers.
     auto integrator_observer
@@ -509,10 +461,10 @@ int main(int argc, char* argv[])
     // Start MPI. Panzer and other Trilinos components want the Teuchos MPI
     // environment initialized so we need to do this here. We can still get
     // raw MPI communicators as needed.
-    Teuchos::GlobalMPISession mpi_session(&argc, &argv, nullptr);
+    const Teuchos::GlobalMPISession mpi_session(&argc, &argv, nullptr);
 
     // Kokkos scopeguard (initialize and finalize)
-    Kokkos::ScopeGuard kokkos(argc, argv);
+    const Kokkos::ScopeGuard kokkos(argc, argv);
 
     // Get the MPI communicator.
     auto comm = Teuchos::rcp_dynamic_cast<const Teuchos::MpiComm<int>>(

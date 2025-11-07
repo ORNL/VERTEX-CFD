@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_ELECTRICCURRENTDENSITY_HPP
 #define VERTEXCFD_CLOSURE_ELECTRICCURRENTDENSITY_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -31,9 +29,7 @@ class ElectricCurrentDensity : public panzer::EvaluatorWithBaseImpl<Traits>,
     static constexpr int num_space_dim = NumSpaceDim;
     static constexpr int field_size = 3;
 
-    ElectricCurrentDensity(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop);
+    ElectricCurrentDensity(const panzer::IntegrationRule& ir);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -48,14 +44,13 @@ class ElectricCurrentDensity : public panzer::EvaluatorWithBaseImpl<Traits>,
   private:
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_electric_potential;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _sigma;
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         _velocity;
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   field_size>
         _ext_magn_field;
-
-    double _sigma;
 };
 
 //---------------------------------------------------------------------------//

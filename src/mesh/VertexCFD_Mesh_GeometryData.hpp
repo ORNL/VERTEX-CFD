@@ -86,9 +86,10 @@ class SidesetGeometry
         MPI_Comm mpi_comm = Teuchos::getRawMpiComm(*comm);
 
         // Get extents.
-        int num_space_dim = _topology->getDimension();
-        int nodes_per_side = _topology->getVertexCount(num_space_dim - 1, 0);
-        int side_data_count = nodes_per_side * num_space_dim;
+        const int num_space_dim = _topology->getDimension();
+        const int nodes_per_side
+            = _topology->getVertexCount(num_space_dim - 1, 0);
+        const int side_data_count = nodes_per_side * num_space_dim;
 
         // Compose gather communication pattern.
         std::vector<int> global_counts(comm->getSize(), 0);

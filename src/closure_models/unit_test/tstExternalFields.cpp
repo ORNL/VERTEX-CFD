@@ -47,7 +47,7 @@ void testEval()
     // right now.
     const std::string location = VERTEXCFD_DRIVER_TEST_INPUT_DIR;
     const std::string file = "simple_box_2d.xml";
-    std::string file_path = location + file;
+    const std::string file_path = location + file;
 
     // Create external field data.
     auto fields_manager
@@ -72,7 +72,7 @@ void testEval()
 
     // Create an external field evaluator.
     const std::string eval_name = "external_fields";
-    std::vector<std::string> field_names
+    const std::vector<std::string> field_names
         = {"lagrange_pressure", "velocity_0", "velocity_1"};
     auto external_field_eval = Teuchos::rcp(
         new ClosureModel::ExternalFields<EvalType, panzer::Traits>(

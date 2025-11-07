@@ -1,8 +1,7 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousHeat.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <gtest/gtest.h>
 
@@ -20,16 +19,22 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     // quiet_NaN is a host-side function so we store the value
     const double _nanval = std::numeric_limits<double>::quiet_NaN();
 
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> rho;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> nu;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> grad_vel_0;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> grad_vel_1;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> grad_vel_2;
 
     Dependencies(const panzer::IntegrationRule& ir)
-        : grad_vel_0("GRAD_velocity_0", ir.dl_vector)
+        : rho("density", ir.dl_scalar)
+        , nu("kinematic_viscosity", ir.dl_scalar)
+        , grad_vel_0("GRAD_velocity_0", ir.dl_vector)
         , grad_vel_1("GRAD_velocity_1", ir.dl_vector)
         , grad_vel_2("GRAD_velocity_2", ir.dl_vector)
 
     {
+        this->addEvaluatedField(rho);
+        this->addEvaluatedField(nu);
         this->addEvaluatedField(grad_vel_0);
         this->addEvaluatedField(grad_vel_1);
         this->addEvaluatedField(grad_vel_2);
@@ -52,6 +57,8 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         using std::pow;
         for (int qp = 0; qp < num_point; ++qp)
         {
+            rho(c, qp) = 1.0;
+            nu(c, qp) = 0.375;
             for (int dim = 0; dim < num_space_dim; ++dim)
             {
                 const int sign = pow(-1, dim + 1);
@@ -81,18 +88,10 @@ void testEval()
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Initialize class object to test
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Build Temperature Equation", true);
-    fluid_prop_list.set("Kinematic viscosity", 0.375);
-    fluid_prop_list.set("Density", 1.0);
-    fluid_prop_list.set("Artificial compressibility", 1.0);
-    fluid_prop_list.set("Thermal conductivity", 1.0);
-    fluid_prop_list.set("Specific heat capacity", 1.0);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
     auto eval = Teuchos::rcp(
-        new ClosureModel::
-            IncompressibleViscousHeat<EvalType, panzer::Traits, num_space_dim>(
-                ir, fluid_prop));
+        new ClosureModel::IncompressibleViscousHeat<EvalType,
+                                                    panzer::Traits,
+                                                    num_space_dim>(ir));
 
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(
@@ -167,7 +166,8 @@ void testFactory()
     test_fixture.type_name = "IncompressibleViscousHeat";
     test_fixture.eval_name = "Incompressible Viscous Heat "
                              + std::to_string(num_space_dim) + "D";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.template buildAndTest<

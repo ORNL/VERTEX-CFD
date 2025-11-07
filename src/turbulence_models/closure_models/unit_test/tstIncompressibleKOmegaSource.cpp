@@ -101,7 +101,12 @@ void testEval(const bool limited)
     // Create parameter list for user-defined constants
     Teuchos::ParameterList user_params;
     user_params.sublist("Turbulence Parameters")
-        .set<bool>("Limit Production Term", limited);
+        .sublist("K-Omega Parameters")
+        .set<bool>("Limit Production Term", limited)
+        .set<double>("beta_star", 0.1)
+        .set<double>("gamma", 0.5)
+        .set<double>("beta_0", 0.071)
+        .set<double>("sigma_d", 0.13);
 
     // Eval dependencies
     const auto deps = Teuchos::rcp(new Dependencies<EvalType, NumSpaceDim>(ir));
@@ -124,12 +129,12 @@ void testEval(const bool limited)
         = test_fixture.getTestFieldData<EvalType>(eval->_w_source);
 
     // Expected values
-    double exp_k_source = num_space_dim == 3 ? 5.1781125 : 2.3078;
-    const double exp_w_source = num_space_dim == 3 ? 89.20778886166762
-                                                   : 39.63353525141912;
+    double exp_k_source = num_space_dim == 3 ? 5.1748125 : 2.3045;
+    const double exp_w_source = num_space_dim == 3 ? 85.7886404553361
+                                                   : 38.09597572710988;
     if (limited)
     {
-        exp_k_source = 0.5643;
+        exp_k_source = 0.627;
     }
 
     // Assert values

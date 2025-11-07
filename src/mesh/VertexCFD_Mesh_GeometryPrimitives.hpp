@@ -40,13 +40,13 @@ KOKKOS_INLINE_FUNCTION int tetCheck(SideViewType& sides_view,
 {
     // calculate the intersection location of the point and plane along the
     // normal vector
-    double t1 = normals_view(side, 0) * sides_view(side, index[0], 0)
-                + normals_view(side, 1) * sides_view(side, index[0], 1)
-                + normals_view(side, 2) * sides_view(side, index[0], 2);
-    double t2 = normals_view(side, 0) * ip_view(cell, point, 0)
-                + normals_view(side, 1) * ip_view(cell, point, 1)
-                + normals_view(side, 2) * ip_view(cell, point, 2);
-    double param = t1 - t2;
+    const double t1 = normals_view(side, 0) * sides_view(side, index[0], 0)
+                      + normals_view(side, 1) * sides_view(side, index[0], 1)
+                      + normals_view(side, 2) * sides_view(side, index[0], 2);
+    const double t2 = normals_view(side, 0) * ip_view(cell, point, 0)
+                      + normals_view(side, 1) * ip_view(cell, point, 1)
+                      + normals_view(side, 2) * ip_view(cell, point, 2);
+    const double param = t1 - t2;
 
     double intersection_point[3];
     double line_a_int[3];
@@ -84,9 +84,9 @@ KOKKOS_INLINE_FUNCTION int tetCheck(SideViewType& sides_view,
     // calculate unit normal vector of triangle abp
     double norm_abp[3];
     crossProduct(line_ba, line_b_int, norm_abp);
-    double n_abp_mag = sqrt(norm_abp[0] * norm_abp[0]
-                            + norm_abp[1] * norm_abp[1]
-                            + norm_abp[2] * norm_abp[2]);
+    const double n_abp_mag = sqrt(norm_abp[0] * norm_abp[0]
+                                  + norm_abp[1] * norm_abp[1]
+                                  + norm_abp[2] * norm_abp[2]);
     if (n_abp_mag != 0)
     {
         for (int dim = 0; dim < 3; ++dim)
@@ -98,9 +98,9 @@ KOKKOS_INLINE_FUNCTION int tetCheck(SideViewType& sides_view,
     // calculate unit normal vector of triangle bcp
     double norm_bcp[3];
     crossProduct(line_cb, line_c_int, norm_bcp);
-    double n_bcp_mag = sqrt(norm_bcp[0] * norm_bcp[0]
-                            + norm_bcp[1] * norm_bcp[1]
-                            + norm_bcp[2] * norm_bcp[2]);
+    const double n_bcp_mag = sqrt(norm_bcp[0] * norm_bcp[0]
+                                  + norm_bcp[1] * norm_bcp[1]
+                                  + norm_bcp[2] * norm_bcp[2]);
     if (n_bcp_mag != 0)
     {
         for (int dim = 0; dim < 3; ++dim)
@@ -112,9 +112,9 @@ KOKKOS_INLINE_FUNCTION int tetCheck(SideViewType& sides_view,
     // calculate unit normal vector of triangle cap
     double norm_cap[3];
     crossProduct(line_ac, line_a_int, norm_cap);
-    double n_cap_mag = sqrt(norm_cap[0] * norm_cap[0]
-                            + norm_cap[1] * norm_cap[1]
-                            + norm_cap[2] * norm_cap[2]);
+    const double n_cap_mag = sqrt(norm_cap[0] * norm_cap[0]
+                                  + norm_cap[1] * norm_cap[1]
+                                  + norm_cap[2] * norm_cap[2]);
     if (n_cap_mag != 0)
     {
         for (int dim = 0; dim < 3; ++dim)
@@ -125,15 +125,15 @@ KOKKOS_INLINE_FUNCTION int tetCheck(SideViewType& sides_view,
 
     int tet_flag = -1;
 
-    double abp = norm_abp[0] * normals_view(side, 0)
-                 + norm_abp[1] * normals_view(side, 1)
-                 + norm_abp[2] * normals_view(side, 2);
-    double bcp = norm_bcp[0] * normals_view(side, 0)
-                 + norm_bcp[1] * normals_view(side, 1)
-                 + norm_bcp[2] * normals_view(side, 2);
-    double cap = norm_cap[0] * normals_view(side, 0)
-                 + norm_cap[1] * normals_view(side, 1)
-                 + norm_cap[2] * normals_view(side, 2);
+    const double abp = norm_abp[0] * normals_view(side, 0)
+                       + norm_abp[1] * normals_view(side, 1)
+                       + norm_abp[2] * normals_view(side, 2);
+    const double bcp = norm_bcp[0] * normals_view(side, 0)
+                       + norm_bcp[1] * normals_view(side, 1)
+                       + norm_bcp[2] * normals_view(side, 2);
+    const double cap = norm_cap[0] * normals_view(side, 0)
+                       + norm_cap[1] * normals_view(side, 1)
+                       + norm_cap[2] * normals_view(side, 2);
 
     if (abp > 0.01 && bcp > 0.01 && cap > 0.01)
     {
@@ -181,14 +181,14 @@ KOKKOS_INLINE_FUNCTION double planeIntersect(SideViewType& sides_view,
 {
     // calculate n_hat * a - n_hat * p, which defines the distance to the
     // interaction point
-    double t1 = normals_view(side, 0) * sides_view(side, 0, 0)
-                + normals_view(side, 1) * sides_view(side, 0, 1)
-                + normals_view(side, 2) * sides_view(side, 0, 2);
-    double t2 = normals_view(side, 0) * ip_view(cell, point, 0)
-                + normals_view(side, 1) * ip_view(cell, point, 1)
-                + normals_view(side, 2) * ip_view(cell, point, 2);
-    double param = t1 - t2;
-    double distance = std::abs(param);
+    const double t1 = normals_view(side, 0) * sides_view(side, 0, 0)
+                      + normals_view(side, 1) * sides_view(side, 0, 1)
+                      + normals_view(side, 2) * sides_view(side, 0, 2);
+    const double t2 = normals_view(side, 0) * ip_view(cell, point, 0)
+                      + normals_view(side, 1) * ip_view(cell, point, 1)
+                      + normals_view(side, 2) * ip_view(cell, point, 2);
+    const double param = t1 - t2;
+    const double distance = std::abs(param);
 
     return distance;
 }
@@ -296,7 +296,7 @@ distanceToTriangleFace(SideViewType& sides_view,
     normals_view(side, 0) = normal_abc[0];
     normals_view(side, 1) = normal_abc[1];
     normals_view(side, 2) = normal_abc[2];
-    double normal_mag
+    const double normal_mag
         = std::sqrt(normals_view(side, 0) * normals_view(side, 0)
                     + normals_view(side, 1) * normals_view(side, 1)
                     + normals_view(side, 2) * normals_view(side, 2));

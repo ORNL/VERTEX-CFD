@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_INITIALCONDITION_INCOMPRESSIBLELAMINARFLOW_HPP
 #define VERTEXCFD_INITIALCONDITION_INCOMPRESSIBLELAMINARFLOW_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 #include <Panzer_PureBasis.hpp>
@@ -31,10 +29,9 @@ class IncompressibleLaminarFlow
     using view_layout = typename PHX::DevLayout<scalar_type>::type;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleLaminarFlow(
-        const Teuchos::ParameterList& ic_params,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const panzer::PureBasis& basis);
+    IncompressibleLaminarFlow(const Teuchos::ParameterList& ic_params,
+                              const bool solve_temp,
+                              const panzer::PureBasis& basis);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;

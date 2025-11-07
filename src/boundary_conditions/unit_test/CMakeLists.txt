@@ -4,6 +4,8 @@ include(${TEST_HARNESS_DIR}/TestHarness.cmake)
 VertexCFD_add_tests(
   LIBS VertexCFD
   NAMES
+  VariableExtrapolate
+  VariableFixed
   ViscousGradient
   ViscousPenaltyParameter
   MethodManufacturedSolutionBC

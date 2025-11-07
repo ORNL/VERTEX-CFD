@@ -5,6 +5,8 @@
 
 #include <Panzer_HierarchicParallelism.hpp>
 
+#include <string>
+
 namespace VertexCFD
 {
 namespace BoundaryCondition
@@ -20,7 +22,7 @@ IncompressibleDirichlet<EvalType, Traits, NumSpaceDim>::IncompressibleDirichlet(
     const panzer::IntegrationRule& ir,
     const FluidProperties::ConstantFluidProperties& fluid_prop,
     const Teuchos::ParameterList& bc_params,
-    const std::string& continuity_model_name)
+    const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
     , _boundary_grad_lagrange_pressure("BOUNDARY_GRAD_lagrange_pressure",
                                        ir.dl_vector)
@@ -30,8 +32,7 @@ IncompressibleDirichlet<EvalType, Traits, NumSpaceDim>::IncompressibleDirichlet(
     , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
     , _solve_temp(fluid_prop.solveTemperature())
-    , _continuity_model_name(continuity_model_name)
-    , _is_edac(continuity_model_name == "EDAC" ? true : false)
+    , _is_edac(is_edac)
 {
     // Calculate the coefficients 'a' and 'b' for the linear time ramping
     // f(t) = a * t + b for each variable

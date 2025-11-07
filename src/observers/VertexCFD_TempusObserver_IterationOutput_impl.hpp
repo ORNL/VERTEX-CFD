@@ -25,7 +25,7 @@ template<class Scalar>
 void IterationOutput<Scalar>::observeStartIntegrator(
     const Tempus::Integrator<Scalar>& integrator)
 {
-    std::time_t begin = std::time(nullptr);
+    const std::time_t begin = std::time(nullptr);
     _ostream << "\n==========================================================="
                 "=================\n"
              << "Time Integration Begin\n"
@@ -126,7 +126,7 @@ void IterationOutput<Scalar>::observeEndIntegrator(
     {
         exit_status = "Time integration complete.";
     }
-    std::time_t end = std::time(nullptr);
+    const std::time_t end = std::time(nullptr);
     const auto runtime_sec
         = integrator.getIntegratorTimer()->totalElapsedTime();
     const auto runtime_min = runtime_sec / 60;

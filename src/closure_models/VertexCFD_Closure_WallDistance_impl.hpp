@@ -1,12 +1,8 @@
 #ifndef VERTEXCFD_CLOSURE_WALLDISTANCE_IMPL_HPP
 #define VERTEXCFD_CLOSURE_WALLDISTANCE_IMPL_HPP
 
-#include <drivers/VertexCFD_MeshManager.hpp>
-#include <mesh/VertexCFD_Mesh_GeometryData.hpp>
-#include <mesh/VertexCFD_Mesh_GeometryPrimitives.hpp>
+#include "mesh/VertexCFD_Mesh_GeometryPrimitives.hpp"
 
-#include <Panzer_HierarchicParallelism.hpp>
-#include <Panzer_String_Utilities.hpp>
 #include <Panzer_Workset_Utilities.hpp>
 
 #include <cmath>
@@ -20,27 +16,15 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 WallDistance<EvalType, Traits, NumSpaceDim>::WallDistance(
     const panzer::IntegrationRule& ir,
-    Teuchos::RCP<MeshManager> mesh_manager,
-    const Teuchos::ParameterList closure_params)
+    Teuchos::RCP<Mesh::Topology::SidesetGeometry> sideset_geometry)
     : _distance("distance", ir.dl_scalar)
     , _ir_degree(ir.cubature_degree)
 {
     this->addEvaluatedField(_distance);
     this->setName("distance");
 
-    // Extract the wall names from input to be used to construct the _sides
-    // view
-    std::vector<std::string> wall_names;
-    auto wall_names_list = closure_params.get<std::string>("Wall Names");
-    panzer::StringTokenizer(wall_names, wall_names_list, ",", true);
-
-    // create a sidesetGeometry instance and store the side data in the _sides
-    // view
-    VertexCFD::Mesh::Topology::SidesetGeometry surfaces(mesh_manager->mesh(),
-                                                        wall_names);
-    _topology = surfaces.topology();
-    _key = _topology->getKey();
-    _sides = surfaces.sides();
+    _key = sideset_geometry->topology()->getKey();
+    _sides = sideset_geometry->sides();
 
     _normals = Kokkos::View<double**, PHX::mem_space>(
         "normals", _sides.extent(0), num_space_dim);
@@ -139,11 +123,11 @@ WallDistance<EvalType, Traits, NumSpaceDim>::operator()(RegistrationTag,
                 if (_key == shards::Hexahedron<8>::key)
                 {
                     int index[3] = {0, 1, 2};
-                    double t2 = GeometryPrimitives::distanceToTriangleFace(
+                    const double t2 = GeometryPrimitives::distanceToTriangleFace(
                         _sides, _normals, n, _ip_coords, cell, point, index);
                     index[1] = 2;
                     index[2] = 3;
-                    double t1 = GeometryPrimitives::distanceToTriangleFace(
+                    const double t1 = GeometryPrimitives::distanceToTriangleFace(
                         _sides, _normals, n, _ip_coords, cell, point, index);
                     temp = std::fmin(t1, t2);
                 }

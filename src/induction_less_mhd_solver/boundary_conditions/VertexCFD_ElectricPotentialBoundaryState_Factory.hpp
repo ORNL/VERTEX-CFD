@@ -1,6 +1,7 @@
 #ifndef VERTEXCFD_ELECTRICPOTENTIALBOUNDARYSTATE_FACTORY_HPP
 #define VERTEXCFD_ELECTRICPOTENTIALBOUNDARYSTATE_FACTORY_HPP
 
+#include "induction_less_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_ElectricCurrentDensityInsulating.hpp"
 #include "induction_less_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_ElectricPotentialFixed.hpp"
 #include "induction_less_mhd_solver/boundary_conditions/VertexCFD_BoundaryState_ElectricPotentialInsulatingWall.hpp"
 
@@ -23,6 +24,8 @@ class ElectricPotentialBoundaryStateFactory
            const Teuchos::ParameterList& bc_params,
            const Teuchos::ParameterList& /*user_params*/)
     {
+        constexpr int num_space_dim = NumSpaceDim;
+
         // Loop over boundary conditions
         Teuchos::RCP<PHX::Evaluator<Traits>> state;
         bool found_model = false;
@@ -36,10 +39,21 @@ class ElectricPotentialBoundaryStateFactory
                 found_model = true;
             }
 
-            if (bc_params.get<std::string>("Type") == "InsulatingWall")
+            if (bc_params.get<std::string>("Type")
+                == "ElectricPotentialInsulatingWall")
             {
                 state = Teuchos::rcp(
                     new ElectricPotentialInsulatingWall<EvalType, Traits>(ir));
+                found_model = true;
+            }
+
+            if (bc_params.get<std::string>("Type")
+                == "ElectricCurrentDensityInsulating")
+            {
+                state = Teuchos::rcp(
+                    new ElectricCurrentDensityInsulating<EvalType,
+                                                         Traits,
+                                                         num_space_dim>(ir));
                 found_model = true;
             }
         }
@@ -52,7 +66,8 @@ class ElectricPotentialBoundaryStateFactory
             msg += "The boundary conditions implemented in VertexCFD\n";
             msg += "for the electric potential equation are:\n";
             msg += "Fixed,\n";
-            msg += "InsulatingWall,\n";
+            msg += "ElectricCurrentDensityInsulating,\n";
+            msg += "ElectricPotentialInsulatingWall,\n";
             msg += "\n";
             throw std::runtime_error(msg);
         }

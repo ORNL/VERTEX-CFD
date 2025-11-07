@@ -31,7 +31,7 @@ template<class EvalType>
 void testEval()
 {
     // Setup test fixture.
-    int num_space_dim = 2;
+    const int num_space_dim = 2;
     const int integration_order = 2;
     const int basis_order = 1;
     EvaluatorTestFixture test_fixture(
@@ -53,7 +53,7 @@ void testEval()
     // Check the MFEM element length.
     auto element_length_result = test_fixture.getTestFieldData<EvalType>(
         measure_element_length_eval->_element_length);
-    int num_point = element_length_result.extent(1);
+    const int num_point = element_length_result.extent(1);
     for (int qp = 0; qp < num_point; ++qp)
     {
         EXPECT_DOUBLE_EQ(0.5, fieldValue(element_length_result, 0, qp, 0));
@@ -82,7 +82,8 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "MeasureElementLength";
     test_fixture.eval_name = "Measure Element Length";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.template buildAndTest<

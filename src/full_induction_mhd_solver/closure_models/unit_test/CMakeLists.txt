@@ -18,4 +18,7 @@ VertexCFD_add_tests(
   FullInductionLocalTimeStepSize
   ResistivityFactory
   InductionConstantSource
+  SolidFullInductionFactory
+  SolidFullInductionConvectiveFlux
+  SolidFullInductionLocalTimeStepSize
   )

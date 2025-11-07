@@ -106,14 +106,14 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
     EvaluatorTestFixture test_fixture(
         num_space_dim, integration_order, basis_order);
 
-    std::string continuity_model_name = "";
+    bool is_edac = false;
     switch (continuity_model)
     {
         case (ContinuityModel::AC):
-            continuity_model_name = "AC";
+            is_edac = false;
             break;
         case (ContinuityModel::EDAC):
-            continuity_model_name = "EDAC";
+            is_edac = true;
             break;
     }
 
@@ -161,10 +161,9 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
 
     // Create evaluator.
     auto bc_eval = Teuchos::rcp(
-        new BoundaryCondition::IncompressibleCavityLid<EvalType,
-                                                       panzer::Traits,
-                                                       num_space_dim>(
-            *test_fixture.ir, fluid_prop, bc_params, continuity_model_name));
+        new BoundaryCondition::
+            IncompressibleCavityLid<EvalType, panzer::Traits, num_space_dim>(
+                *test_fixture.ir, fluid_prop, bc_params, is_edac));
     test_fixture.registerEvaluator<EvalType>(bc_eval);
 
     // Add required test fields.

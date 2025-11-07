@@ -36,7 +36,7 @@ void testEval()
     const int num_point = ic.extent(1);
 
     // Number of degree of freedom
-    int num_dofs = 4;
+    const int num_dofs = 4;
     EXPECT_EQ(num_dofs, num_point);
 
     for (int b = 0; b < num_point; ++b)

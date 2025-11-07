@@ -22,11 +22,10 @@ template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleTaylorGreenVortexExactSolution<EvalType, Traits, NumSpaceDim>::
     IncompressibleTaylorGreenVortexExactSolution(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop)
+        const Teuchos::ParameterList& closure_params)
     : _lagrange_pressure("Exact_lagrange_pressure", ir.dl_scalar)
+    , _nu(closure_params.get<double>("Kinematic Viscosity"))
     , _ir_degree(ir.cubature_degree)
-    , _nu(fluid_prop.constantKinematicViscosity())
-    , _Ft(0.0)
 {
     this->addEvaluatedField(_lagrange_pressure);
     Utils::addEvaluatedVectorField(
@@ -52,9 +51,7 @@ void IncompressibleTaylorGreenVortexExactSolution<EvalType, Traits, NumSpaceDim>
     auto policy = panzer::HP::inst().teamPolicy<scalar_type, PHX::Device>(
         workset.num_cells);
 
-    using std::exp;
     _Ft = exp(-2.0 * _nu * workset.time);
-    _time = workset.time;
 
     _ip_coords = workset.int_rules[_ir_index]->ip_coordinates;
     Kokkos::parallel_for(this->getName(), policy, *this);
@@ -69,8 +66,9 @@ operator()(const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const
     const int cell = team.league_rank();
     const int num_point = _lagrange_pressure.extent(1);
 
-    using std::cos;
-    using std::sin;
+    using Kokkos::cos;
+    using Kokkos::exp;
+    using Kokkos::sin;
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {

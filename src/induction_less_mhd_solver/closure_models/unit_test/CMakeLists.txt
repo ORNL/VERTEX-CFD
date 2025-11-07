@@ -7,6 +7,10 @@ VertexCFD_add_tests(
   ElectricPotentialDiffusionFlux
   ElectricPotentialCrossProductFlux
   ElectricCurrentDensity
+  JouleHeatingSource
   LorentzForce
   HartmannProblem
+  SolidElectricConductivity
+  SolidElectricPotentialDiffusionFlux
+  SolidElectricPotentialErrorNorms
   )

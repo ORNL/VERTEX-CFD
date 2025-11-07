@@ -44,4 +44,10 @@
     PANZER_INSTANTIATE_TEMPLATE_CLASS_THREE_T(name, 2)                     \
     PANZER_INSTANTIATE_TEMPLATE_CLASS_THREE_T(name, 3)
 
+// Explicit instantation of <EvalType,Traits,NumSpaceDim,ValueType> classes.
+#define VERTEXCFD_INSTANTIATE_TEMPLATE_CLASS_EVAL_TRAITS_NUMSPACEDIM_VALUE( \
+    name, value)                                                            \
+    PANZER_INSTANTIATE_TEMPLATE_CLASS_FOUR_T(name, 2, value)                \
+    PANZER_INSTANTIATE_TEMPLATE_CLASS_FOUR_T(name, 3, value)
+
 #endif // end VERTEXCFD_UTILS_EXPLICITTEMPLATEINSTANTIATION_HPP

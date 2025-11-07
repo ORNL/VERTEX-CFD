@@ -1,7 +1,6 @@
 #include <VertexCFD_EvaluatorTestHarness.hpp>
 #include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 #include "induction_less_mhd_solver/closure_models/VertexCFD_Closure_ElectricPotentialDiffusionFlux.hpp"
 
 #include <gtest/gtest.h>
@@ -16,13 +15,16 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
 {
     using scalar_type = typename EvalType::ScalarT;
 
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> sigma;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         grad_electric_potential;
 
     Dependencies(const panzer::IntegrationRule& ir, std::string grad_prefix)
-        : grad_electric_potential(grad_prefix + "GRAD_electric_potential",
+        : sigma("electrical_conductivity", ir.dl_scalar)
+        , grad_electric_potential(grad_prefix + "GRAD_electric_potential",
                                   ir.dl_vector)
     {
+        this->addEvaluatedField(sigma);
         this->addEvaluatedField(grad_electric_potential);
         this->setName(
             "Electric Potential Diffusion Flux Unit Test Dependencies");
@@ -41,9 +43,12 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         const int num_point = grad_electric_potential.extent(1);
         const int num_grad_dim = grad_electric_potential.extent(2);
         for (int qp = 0; qp < num_point; ++qp)
+        {
+            sigma(c, qp) = 3.0;
             for (int dim = 0; dim < num_grad_dim; ++dim)
                 grad_electric_potential(c, qp, dim) = 1.5 * (qp + 1)
                                                       * (dim + 1);
+        }
     }
 };
 
@@ -66,18 +71,9 @@ void testEval(const int num_grad_dim,
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Initialize closure model constructor
-    const double sigma = 3.0;
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.375);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", false);
-    fluid_prop_list.set("Build Inductionless MHD Equation", true);
-    fluid_prop_list.set("Electrical conductivity", sigma);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
-
     const auto eval = Teuchos::rcp(
         new ClosureModel::ElectricPotentialDiffusionFlux<EvalType, panzer::Traits>(
-            ir, fluid_prop, flux_prefix, grad_prefix));
+            ir, flux_prefix, grad_prefix));
 
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_electric_potential_flux);
@@ -87,6 +83,7 @@ void testEval(const int num_grad_dim,
         eval->_electric_potential_flux);
 
     // Assert values
+    const double sigma = 3.0;
     const int num_point = ir.num_points;
     for (int qp = 0; qp < num_point; ++qp)
     {
@@ -142,10 +139,10 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.user_params.set("Build Inductionless MHD Equation", true);
     test_fixture.user_params.set("Build Temperature Equation", false);
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0)
-        .set("Electrical conductivity", 3.0);
+        .set("Artificial compressibility", 2.0);
     test_fixture.type_name = "ElectricPotentialDiffusionFlux";
     test_fixture.eval_name = "Electric Potential Diffusion Flux "
                              + std::to_string(num_space_dim) + "D";

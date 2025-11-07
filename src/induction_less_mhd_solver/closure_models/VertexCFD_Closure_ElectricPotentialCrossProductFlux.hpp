@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_ELECTRICPOTENTIALCROSSPRODUCTFLUX_HPP
 #define VERTEXCFD_CLOSURE_ELECTRICPOTENTIALCROSSPRODUCTFLUX_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -33,11 +31,9 @@ class ElectricPotentialCrossProductFlux
     static constexpr int num_space_dim = NumSpaceDim;
     static constexpr int field_size = 3;
 
-    ElectricPotentialCrossProductFlux(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const std::string& flux_prefix = "",
-        const std::string& field_prefix = "");
+    ElectricPotentialCrossProductFlux(const panzer::IntegrationRule& ir,
+                                      const std::string& flux_prefix = "",
+                                      const std::string& field_prefix = "");
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -49,6 +45,7 @@ class ElectricPotentialCrossProductFlux
         _electric_potential_flux;
 
   private:
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _sigma;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_electric_potential;
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
@@ -57,8 +54,6 @@ class ElectricPotentialCrossProductFlux
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   field_size>
         _ext_magn_field;
-
-    double _sigma;
 };
 
 //---------------------------------------------------------------------------//

@@ -36,16 +36,16 @@ KOKKOS_INLINE_FUNCTION void faceDistanceFunc(SideViewType sides,
 template<class EvalType>
 void testEval()
 {
-    double tol = 1e-6;
+    const double tol = 1e-6;
 
     // Define kokkos views needed for all tests
-    Kokkos::View<double***, Kokkos::LayoutRight, PHX::Device> point(
+    const Kokkos::View<double***, Kokkos::LayoutRight, PHX::Device> point(
         Kokkos::ViewAllocateWithoutInitializing("pointView"), 1, 1, 3);
-    Kokkos::View<double***, Kokkos::LayoutRight, PHX::Device> sides(
+    const Kokkos::View<double***, Kokkos::LayoutRight, PHX::Device> sides(
         Kokkos::ViewAllocateWithoutInitializing("sidesView"), 1, 3, 3);
-    Kokkos::View<double**, Kokkos::LayoutRight, PHX::Device> normal(
+    const Kokkos::View<double**, Kokkos::LayoutRight, PHX::Device> normal(
         Kokkos::ViewAllocateWithoutInitializing("normalView"), 1, 3);
-    Kokkos::View<double[6], Kokkos::LayoutRight, PHX::Device> dist(
+    const Kokkos::View<double[6], Kokkos::LayoutRight, PHX::Device> dist(
         Kokkos::ViewAllocateWithoutInitializing("distanceView"));
 
     // Test of linearEdge function
@@ -113,7 +113,7 @@ void testEval()
     EXPECT_NEAR(0.424264, dist_mirror(4), tol);
     EXPECT_DOUBLE_EQ(1.0, dist_mirror(5));
 
-    Kokkos::View<double[7][3], Kokkos::LayoutRight, PHX::Device> result(
+    const Kokkos::View<double[7][3], Kokkos::LayoutRight, PHX::Device> result(
         Kokkos::ViewAllocateWithoutInitializing("ResultView"));
 
     // Test of distanceToTriangleFace, tetCheck and planeIntersect functions
@@ -215,8 +215,9 @@ void testEval()
     EXPECT_NEAR(2.44948974, result_mirror(6, 2), tol);
 
     // Test the crossProduct function
-    Kokkos::View<double[5][3], Kokkos::LayoutRight, PHX::Device> cross_product(
-        Kokkos::ViewAllocateWithoutInitializing("CrossProductView"));
+    const Kokkos::View<double[5][3], Kokkos::LayoutRight, PHX::Device>
+        cross_product(Kokkos::ViewAllocateWithoutInitializing("CrossProductVie"
+                                                              "w"));
 
     Kokkos::parallel_for(
         "CrossProductTest",

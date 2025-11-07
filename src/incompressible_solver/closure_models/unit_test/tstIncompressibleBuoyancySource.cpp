@@ -162,7 +162,8 @@ void testFactory()
     const Teuchos::Array<double> gravity(num_space_dim);
     test_fixture.user_params.set("Gravity", gravity);
     test_fixture.user_params.set("Build Temperature Equation", false);
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.type_name = "IncompressibleBuoyancySource";

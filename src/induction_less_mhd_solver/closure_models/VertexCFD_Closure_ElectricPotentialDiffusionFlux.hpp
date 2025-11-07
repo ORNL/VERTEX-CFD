@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_ELECTRICPOTENTIALDIFFUSIONFLUX_HPP
 #define VERTEXCFD_CLOSURE_ELECTRICPOTENTIALDIFFUSIONFLUX_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -30,11 +28,9 @@ class ElectricPotentialDiffusionFlux
   public:
     using scalar_type = typename EvalType::ScalarT;
 
-    ElectricPotentialDiffusionFlux(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const std::string& flux_prefix = "",
-        const std::string& gradient_prefix = "");
+    ElectricPotentialDiffusionFlux(const panzer::IntegrationRule& ir,
+                                   const std::string& flux_prefix = "",
+                                   const std::string& gradient_prefix = "");
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -46,10 +42,10 @@ class ElectricPotentialDiffusionFlux
         _electric_potential_flux;
 
   private:
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _sigma;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_electric_potential;
 
-    double _sigma;
     int _num_grad_dim;
 };
 

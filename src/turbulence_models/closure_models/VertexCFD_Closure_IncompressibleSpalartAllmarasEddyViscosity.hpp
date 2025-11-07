@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLESPALARTALLMARASEDDYVISCOSITY_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLESPALARTALLMARASEDDYVISCOSITY_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -30,9 +28,7 @@ class IncompressibleSpalartAllmarasEddyViscosity
   public:
     using scalar_type = typename EvalType::ScalarT;
 
-    IncompressibleSpalartAllmarasEddyViscosity(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop);
+    IncompressibleSpalartAllmarasEddyViscosity(const panzer::IntegrationRule& ir);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -42,8 +38,8 @@ class IncompressibleSpalartAllmarasEddyViscosity
 
   private:
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _sa_var;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
 
-    const double _nu;
     const double _cv1;
     const int _num_grad_dim;
 

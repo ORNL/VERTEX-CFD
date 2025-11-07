@@ -36,7 +36,7 @@ void testEval(const double (&coords)[CellTopo::node_count][CellTopo::dimension],
     constexpr int num_point = 1;
     constexpr int num_space_dim = CellTopo::dimension;
 
-    EvaluatorTestFixture::host_coords_view coords_view(
+    const EvaluatorTestFixture::host_coords_view coords_view(
         "coords", num_cell, nodes_per_cell, num_space_dim);
     for (int i = 0; i < nodes_per_cell; ++i)
         for (int j = 0; j < num_space_dim; ++j)
@@ -313,6 +313,7 @@ template<class EvalType, template<class, class> class CellTest>
 void testLine()
 {
     // Ideal line.
+    // NOLINTNEXTLINE(misc-const-correctness)
     double coords[2][1] = {
         {0.0},
         {1.0},
@@ -337,6 +338,7 @@ template<class EvalType, template<class, class> class CellTest>
 void testTriangle()
 {
     // Ideal triangle.
+    // NOLINTNEXTLINE(misc-const-correctness)
     double coords[3][2] = {
         {0.0, 0.0},
         {1.0, 0.0},
@@ -367,6 +369,7 @@ template<class EvalType, template<class, class> class CellTest>
 void testQuadrilateral()
 {
     // Ideal quadrilateral.
+    // NOLINTNEXTLINE(misc-const-correctness)
     double coords[4][2] = {
         {0.0, 0.0},
         {1.0, 0.0},
@@ -398,6 +401,7 @@ template<class EvalType, template<class, class> class CellTest>
 void testTetrahedron()
 {
     // Ideal tetrahedron.
+    // NOLINTNEXTLINE(misc-const-correctness)
     double coords[4][3] = {
         {0.0, 0.0, 0.0},
         {1.0, 0.0, 0.0},
@@ -429,6 +433,7 @@ template<class EvalType, template<class, class> class CellTest>
 void testHexahedron()
 {
     // Ideal hexahedron.
+    // NOLINTNEXTLINE(misc-const-correctness)
     double coords[8][3] = {
         {0.0, 0.0, 0.0},
         {1.0, 0.0, 0.0},
@@ -464,6 +469,7 @@ template<class EvalType, template<class, class> class CellTest>
 void testPyramid()
 {
     // Ideal pyramid.
+    // NOLINTNEXTLINE(misc-const-correctness)
     double coords[5][3] = {
         {0.0, 0.0, 0.0},
         {1.0, 0.0, 0.0},
@@ -498,6 +504,7 @@ template<class EvalType, template<class, class> class CellTest>
 void testWedge()
 {
     // Ideal wedge.
+    // NOLINTNEXTLINE(misc-const-correctness)
     double coords[6][3] = {
         {0.0, 0.0, 0.0},
         {1.0, 0.0, 0.0},
@@ -571,7 +578,8 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "MetricTensor";
     test_fixture.eval_name = "Metric Tensor";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.template buildAndTest<

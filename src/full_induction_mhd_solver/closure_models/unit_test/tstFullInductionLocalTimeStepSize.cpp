@@ -1,13 +1,12 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
-
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_FullInductionLocalTimeStepSize.hpp"
-
 #include "full_induction_mhd_solver/mhd_properties/VertexCFD_FullInductionMHDProperties.hpp"
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_MagneticDim.hpp"
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <gtest/gtest.h>
 
@@ -20,11 +19,12 @@ namespace Test
 {
 //---------------------------------------------------------------------------//
 // Test data dependencies.
-template<class EvalType>
+template<class EvalType, int NumSpaceDim>
 struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
                       public PHX::EvaluatorDerived<EvalType, panzer::Traits>
 {
     using scalar_type = typename EvalType::ScalarT;
+    static constexpr int num_space_dim = NumSpaceDim;
 
     double _u;
     double _v;
@@ -32,9 +32,11 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     Kokkos::Array<double, 3> _h;
 
     PHX::MDField<double, panzer::Cell, panzer::Point, panzer::Dim> _element_length;
-    Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>, 3>
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _rho;
+    Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>,
+                  num_space_dim>
         _velocity;
-    Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>, 3>
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, MagneticDim>
         _tot_magn_field;
 
     Dependencies(const panzer::IntegrationRule& ir,
@@ -47,12 +49,16 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         , _w(w)
         , _h(h)
         , _element_length("element_length", ir.dl_vector)
+        , _rho("density", ir.dl_scalar)
+        , _tot_magn_field(
+              "total_magnetic_field",
+              Utils::buildMagneticLayout(ir.dl_scalar, num_magnetic_field_dim))
     {
         this->addEvaluatedField(_element_length);
+        this->addEvaluatedField(_rho);
         Utils::addEvaluatedVectorField(
             *this, ir.dl_scalar, _velocity, "velocity_");
-        Utils::addEvaluatedVectorField(
-            *this, ir.dl_scalar, _tot_magn_field, "total_magnetic_field_");
+        this->addEvaluatedField(_tot_magn_field);
         this->setName(
             "Full Induction Local Time Step Size Unit Test Dependencies");
     }
@@ -61,10 +67,9 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     {
         _velocity[0].deep_copy(_u);
         _velocity[1].deep_copy(_v);
-        _velocity[2].deep_copy(_w);
-        _tot_magn_field[0].deep_copy(1.1);
-        _tot_magn_field[1].deep_copy(-1.2);
-        _tot_magn_field[2].deep_copy(1.3);
+        if (num_space_dim == 3)
+            _velocity[2].deep_copy(_w);
+        _rho.deep_copy(0.9);
         Kokkos::parallel_for(
             "test dependencies",
             Kokkos::RangePolicy<PHX::exec_space>(0, d.num_cells),
@@ -73,12 +78,14 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
 
     KOKKOS_INLINE_FUNCTION void operator()(const int c) const
     {
-        int num_point = _element_length.extent(1);
+        const int num_point = _element_length.extent(1);
         for (int qp = 0; qp < num_point; ++qp)
         {
-            _element_length(c, qp, 0) = _h[0];
-            _element_length(c, qp, 1) = _h[1];
-            _element_length(c, qp, 2) = _h[2];
+            for (int d = 0; d < num_space_dim; ++d)
+                _element_length(c, qp, d) = _h[d];
+            _tot_magn_field(c, qp, 0) = 1.1;
+            _tot_magn_field(c, qp, 1) = -1.2;
+            _tot_magn_field(c, qp, 2) = 1.3;
         }
     }
 };
@@ -102,17 +109,9 @@ void testEval(const bool build_magn_corr)
     const Kokkos::Array<double, 3> h
         = {0.25, 0.5, num_space_dim == 3 ? 0.75 : nan_val};
 
-    auto dep_eval = Teuchos::rcp(
-        new Dependencies<EvalType>(*test_fixture.ir, u, v, w, h));
+    auto dep_eval = Teuchos::rcp(new Dependencies<EvalType, num_space_dim>(
+        *test_fixture.ir, u, v, w, h));
     test_fixture.registerEvaluator<EvalType>(dep_eval);
-
-    Teuchos::ParameterList fluid_params;
-    fluid_params.set("Density", 0.9);
-    fluid_params.set("Kinematic viscosity", nan_val);
-    fluid_params.set("Artificial compressibility", nan_val);
-    fluid_params.set("Build Temperature Equation", false);
-    FluidProperties::ConstantFluidProperties incompressible_fluidprop_params
-        = FluidProperties::ConstantFluidProperties(fluid_params);
 
     const double c_h = num_space_dim == 2 ? 0.1 : 5.0;
     Teuchos::ParameterList full_induction_params;
@@ -120,15 +119,15 @@ void testEval(const bool build_magn_corr)
     full_induction_params.set("Build Magnetic Correction Potential Equation",
                               build_magn_corr);
     full_induction_params.set("Hyperbolic Divergence Cleaning Speed", c_h);
-    MHDProperties::FullInductionMHDProperties mhd_props
-        = MHDProperties::FullInductionMHDProperties(full_induction_params);
+    const MHDProperties::FullInductionMHDProperties mhd_props(
+        full_induction_params);
 
     // Create test evaluator.
     auto dt_eval = Teuchos::rcp(
         new ClosureModel::FullInductionLocalTimeStepSize<EvalType,
                                                          panzer::Traits,
                                                          NumSpaceDim>(
-            *test_fixture.ir, incompressible_fluidprop_params, mhd_props));
+            *test_fixture.ir, mhd_props));
     test_fixture.registerEvaluator<EvalType>(dt_eval);
 
     // Add required test fields.
@@ -194,12 +193,11 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "FullInductionLocalTimeStepSize";
     test_fixture.eval_name = "Full Induction Local Time Step Size";
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0);
-    test_fixture.user_params.sublist("Full Induction MHD Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties")
         .set("Vacuum Magnetic Permeability", 0.1)
         .set("Build Magnetic Correction Potential Equation", false);
+    test_fixture.factory_type = "Full Induction MHD";
     test_fixture.template buildAndTest<
         ClosureModel::FullInductionLocalTimeStepSize<EvalType,
                                                      panzer::Traits,

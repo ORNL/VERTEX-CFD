@@ -31,10 +31,19 @@ def calculate_boundary_values(omega,
     v = (a * time + b) * x
     w = Decimal(0.0)  # the z-component of the velocity is always 0.0
 
+    # Compute boundary pressure gradient
+    dqp = np.arange(3) + 1 + dim
+    grad_pressure = 1.0 * dqp
+    normals = 0.1 * dqp
+    grad_lagrange_pres_dot_n = np.dot(grad_pressure[:dim], normals[:dim])
+    boundary_grad_lagrange_pres = grad_pressure[:
+                                                dim] - grad_lagrange_pres_dot_n * normals[:
+                                                                                          dim]
     # Show values
     show("u", u)
     show("v", v)
     if (dim == 3): show("w", w)
+    print("pressure gradient = ", boundary_grad_lagrange_pres)
 
 
 # Constant input arguments for all tests

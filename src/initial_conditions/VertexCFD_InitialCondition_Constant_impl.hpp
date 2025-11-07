@@ -13,7 +13,7 @@ Constant<EvalType, Traits>::Constant(const Teuchos::ParameterList& params,
                                      const panzer::PureBasis& basis)
 {
     _value = params.get<double>("Value");
-    std::string dof_name = params.get<std::string>("Equation Set Name");
+    const std::string dof_name = params.get<std::string>("Equation Set Name");
     _ic = PHX::MDField<scalar_type, panzer::Cell, panzer::BASIS>(
         dof_name, basis.functional);
     this->addEvaluatedField(_ic);

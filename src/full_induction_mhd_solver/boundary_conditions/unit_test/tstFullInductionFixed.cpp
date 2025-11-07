@@ -15,26 +15,26 @@ namespace Test
 {
 //---------------------------------------------------------------------------//
 // Test data dependencies.
-template<class EvalType>
+template<class EvalType, int NumSpaceDim>
 struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
                       public PHX::EvaluatorDerived<EvalType, panzer::Traits>
 {
     using scalar_type = typename EvalType::ScalarT;
+    static constexpr int num_space_dim = NumSpaceDim;
+    static constexpr int num_magnetic_field_dim = 3;
 
-    static constexpr int num_field_dim = 3;
-
-    Kokkos::Array<double, num_field_dim> _grad_b;
+    Kokkos::Array<double, num_magnetic_field_dim> _grad_b;
     double _scalar_magn_pot;
 
     Kokkos::Array<
         PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
-        3>
+        num_space_dim>
         _grad_induced_magnetic_field;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point>
         _scalar_magnetic_potential;
 
     Dependencies(const panzer::IntegrationRule& ir,
-                 const Kokkos::Array<double, num_field_dim> grad_b,
+                 const Kokkos::Array<double, num_magnetic_field_dim> grad_b,
                  const double scalar_magn_pot)
         : _grad_b(grad_b)
         , _scalar_magn_pot(scalar_magn_pot)
@@ -52,7 +52,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
 
     void evaluateFields(typename panzer::Traits::EvalData /**d**/) override
     {
-        for (int dim = 0; dim < num_field_dim; ++dim)
+        for (int dim = 0; dim < num_space_dim; ++dim)
         {
             _grad_induced_magnetic_field[dim].deep_copy(_grad_b[dim]);
         }
@@ -71,19 +71,21 @@ void testEval(bool build_magn_corr, bool dirichlet_scalar_magn_pot)
     EvaluatorTestFixture test_fixture(
         num_space_dim, integration_order, basis_order);
 
+    static constexpr int num_magnetic_field_dim = 3;
     const double nanval = std::numeric_limits<double>::signaling_NaN();
-    const Kokkos::Array<double, 3> grad_b
+    const Kokkos::Array<double, num_magnetic_field_dim> grad_b
         = {1.1, 2.2, num_space_dim == 2 ? nanval : 3.3};
     const double scalar_magn_pot
         = (build_magn_corr && !dirichlet_scalar_magn_pot) ? 4.4 : nanval;
 
     // Create dependencies
-    const auto dep_eval = Teuchos::rcp(
-        new Dependencies<EvalType>(*test_fixture.ir, grad_b, scalar_magn_pot));
+    const auto dep_eval
+        = Teuchos::rcp(new Dependencies<EvalType, num_space_dim>(
+            *test_fixture.ir, grad_b, scalar_magn_pot));
     test_fixture.registerEvaluator<EvalType>(dep_eval);
 
     // Create fixed evaluator.
-    const Kokkos::Array<double, 3> bnd_b
+    const Kokkos::Array<double, num_magnetic_field_dim> bnd_b
         = {0.3, 0.4, num_space_dim == 2 ? nanval : 0.5};
     const double bnd_scalar_magn_pot
         = (build_magn_corr && dirichlet_scalar_magn_pot) ? 5.5 : nanval;
@@ -99,11 +101,11 @@ void testEval(bool build_magn_corr, bool dirichlet_scalar_magn_pot)
         bc_params.set("scalar_magnetic_potential", bnd_scalar_magn_pot);
 
     Teuchos::ParameterList full_indu_params;
-    full_indu_params.set("Vacuum Magnetic Permeability", 0.1);
-    full_indu_params.set("Build Magnetic Correction Potential Equation",
-                         build_magn_corr);
-    full_indu_params.set("Hyperbolic Divergence Cleaning Speed", 1.1);
-    MHDProperties::FullInductionMHDProperties mhd_props(full_indu_params);
+    full_indu_params.set("Vacuum Magnetic Permeability", 0.1)
+        .set("Build Magnetic Correction Potential Equation", build_magn_corr)
+        .set("Hyperbolic Divergence Cleaning Speed", 1.1);
+
+    const MHDProperties::FullInductionMHDProperties mhd_props(full_indu_params);
 
     const auto fixed_eval = Teuchos::rcp(
         new BoundaryCondition::

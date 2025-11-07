@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLELIFTDRAG_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLELIFTDRAG_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -30,10 +28,9 @@ class IncompressibleLiftDrag : public panzer::EvaluatorWithBaseImpl<Traits>,
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleLiftDrag(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& user_params);
+    IncompressibleLiftDrag(const panzer::IntegrationRule& ir,
+                           const Teuchos::ParameterList& user_params,
+                           const bool use_turbulence_model);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -62,9 +59,11 @@ class IncompressibleLiftDrag : public panzer::EvaluatorWithBaseImpl<Traits>,
         PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
         num_space_dim>
         _grad_velocity;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _rho;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu_t;
 
-    double _nu;
-    double _rho;
+    bool _use_turbulence_model;
     bool _use_compressible_formula;
 };
 

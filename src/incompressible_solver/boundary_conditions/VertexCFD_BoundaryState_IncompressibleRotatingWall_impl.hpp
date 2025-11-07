@@ -1,7 +1,7 @@
 #ifndef VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLEROTATINGWALL_IMPL_HPP
 #define VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLEROTATINGWALL_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 #include <Panzer_Workset_Utilities.hpp>
@@ -16,7 +16,7 @@ IncompressibleRotatingWall<EvalType, Traits, NumSpaceDim>::IncompressibleRotatin
     const panzer::IntegrationRule& ir,
     const FluidProperties::ConstantFluidProperties& fluid_prop,
     const Teuchos::ParameterList& bc_params,
-    const std::string& continuity_model_name)
+    const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
     , _boundary_grad_lagrange_pressure("BOUNDARY_GRAD_lagrange_pressure",
                                        ir.dl_vector)
@@ -26,12 +26,12 @@ IncompressibleRotatingWall<EvalType, Traits, NumSpaceDim>::IncompressibleRotatin
     , _set_lagrange_pressure(bc_params.isType<double>("Lagrange Pressure"))
     , _lp_wall(std::numeric_limits<double>::quiet_NaN())
     , _solve_temp(fluid_prop.solveTemperature())
-    , _continuity_model_name(continuity_model_name)
-    , _is_edac(continuity_model_name == "EDAC" ? true : false)
+    , _is_edac(is_edac)
     , _T_wall(std::numeric_limits<double>::quiet_NaN())
     , _lagrange_pressure("lagrange_pressure", ir.dl_scalar)
     , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
+    , _normals("Side Normal", ir.dl_vector)
 {
     // Compute the coefficients for the linear ramping in time f(x) = a * time
     // + b
@@ -80,7 +80,10 @@ IncompressibleRotatingWall<EvalType, Traits, NumSpaceDim>::IncompressibleRotatin
     // Add dependent fields
     this->addDependentField(_lagrange_pressure);
     if (_is_edac)
+    {
         this->addDependentField(_grad_lagrange_pressure);
+        this->addDependentField(_normals);
+    }
 
     Utils::addDependentVectorField(
         *this, ir.dl_vector, _grad_velocity, "GRAD_velocity_");
@@ -154,8 +157,17 @@ IncompressibleRotatingWall<EvalType, Traits, NumSpaceDim>::operator()(
             {
                 if (_is_edac)
                 {
+                    // Set lagrange pressure gradient
                     _boundary_grad_lagrange_pressure(cell, point, d)
                         = _grad_lagrange_pressure(cell, point, d);
+
+                    for (int grad_dim = 0; grad_dim < num_space_dim; ++grad_dim)
+                    {
+                        _boundary_grad_lagrange_pressure(cell, point, d)
+                            -= (_grad_lagrange_pressure(cell, point, grad_dim)
+                                * _normals(cell, point, grad_dim))
+                               * _normals(cell, point, d);
+                    }
                 }
 
                 for (int vel_dim = 0; vel_dim < num_space_dim; ++vel_dim)

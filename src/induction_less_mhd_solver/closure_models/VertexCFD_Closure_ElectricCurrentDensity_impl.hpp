@@ -1,7 +1,7 @@
 #ifndef VERTEXCFD_CLOSURE_ELECTRICCURRENTDENSITY_IMPL_HPP
 #define VERTEXCFD_CLOSURE_ELECTRICCURRENTDENSITY_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 
@@ -14,10 +14,9 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 ElectricCurrentDensity<EvalType, Traits, NumSpaceDim>::ElectricCurrentDensity(
-    const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop)
+    const panzer::IntegrationRule& ir)
     : _grad_electric_potential("GRAD_electric_potential", ir.dl_vector)
-    , _sigma(fluid_prop.constantElectricalConductivity())
+    , _sigma("electrical_conductivity", ir.dl_scalar)
 {
     // Evaluated fields
     Utils::addEvaluatedVectorField(*this,
@@ -27,6 +26,7 @@ ElectricCurrentDensity<EvalType, Traits, NumSpaceDim>::ElectricCurrentDensity(
 
     // Dependent fields
     this->addDependentField(_grad_electric_potential);
+    this->addDependentField(_sigma);
     Utils::addDependentVectorField(*this, ir.dl_scalar, _velocity, "velocity_");
     Utils::addDependentVectorField(
         *this, ir.dl_scalar, _ext_magn_field, "external_magnetic_field_");
@@ -59,15 +59,17 @@ ElectricCurrentDensity<EvalType, Traits, NumSpaceDim>::operator()(
             // Electric current density: 2-D case
             // x-component
             _electric_current_density[0](cell, point)
-                = -_sigma * _grad_electric_potential(cell, point, 0);
+                = -_sigma(cell, point)
+                  * _grad_electric_potential(cell, point, 0);
             _electric_current_density[0](cell, point)
-                += _sigma * _velocity[1](cell, point)
+                += _sigma(cell, point) * _velocity[1](cell, point)
                    * _ext_magn_field[2](cell, point);
             // y-component
             _electric_current_density[1](cell, point)
-                = -_sigma * _grad_electric_potential(cell, point, 1);
+                = -_sigma(cell, point)
+                  * _grad_electric_potential(cell, point, 1);
             _electric_current_density[1](cell, point)
-                += -_sigma * _velocity[0](cell, point)
+                += -_sigma(cell, point) * _velocity[0](cell, point)
                    * _ext_magn_field[2](cell, point);
 
             // Electric current density: 3-D case
@@ -75,17 +77,18 @@ ElectricCurrentDensity<EvalType, Traits, NumSpaceDim>::operator()(
             {
                 // x-component
                 _electric_current_density[0](cell, point)
-                    -= _sigma * _velocity[2](cell, point)
+                    -= _sigma(cell, point) * _velocity[2](cell, point)
                        * _ext_magn_field[1](cell, point);
                 // y-component
                 _electric_current_density[1](cell, point)
-                    += _sigma * _velocity[2](cell, point)
+                    += _sigma(cell, point) * _velocity[2](cell, point)
                        * _ext_magn_field[0](cell, point);
                 // z-component
                 _electric_current_density[2](cell, point)
-                    = -_sigma * _grad_electric_potential(cell, point, 2);
+                    = -_sigma(cell, point)
+                      * _grad_electric_potential(cell, point, 2);
                 _electric_current_density[2](cell, point)
-                    += _sigma
+                    += _sigma(cell, point)
                        * (_velocity[0](cell, point)
                               * _ext_magn_field[1](cell, point)
                           - _velocity[1](cell, point)

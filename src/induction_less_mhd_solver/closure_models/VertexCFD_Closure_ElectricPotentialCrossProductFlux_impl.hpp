@@ -14,20 +14,19 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 ElectricPotentialCrossProductFlux<EvalType, Traits, NumSpaceDim>::
-    ElectricPotentialCrossProductFlux(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const std::string& flux_prefix,
-        const std::string& field_prefix)
+    ElectricPotentialCrossProductFlux(const panzer::IntegrationRule& ir,
+                                      const std::string& flux_prefix,
+                                      const std::string& field_prefix)
     : _electric_potential_flux(
           flux_prefix + "ELECTRIC_POTENTIAL_FLUX_electric_potential_equation",
           ir.dl_vector)
-    , _sigma(fluid_prop.constantElectricalConductivity())
+    , _sigma("electrical_conductivity", ir.dl_scalar)
 {
     // Evaluated fields
     this->addContributedField(_electric_potential_flux);
 
     // Dependent fields
+    this->addDependentField(_sigma);
     Utils::addDependentVectorField(
         *this, ir.dl_scalar, _velocity, field_prefix + "velocity_");
     Utils::addDependentVectorField(
@@ -60,10 +59,10 @@ ElectricPotentialCrossProductFlux<EvalType, Traits, NumSpaceDim>::operator()(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             // 2-D case (x- and y-components only)
             _electric_potential_flux(cell, point, 0)
-                += _sigma * _velocity[1](cell, point)
+                += _sigma(cell, point) * _velocity[1](cell, point)
                    * _ext_magn_field[2](cell, point);
             _electric_potential_flux(cell, point, 1)
-                -= _sigma * _velocity[0](cell, point)
+                -= _sigma(cell, point) * _velocity[0](cell, point)
                    * _ext_magn_field[2](cell, point);
 
             // 3-D case
@@ -71,15 +70,15 @@ ElectricPotentialCrossProductFlux<EvalType, Traits, NumSpaceDim>::operator()(
             {
                 // x-component
                 _electric_potential_flux(cell, point, 0)
-                    -= _sigma * _velocity[2](cell, point)
+                    -= _sigma(cell, point) * _velocity[2](cell, point)
                        * _ext_magn_field[1](cell, point);
                 // y-component
                 _electric_potential_flux(cell, point, 1)
-                    += _sigma * _velocity[2](cell, point)
+                    += _sigma(cell, point) * _velocity[2](cell, point)
                        * _ext_magn_field[0](cell, point);
                 // z-component
                 _electric_potential_flux(cell, point, 2)
-                    += _sigma
+                    += _sigma(cell, point)
                        * (_velocity[0](cell, point)
                               * _ext_magn_field[1](cell, point)
                           - _velocity[1](cell, point)

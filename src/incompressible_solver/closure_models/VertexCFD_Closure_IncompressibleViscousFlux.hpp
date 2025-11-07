@@ -55,6 +55,10 @@ class IncompressibleViscousFlux
         _momentum_flux;
 
   private:
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _rho;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _cp;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _k;
     Kokkos::Array<
         PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
         num_space_dim>
@@ -65,17 +69,13 @@ class IncompressibleViscousFlux
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_temp;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu_t;
-    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _kappa_t;
 
-    double _rho;
-    double _nu;
-    double _kappa;
+    double _gamma;
     double _beta;
     bool _solve_temp;
     bool _use_turbulence_model;
     std::string _continuity_model_name;
     bool _is_edac;
-    double _rhoCp;
     double _Pr_t;
 };
 

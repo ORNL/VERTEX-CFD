@@ -47,12 +47,13 @@ class IncompressibleTimeDerivative
   private:
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>
         _dxdt_lagrange_pressure;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _rho;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _cp;
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         _dxdt_velocity;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _dxdt_temperature;
 
-    double _rho;
     bool _solve_temp;
     double _rhoCp;
     double _beta;

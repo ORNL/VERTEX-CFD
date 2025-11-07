@@ -86,7 +86,7 @@ void ExternalFields<EvalType, Traits>::evaluateFields(typename Traits::EvalData 
         Kokkos::parallel_for(
             Kokkos::RangePolicy<PHX::Device>(0, d.num_cells),
             KOKKOS_LAMBDA(const int cell) {
-                int num_basis = offsets.extent(0);
+                const int num_basis = offsets.extent(0);
                 for (int basis = 0; basis < num_basis; ++basis)
                 {
                     auto offset = offsets(basis);

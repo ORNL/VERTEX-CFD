@@ -25,14 +25,13 @@ void testFactory(const bool variable_resistivity)
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "Resistivity";
     test_fixture.eval_name = "Constant Scalar Field \"resistivity\"";
-    test_fixture.user_params.sublist("Full Induction MHD Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties")
         .set("Vacuum Magnetic Permeability", 0.125)
         .set("Build Resistive Flux", true)
         .set("Resistivity", 1.25)
         .set("Variable Resistivity", variable_resistivity);
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 1.5)
-        .set("Artificial compressibility", 0.1);
+    test_fixture.factory_type = "Full Induction MHD";
     test_fixture.template buildAndTest<
         ClosureModel::ConstantScalarField<EvalType, panzer::Traits>,
         num_space_dim>();

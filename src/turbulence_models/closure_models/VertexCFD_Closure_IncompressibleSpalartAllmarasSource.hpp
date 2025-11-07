@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLESPALARTALLMARASSOURCE_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLESPALARTALLMARASSOURCE_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -29,9 +27,7 @@ class IncompressibleSpalartAllmarasSource
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleSpalartAllmarasSource(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop);
+    IncompressibleSpalartAllmarasSource(const panzer::IntegrationRule& ir);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -45,12 +41,12 @@ class IncompressibleSpalartAllmarasSource
 
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_sa_var;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
     Kokkos::Array<
         PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
         num_space_dim>
         _grad_velocity;
 
-    const double _nu;
     const double _sigma;
     const double _kappa;
     const double _c_b1;

@@ -44,31 +44,66 @@ void BoundaryFluxBase<EvalType, NumSpaceDim>::initialize(
     const panzer::PhysicsBlock& side_pb,
     std::unordered_map<std::string, std::string>& /**dof_eq_map**/)
 {
-    // Integration rule and integration order
+    // Get the maximum of integration rule order
     const auto& irules = side_pb.getIntegrationRules();
-    if (irules.size() != 1)
+    int integration_order = 0;
+    for (const auto& pair : irules)
     {
-        throw std::runtime_error(
-            "BCStrategy BoundaryFluxBis too many integration rules");
+        integration_order = std::max(integration_order, pair.second->order());
     }
-    _integration_order = irules.begin()->second->order();
+
+    // Assign an integration rule for side normal evaluator
     _ir = Teuchos::rcp(
-        new panzer::IntegrationRule(_integration_order, side_pb.cellData()));
+        new panzer::IntegrationRule(integration_order, side_pb.cellData()));
+
+    // Create a map between dof and integration rule
+    const auto& dof_basis_pair = side_pb.getProvidedDOFs();
+    for (const auto& dof_basis : dof_basis_pair)
+    {
+        _dof_basis_pair.insert({dof_basis.first, dof_basis.second});
+        const Teuchos::RCP<panzer::IntegrationRule> ir = Teuchos::rcp(
+            new panzer::IntegrationRule(integration_order, side_pb.cellData()));
+    }
+}
+
+//---------------------------------------------------------------------------//
+// Get model id class members: this function retrieves the model id from the
+// boundary conditions (multiple equation sets per block) or physics blocks
+// (one equation set per block)
+template<class EvalType, int NumSpaceDim>
+void BoundaryFluxBase<EvalType, NumSpaceDim>::getModelID(
+    const Teuchos::ParameterList& bc_params,
+    const panzer::PhysicsBlock& side_pb,
+    std::string& model_id) const
+{
+    if (bc_params.isType<std::string>("Model ID"))
+    {
+        model_id = bc_params.get<std::string>("Model ID");
+    }
+    else if (side_pb.getParameterList()->numParams() != 1)
+    {
+        const std::string msg
+            = "\n\nERROR: Multiple equation sets are being solved on a single "
+              "block but `Model ID` is not being specified in the "
+              "corresponding boundary condition lists.\n\n";
+        throw std::runtime_error(msg);
+    }
+    else
+    {
+        model_id
+            = side_pb.getParameterList()->sublist("child0").get<std::string>(
+                "Model ID");
+    }
 }
 
 //---------------------------------------------------------------------------//
 // Get integration basis for a variable with name `dof_name`.
 template<class EvalType, int NumSpaceDim>
-auto BoundaryFluxBase<EvalType, NumSpaceDim>::getIntegrationBasis(
-    const panzer::PhysicsBlock& side_pb, const std::string& dof_name) const
+auto BoundaryFluxBase<EvalType, NumSpaceDim>::getBasisIRLayout(
+    const panzer::PhysicsBlock& /**side_pb**/, const std::string& dof_name) const
 {
-    const auto& dof_basis_pair = side_pb.getProvidedDOFs();
-    Teuchos::RCP<panzer::PureBasis> basis;
-    for (auto it = dof_basis_pair.begin(); it != dof_basis_pair.end(); ++it)
-    {
-        if (it->first == dof_name)
-            basis = it->second;
-    }
+    const Teuchos::RCP<panzer::PureBasis> basis = _dof_basis_pair.at(dof_name);
+
     return panzer::basisIRLayout(basis, *_ir);
 }
 
@@ -81,7 +116,7 @@ void BoundaryFluxBase<EvalType, NumSpaceDim>::registerDOFsGradient(
     const std::string& dof_name) const
 {
     // Degree of freedom (DOF)
-    const auto basis_layout = this->getIntegrationBasis(side_pb, dof_name);
+    const auto basis_layout = this->getBasisIRLayout(side_pb, dof_name);
     Teuchos::ParameterList dof_params;
     dof_params.set<std::string>("Name", dof_name);
     dof_params.set<Teuchos::RCP<panzer::BasisIRLayout>>("Basis", basis_layout);
@@ -140,8 +175,9 @@ void BoundaryFluxBase<EvalType, NumSpaceDim>::registerConvectionTypeFluxOperator
     this->template registerEvaluator<EvalType>(fm, normal_dot_flux_op);
 
     // Convective flux integral.
-    const auto basis_layout = this->getIntegrationBasis(side_pb, dof_name);
-    std::string residual_name = closure_name + "_BOUNDARY_RESIDUAL_" + eq_name;
+    const auto basis_layout = this->getBasisIRLayout(side_pb, dof_name);
+    const std::string residual_name = closure_name + "_BOUNDARY_RESIDUAL_"
+                                      + eq_name;
     const auto convective_flux_op = Teuchos::rcp(
         new panzer::Integrator_BasisTimesScalar<EvalType, panzer::Traits>(
             panzer::EvaluatorStyle::EVALUATES,
@@ -163,17 +199,33 @@ void BoundaryFluxBase<EvalType, NumSpaceDim>::registerPenaltyAndViscousGradientO
     std::pair<const std::string, std::string> dof_eq_pair,
     PHX::FieldManager<panzer::Traits>& fm,
     const panzer::PhysicsBlock& side_pb,
-    const Teuchos::ParameterList& user_params) const
+    const Teuchos::ParameterList& bc_params) const
 {
     // Local variables
     const std::string eq_name = dof_eq_pair.first;
     const std::string dof_name = dof_eq_pair.second;
-    const auto basis_layout = this->getIntegrationBasis(side_pb, dof_name);
+    const auto basis_layout = this->getBasisIRLayout(side_pb, dof_name);
 
-    // Create viscous penalty parameter.
+    // Check for user-specified penalty parameter
+    double penalty = 10.0;
+
+    // For temperature, default penalty is set to 1000.0
+    if (dof_name == "temperature")
+        penalty = 1000.0;
+
+    if (bc_params.isSublist("Penalty Parameters"))
+    {
+        const auto penalty_list = bc_params.sublist("Penalty Parameters");
+        if (penalty_list.isType<double>(dof_name))
+        {
+            penalty = penalty_list.get<double>(dof_name);
+        }
+    }
+
+    // Create viscous penalty parameter evaluator.
     const auto viscous_penalty_op
         = Teuchos::rcp(new ViscousPenaltyParameter<EvalType, panzer::Traits>(
-            *_ir, *(basis_layout->getBasis()), dof_name, user_params));
+            *_ir, *(basis_layout->getBasis()), dof_name, penalty));
     this->template registerEvaluator<EvalType>(fm, viscous_penalty_op);
 
     // Create boundary gradients.
@@ -195,20 +247,22 @@ void BoundaryFluxBase<EvalType, NumSpaceDim>::registerViscousTypeFluxOperator(
 {
     const std::string eq_name = dof_eq_pair.first;
     const std::string dof_name = dof_eq_pair.second;
-    const auto basis_layout = this->getIntegrationBasis(side_pb, dof_name);
+    const auto basis_layout = this->getBasisIRLayout(side_pb, dof_name);
 
     // Symmetric interior penalty method residual 1.
     // FIXME: The dot product evaluator is not on the device in
     // Trilinos 13.0.1
-    std::string normal_dot_viscous_name = "Normal Dot " + closure_name
-                                          + " Flux " + eq_name;
-    std::string flux_name = "BOUNDARY_" + closure_name + "_FLUX_" + eq_name;
+    const std::string normal_dot_viscous_name = "Normal Dot " + closure_name
+                                                + " Flux " + eq_name;
+    const std::string flux_name = "BOUNDARY_" + closure_name + "_FLUX_"
+                                  + eq_name;
     auto normal_dot_viscous_flux_op
         = panzer::buildEvaluator_DotProduct<EvalType, panzer::Traits>(
             normal_dot_viscous_name, *_ir, "Side Normal", flux_name);
     this->template registerEvaluator<EvalType>(fm, normal_dot_viscous_flux_op);
 
-    std::string bnd_resid = closure_name + "_BOUNDARY_RESIDUAL_" + eq_name;
+    const std::string bnd_resid = closure_name + "_BOUNDARY_RESIDUAL_"
+                                  + eq_name;
     auto bnd_op = Teuchos::rcp(
         new panzer::Integrator_BasisTimesScalar<EvalType, panzer::Traits>(
             panzer::EvaluatorStyle::EVALUATES,
@@ -221,7 +275,8 @@ void BoundaryFluxBase<EvalType, NumSpaceDim>::registerViscousTypeFluxOperator(
     eq_res_map[eq_name].push_back(bnd_resid);
 
     // Symmetric interior penalty method residual 2.
-    std::string penalty_bnd_resid = "PENALTY_BOUNDARY_RESIDUAL_" + eq_name;
+    const std::string penalty_bnd_resid = "PENALTY_BOUNDARY_RESIDUAL_"
+                                          + eq_name;
     auto bnd_penalty_op = Teuchos::rcp(
         new Integrator::BoundaryGradBasisDotVector<EvalType, panzer::Traits>(
             panzer::EvaluatorStyle::EVALUATES,
@@ -236,10 +291,10 @@ void BoundaryFluxBase<EvalType, NumSpaceDim>::registerViscousTypeFluxOperator(
     // Symmetric interior penalty method residual 3.
     // FIXME: The dot product evaluator is not on the device in
     // Trilinos 13.0.1
-    std::string normal_dot_scaled_penalty_viscous_name
+    const std::string normal_dot_scaled_penalty_viscous_name
         = "Normal Dot Scaled Penalty " + closure_name + " Flux " + eq_name;
-    std::string scaled_penalty_flux_name = "SYMMETRY_BOUNDARY_" + closure_name
-                                           + "_FLUX_" + eq_name;
+    const std::string scaled_penalty_flux_name
+        = "SYMMETRY_BOUNDARY_" + closure_name + "_FLUX_" + eq_name;
     auto normal_dot_scaled_penalty_viscous_flux_op
         = panzer::buildEvaluator_DotProduct<EvalType, panzer::Traits>(
             normal_dot_scaled_penalty_viscous_name,
@@ -249,8 +304,8 @@ void BoundaryFluxBase<EvalType, NumSpaceDim>::registerViscousTypeFluxOperator(
     this->template registerEvaluator<EvalType>(
         fm, normal_dot_scaled_penalty_viscous_flux_op);
 
-    std::string scaled_penalty_bnd_resid = "SYMMETRY_BOUNDARY_RESIDUAL_"
-                                           + eq_name;
+    const std::string scaled_penalty_bnd_resid = "SYMMETRY_BOUNDARY_RESIDUAL_"
+                                                 + eq_name;
     auto scaled_bnd_penalty_op = Teuchos::rcp(
         new panzer::Integrator_BasisTimesScalar<EvalType, panzer::Traits>(
             panzer::EvaluatorStyle::EVALUATES,
@@ -275,7 +330,7 @@ void BoundaryFluxBase<EvalType, NumSpaceDim>::registerResidual(
     // Local variables
     const std::string eq_name = dof_eq_pair.first;
     const std::string dof_name = dof_eq_pair.second;
-    const auto basis_layout = this->getIntegrationBasis(side_pb, dof_name);
+    const auto basis_layout = this->getBasisIRLayout(side_pb, dof_name);
 
     // Initialize residual vector
     auto residuals = Teuchos::rcp(new std::vector<std::string>);
@@ -299,24 +354,18 @@ template<class EvalType, int NumSpaceDim>
 void BoundaryFluxBase<EvalType, NumSpaceDim>::registerScatterOperator(
     std::pair<const std::string, std::string> dof_eq_pair,
     PHX::FieldManager<panzer::Traits>& fm,
-    const panzer::PhysicsBlock& side_pb,
+    const panzer::PhysicsBlock& /**side_pb**/,
     const panzer::LinearObjFactory<panzer::Traits>& lof) const
 {
-    const auto& dof_basis_pair = side_pb.getProvidedDOFs();
     const std::string& eq_name = dof_eq_pair.first;
     const std::string& dof_name = dof_eq_pair.second;
+    const Teuchos::RCP<const panzer::PureBasis> basis
+        = _dof_basis_pair.at(dof_name);
 
-    Teuchos::RCP<const panzer::PureBasis> basis;
-    for (auto it = dof_basis_pair.begin(); it != dof_basis_pair.end(); ++it)
-    {
-        if (it->first == dof_name)
-            basis = it->second;
-    }
-
-    std::string residual_name = "BOUNDARY_RESIDUAL_" + eq_name;
+    const std::string residual_name = "BOUNDARY_RESIDUAL_" + eq_name;
     Teuchos::ParameterList p("Scatter: " + residual_name + " to " + eq_name);
 
-    std::string scatter_field_name
+    const std::string scatter_field_name
         = "Dummy Scatter: " + this->m_bc.identifier() + residual_name;
     p.set("Scatter Name", scatter_field_name);
     p.set("Basis", basis);
@@ -336,7 +385,8 @@ void BoundaryFluxBase<EvalType, NumSpaceDim>::registerScatterOperator(
 
     // Require variables
     auto dummy_layout = Teuchos::rcp(new PHX::MDALayout<panzer::Dummy>(0));
-    PHX::Tag<typename EvalType::ScalarT> tag(scatter_field_name, dummy_layout);
+    const PHX::Tag<typename EvalType::ScalarT> tag(scatter_field_name,
+                                                   dummy_layout);
     fm.template requireField<EvalType>(tag);
 }
 //---------------------------------------------------------------------------//

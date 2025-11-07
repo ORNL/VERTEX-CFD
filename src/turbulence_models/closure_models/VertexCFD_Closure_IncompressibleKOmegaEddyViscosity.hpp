@@ -27,7 +27,8 @@ class IncompressibleKOmegaEddyViscosity
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleKOmegaEddyViscosity(const panzer::IntegrationRule& ir);
+    IncompressibleKOmegaEddyViscosity(const panzer::IntegrationRule& ir,
+                                      const Teuchos::ParameterList& user_params);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 

@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLEKOMEGADIFFUSIVITYCOEFFICIENT_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLEKOMEGADIFFUSIVITYCOEFFICIENT_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -18,7 +16,7 @@ namespace VertexCFD
 namespace ClosureModel
 {
 //---------------------------------------------------------------------------//
-// Diffusivity coefficients for Wilcox (2006) K-Omega turbulence model
+// Diffusivity coefficients for the Wilcox (2006) K-Omega turbulence model
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits>
 class IncompressibleKOmegaDiffusivityCoefficient
@@ -30,7 +28,6 @@ class IncompressibleKOmegaDiffusivityCoefficient
 
     IncompressibleKOmegaDiffusivityCoefficient(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
         const Teuchos::ParameterList& user_params);
 
     void evaluateFields(typename Traits::EvalData workset) override;
@@ -44,8 +41,8 @@ class IncompressibleKOmegaDiffusivityCoefficient
         _turb_kinetic_energy;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>
         _turb_specific_dissipation_rate;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
 
-    double _nu;
     double _sigma_k;
     double _sigma_w;
 

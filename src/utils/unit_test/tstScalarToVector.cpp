@@ -1,7 +1,8 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
 
-#include <VertexCFD_Utils_ScalarToVector.hpp>
-#include <VertexCFD_Utils_VelocityDim.hpp>
+#include "VertexCFD_Utils_PhaseIndex.hpp"
+#include "VertexCFD_Utils_ScalarToVector.hpp"
+#include "VertexCFD_Utils_VelocityDim.hpp"
 
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
@@ -19,7 +20,9 @@
 
 #include <mpi.h>
 
-#include <iostream>
+#include <cmath>
+#include <string>
+#include <vector>
 
 //---------------------------------------------------------------------------//
 // TESTS
@@ -34,42 +37,37 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
                       public PHX::EvaluatorDerived<EvalType, panzer::Traits>
 {
     using scalar_type = typename EvalType::ScalarT;
-    int num_vel_dim;
+    const int num_scalar_dim_all;
 
-    // Array of field solutions
-    std::vector<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>> velocities;
+    std::vector<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>> foo_scalars;
     std::vector<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>>
-        dxdt_velocities;
+        dxdt_foo_scalars;
     std::vector<PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>>
-        grad_velocities;
+        grad_foo_scalars;
 
-    Dependencies(const panzer::IntegrationRule& ir, int dim)
-        : num_vel_dim(dim)
+    Dependencies(const panzer::IntegrationRule& ir,
+                 const std::string& base_name,
+                 const int num_scalar_dim)
+        : num_scalar_dim_all{num_scalar_dim}
     {
-        velocities.resize(num_vel_dim);
-        dxdt_velocities.resize(num_vel_dim);
-        grad_velocities.resize(num_vel_dim);
-        std::string name;
-        for (int dim = 0; dim < num_vel_dim; ++dim)
+        foo_scalars.reserve(num_scalar_dim);
+        dxdt_foo_scalars.reserve(num_scalar_dim);
+        grad_foo_scalars.reserve(num_scalar_dim);
+        for (int dim = 0; dim < num_scalar_dim; ++dim)
         {
-            name = "velocity_" + std::to_string(dim);
-            velocities[dim]
-                = PHX::MDField<scalar_type, panzer::Cell, panzer::Point>(
-                    name, ir.dl_scalar);
+            // Omit a scalar to test optional dependent scalars.
+            if (dim == 4)
+                continue;
 
-            name = "DXDT_velocity_" + std::to_string(dim);
-            dxdt_velocities[dim]
-                = PHX::MDField<scalar_type, panzer::Cell, panzer::Point>(
-                    name, ir.dl_scalar);
+            const auto name = base_name + std::to_string(dim);
 
-            name = "GRAD_velocity_" + std::to_string(dim);
-            grad_velocities[dim] = PHX::
-                MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>(
-                    name, ir.dl_vector);
+            foo_scalars.emplace_back(name, ir.dl_scalar);
+            dxdt_foo_scalars.emplace_back("DXDT_" + name, ir.dl_scalar);
+            grad_foo_scalars.emplace_back("GRAD_" + name, ir.dl_vector);
 
-            this->addEvaluatedField(velocities[dim]);
-            this->addEvaluatedField(dxdt_velocities[dim]);
-            this->addEvaluatedField(grad_velocities[dim]);
+            this->addEvaluatedField(foo_scalars.back());
+            this->addEvaluatedField(dxdt_foo_scalars.back());
+            this->addEvaluatedField(grad_foo_scalars.back());
         }
 
         this->setName("ScalarToVector Unit Test Dependencies");
@@ -77,149 +75,270 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
 
     void evaluateFields(typename panzer::Traits::EvalData workset) override
     {
-        const int num_vel_dim = velocities.size();
-        const int num_points = velocities[0].extent(1);
+        const int num_scalar_dim = foo_scalars.size();
 
-        for (int vel_dim = 0; vel_dim < num_vel_dim; ++vel_dim)
+        for (int scalar_dim = 0, foo_value = 1; scalar_dim < num_scalar_dim;
+             ++scalar_dim)
         {
             // Create host mirrors of fields
-            auto vel_view = velocities[vel_dim].get_view();
-            auto dxdt_vel_view = dxdt_velocities[vel_dim].get_view();
-            auto grad_vel_view = grad_velocities[vel_dim].get_view();
-            auto host_vel = Kokkos::create_mirror(vel_view);
-            auto host_dxdt_vel = Kokkos::create_mirror(dxdt_vel_view);
-            auto host_grad_vel = Kokkos::create_mirror(grad_vel_view);
+            auto foo_view = foo_scalars[scalar_dim].get_view();
+            auto dxdt_foo_view = dxdt_foo_scalars[scalar_dim].get_view();
+            auto grad_foo_view = grad_foo_scalars[scalar_dim].get_view();
+            auto host_foo = Kokkos::create_mirror(foo_view);
+            auto host_dxdt_foo = Kokkos::create_mirror(dxdt_foo_view);
+            auto host_grad_foo = Kokkos::create_mirror(grad_foo_view);
+
+            if (scalar_dim == 4)
+                foo_value += foo_view.size();
 
             for (int cell = 0; cell < workset.num_cells; ++cell)
             {
-                for (int point = 0; point < num_points; ++point)
+                const int num_point = foo_view.extent(1);
+                for (int point = 0; point < num_point; ++point, ++foo_value)
                 {
-                    // Set velocity values
-                    double val = static_cast<double>(vel_dim + 3 * point);
-                    host_vel(cell, point) = val;
+                    host_foo(cell, point) = foo_value;
 
-                    // Set dxdt_velocity values
-                    val = static_cast<double>(100 + vel_dim + 3 * point);
-                    host_dxdt_vel(cell, point) = val;
+                    host_dxdt_foo(cell, point) = 100 + foo_value;
 
-                    // Set grad_velocity values
-                    int num_space_dim = grad_vel_view.extent(2);
-                    for (int space_dim = 0; space_dim < num_space_dim;
-                         ++space_dim)
+                    const int num_grad_dim = grad_foo_view.extent(2);
+                    for (int grad_dim = 0; grad_dim < num_grad_dim; ++grad_dim)
                     {
-                        val = static_cast<double>(vel_dim + 3 * point
-                                                  + 9 * space_dim);
-                        host_grad_vel(cell, point, space_dim) = val;
+                        host_grad_foo(cell, point, grad_dim)
+                            = 1000 + 100 * grad_dim + foo_value;
                     }
                 }
             }
-            Kokkos::deep_copy(vel_view, host_vel);
-            Kokkos::deep_copy(dxdt_vel_view, host_dxdt_vel);
-            Kokkos::deep_copy(grad_vel_view, host_grad_vel);
+            Kokkos::deep_copy(foo_view, host_foo);
+            Kokkos::deep_copy(dxdt_foo_view, host_dxdt_foo);
+            Kokkos::deep_copy(grad_foo_view, host_grad_foo);
         }
     }
 };
 
-template<typename EvalType, int NumVelDim, int NumSpaceDim>
-void testEval()
+enum class ScalarNaming
+{
+    Indexed,
+    Suffixed,
+    List
+};
+
+template<typename EvalType, typename DimTag>
+void testEval(const int num_scalar_dim,
+              const int num_grad_dim,
+              const ScalarNaming scalar_naming)
 {
     // Setup test fixture.
-    constexpr int num_vel_dim = NumVelDim;
     const int integration_order = 2;
     const int basis_order = 1;
     EvaluatorTestFixture test_fixture(
-        num_vel_dim, integration_order, basis_order);
+        num_grad_dim, integration_order, basis_order);
 
-    auto& ir = *test_fixture.ir;
+    const auto& ir = *test_fixture.ir;
+
+    std::vector<std::string> name_tags;
+    std::string base_name = "foo_";
+    if (scalar_naming == ScalarNaming::Suffixed)
+    {
+        base_name += "bar_";
+        name_tags.reserve(num_scalar_dim);
+        for (int i = 0; i < num_scalar_dim; ++i)
+            name_tags.emplace_back("bar_" + std::to_string(i));
+    }
+    else if (scalar_naming == ScalarNaming::List)
+    {
+        base_name += "bar_";
+        name_tags.reserve(num_scalar_dim);
+        for (int i = 0; i < num_scalar_dim; ++i)
+        {
+            if (i == 4)
+                continue;
+            name_tags.emplace_back(base_name + std::to_string(i));
+        }
+    }
 
     // Create test dependency to set initial fields
-    auto deps = Teuchos::rcp(new Dependencies<EvalType>(ir, num_vel_dim));
+    auto deps = Teuchos::rcp(
+        new Dependencies<EvalType>(ir, base_name, num_scalar_dim));
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Create evaluator.
-    auto eval = Teuchos::rcp(new Utils::ScalarToVector<EvalType, VelocityDim>(
-        ir, "velocity", num_vel_dim, true));
+    auto eval = [&]() {
+        if (name_tags.empty())
+        {
+            return Utils::ScalarToVector<EvalType, DimTag>::createFromIndexed(
+                ir, "foo", num_scalar_dim, true, true);
+        }
+        else if (scalar_naming == ScalarNaming::Suffixed)
+        {
+            std::vector<std::optional<std::string>> opt_name_tags(
+                name_tags.begin(), name_tags.end());
+            // Omit a scalar to test optional dependent scalars.
+            if (num_scalar_dim > 4)
+                opt_name_tags[4].reset();
+            return Utils::ScalarToVector<EvalType, DimTag>::createFromSuffixed(
+                ir, "foo", opt_name_tags, true, true);
+        }
+        else
+        {
+            // Omit a scalar to test optional dependent scalars.
+            // if (num_scalar_dim > 4)
+            //    name_tags.erase(name_tags.begin() + 4);
+            return Utils::ScalarToVector<EvalType, DimTag>::createFromList(
+                ir, "foo", name_tags, true, true);
+        }
+    }();
     test_fixture.registerEvaluator<EvalType>(eval);
 
+    EXPECT_EQ("ScalarToVector (foo)", eval->getName());
+
     // Add required test fields.
-    test_fixture.registerTestField<EvalType>(eval->_vector_fields);
-    test_fixture.registerTestField<EvalType>(eval->_vector_dxdt_fields);
-    test_fixture.registerTestField<EvalType>(eval->_vector_grad_fields);
+    test_fixture.registerTestField<EvalType>(eval->_vector_field);
+    test_fixture.registerTestField<EvalType>(eval->_vector_dxdt_field);
+    test_fixture.registerTestField<EvalType>(eval->_vector_grad_field);
 
     // Evaluate
     test_fixture.evaluate<EvalType>();
 
     // Check the values
-    const auto vector_vel
-        = test_fixture.getTestFieldData<EvalType>(eval->_vector_fields);
-    const auto vector_dxdt_vel
-        = test_fixture.getTestFieldData<EvalType>(eval->_vector_dxdt_fields);
-    const auto vector_grad_vel
-        = test_fixture.getTestFieldData<EvalType>(eval->_vector_grad_fields);
+    const auto vector_foo
+        = test_fixture.getTestFieldData<EvalType>(eval->_vector_field);
+    const auto vector_dxdt_foo
+        = test_fixture.getTestFieldData<EvalType>(eval->_vector_dxdt_field);
+    const auto vector_grad_foo
+        = test_fixture.getTestFieldData<EvalType>(eval->_vector_grad_field);
 
     // Check the solution
     const int num_point = ir.num_points;
-    for (int qp = 0; qp < num_point; ++qp)
+    for (int scalar_dim = 0; scalar_dim < num_scalar_dim; ++scalar_dim)
     {
-        for (int vel_dim = 0; vel_dim < num_vel_dim; ++vel_dim)
+        for (int qp = 0; qp < num_point; ++qp)
         {
-            // Test velocity
-            double expected = static_cast<double>(vel_dim + 3 * qp);
-            EXPECT_DOUBLE_EQ(expected, fieldValue(vector_vel, 0, qp, vel_dim));
+            double expected = 0.0;
 
-            // Test dxdt_velocity
-            expected = static_cast<double>(100 + vel_dim + 3 * qp);
-            EXPECT_DOUBLE_EQ(expected,
-                             fieldValue(vector_dxdt_vel, 0, qp, vel_dim));
-
-            // Test grad_velocity
-            for (int space_dim = 0; space_dim < NumSpaceDim; ++space_dim)
+            // Test foo
+            if (scalar_dim != 4)
             {
-                expected
-                    = static_cast<double>(vel_dim + 3 * qp + 9 * space_dim);
-                EXPECT_DOUBLE_EQ(
-                    expected,
-                    fieldValue(vector_grad_vel, 0, qp, space_dim, vel_dim));
+                expected = num_point * scalar_dim + qp + 1;
+                EXPECT_EQ(expected, fieldValue(vector_foo, 0, qp, scalar_dim))
+                    << "  foo(" << 0 << ", " << qp << ", " << scalar_dim
+                    << ')';
+            }
+            else
+            {
+                EXPECT_TRUE(
+                    std::isnan(fieldValue(vector_foo, 0, qp, scalar_dim)))
+                    << "  foo(" << 0 << ", " << qp << ", " << scalar_dim
+                    << ')';
+            }
+
+            // Test dxdt_foo
+            if (scalar_dim != 4)
+            {
+                expected = 100 + num_point * scalar_dim + qp + 1;
+                EXPECT_EQ(expected,
+                          fieldValue(vector_dxdt_foo, 0, qp, scalar_dim))
+                    << "  dxdt_foo(" << 0 << ", " << qp << ", " << scalar_dim
+                    << ')';
+            }
+            else
+            {
+                EXPECT_TRUE(
+                    std::isnan(fieldValue(vector_dxdt_foo, 0, qp, scalar_dim)))
+                    << "  dxdt_foo(" << 0 << ", " << qp << ", " << scalar_dim
+                    << ')';
+            }
+
+            // Test grad_foo
+            for (int grad_dim = 0; grad_dim < num_grad_dim; ++grad_dim)
+            {
+                if (scalar_dim != 4)
+                {
+                    expected = 1000 + 100 * grad_dim + num_point * scalar_dim
+                               + qp + 1;
+                    EXPECT_EQ(expected,
+                              fieldValue(
+                                  vector_grad_foo, 0, qp, grad_dim, scalar_dim))
+                        << "  grad_foo(" << 0 << ", " << qp << ", " << grad_dim
+                        << ", " << scalar_dim << ')';
+                }
+                else
+                {
+                    EXPECT_TRUE(std::isnan(fieldValue(
+                        vector_grad_foo, 0, qp, grad_dim, scalar_dim)))
+                        << "  grad_foo(" << 0 << ", " << qp << ", " << grad_dim
+                        << ", " << scalar_dim << ')';
+                }
             }
         }
     }
 }
 
 //---------------------------------------------------------------------------//
-TEST(S2V_22, residual_test)
+// Test residual and Jacobian evaluations.
+template<typename EvalType>
+class ScalarToVectorTest : public ::testing::Test
 {
-    testEval<panzer::Traits::Residual, 2, 2>();
+};
+using EvalTypes
+    = ::testing::Types<panzer::Traits::Residual, panzer::Traits::Jacobian>;
+
+class EvalTypeNames
+{
+  public:
+    template<typename T>
+    static std::string GetName(const int i)
+    {
+        if (std::is_same<T, panzer::Traits::Residual>())
+            return "Residual";
+        if (std::is_same<T, panzer::Traits::Jacobian>())
+            return "Jacobian";
+        return std::to_string(i);
+    }
+};
+
+TYPED_TEST_SUITE(ScalarToVectorTest, EvalTypes, EvalTypeNames);
+
+//---------------------------------------------------------------------------//
+TYPED_TEST(ScalarToVectorTest, Velocity22)
+{
+    testEval<TypeParam, VelocityDim>(2, 2, ScalarNaming::Indexed);
 }
 
 //---------------------------------------------------------------------------//
-TEST(S2V_22, jacobian_test)
+TYPED_TEST(ScalarToVectorTest, Velocity33)
 {
-    testEval<panzer::Traits::Jacobian, 2, 2>();
+    testEval<TypeParam, VelocityDim>(3, 3, ScalarNaming::Indexed);
 }
 
 //---------------------------------------------------------------------------//
-TEST(S2V_33, residual_test)
+TYPED_TEST(ScalarToVectorTest, Velocity32)
 {
-    testEval<panzer::Traits::Residual, 3, 3>();
+    testEval<TypeParam, VelocityDim>(3, 2, ScalarNaming::Indexed);
 }
 
 //---------------------------------------------------------------------------//
-TEST(S2V_33, jacobian_test)
+TYPED_TEST(ScalarToVectorTest, Phase52Suffixed)
 {
-    testEval<panzer::Traits::Jacobian, 3, 3>();
+    testEval<TypeParam, PhaseIndex>(5, 2, ScalarNaming::Suffixed);
 }
 
 //---------------------------------------------------------------------------//
-TEST(S2V_32, residual_test)
+TYPED_TEST(ScalarToVectorTest, Phase72Suffixed)
 {
-    testEval<panzer::Traits::Residual, 3, 2>();
+    testEval<TypeParam, PhaseIndex>(7, 2, ScalarNaming::Suffixed);
 }
 
 //---------------------------------------------------------------------------//
-TEST(S2V_32, jacobian_test)
+TYPED_TEST(ScalarToVectorTest, Phase22List)
 {
-    testEval<panzer::Traits::Jacobian, 3, 2>();
+    testEval<TypeParam, PhaseIndex>(2, 2, ScalarNaming::List);
 }
 
-} // end namespace Test
-} // end namespace VertexCFD
+//---------------------------------------------------------------------------//
+TYPED_TEST(ScalarToVectorTest, Phase32List)
+{
+    testEval<TypeParam, PhaseIndex>(3, 2, ScalarNaming::List);
+}
+
+} // namespace Test
+} // namespace VertexCFD

@@ -22,8 +22,9 @@ void absTest()
 
     // Make result views.
     constexpr int num_result = 5;
-    Kokkos::View<double[num_result], PHX::mem_space> dbl_result("dbl_result");
-    Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
+    const Kokkos::View<double[num_result], PHX::mem_space> dbl_result(
+        "dbl_result");
+    const Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
         "fad_result");
 
     // Setup test values.
@@ -79,8 +80,9 @@ void minTest()
 
     // Make result views.
     constexpr int num_result = 8;
-    Kokkos::View<double[num_result], PHX::mem_space> dbl_result("dbl_result");
-    Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
+    const Kokkos::View<double[num_result], PHX::mem_space> dbl_result(
+        "dbl_result");
+    const Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
         "fad_result");
 
     // Setup test values.
@@ -174,8 +176,9 @@ void maxTest()
 
     // Make result views.
     constexpr int num_result = 8;
-    Kokkos::View<double[num_result], PHX::mem_space> dbl_result("dbl_result");
-    Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
+    const Kokkos::View<double[num_result], PHX::mem_space> dbl_result(
+        "dbl_result");
+    const Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
         "fad_result");
 
     // Setup test values.
@@ -269,14 +272,15 @@ void clampTest()
 
     // Make result views.
     constexpr int num_result = 22;
-    Kokkos::View<double[num_result], PHX::mem_space> dbl_result("dbl_result");
-    Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
+    const Kokkos::View<double[num_result], PHX::mem_space> dbl_result(
+        "dbl_result");
+    const Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
         "fad_result");
 
     // Setup test values.
     const double tol = 0.25;
-    double clamp_lo = -2.125;
-    double clamp_hi = 4.875;
+    const double clamp_lo = -2.125;
+    const double clamp_hi = 4.875;
     constexpr int num_value = 11;
     Kokkos::Array<double, num_value> x_dbl
         = {-std::numeric_limits<double>::infinity(),
@@ -400,8 +404,9 @@ void rampTest()
 
     // Make result views.
     constexpr int num_result = 5;
-    Kokkos::View<double[num_result], PHX::mem_space> dbl_result("dbl_result");
-    Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
+    const Kokkos::View<double[num_result], PHX::mem_space> dbl_result(
+        "dbl_result");
+    const Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
         "fad_result");
 
     // Setup test values.
@@ -458,8 +463,9 @@ void hypot2DTest()
 
     // Make result views.
     constexpr int num_result = 9;
-    Kokkos::View<double[num_result], PHX::mem_space> dbl_result("dbl_result");
-    Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
+    const Kokkos::View<double[num_result], PHX::mem_space> dbl_result(
+        "dbl_result");
+    const Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
         "fad_result");
 
     // Setup test values.
@@ -584,17 +590,17 @@ void normTest()
         = Kokkos::View<sfad_3d_type[num_sfad_result], PHX::mem_space>;
 
     // Create the double vectors
-    dbl_view vec_dbl_2d("vec_dbl_2d", 2);
-    dbl_view vec_dbl_3d("vec_dbl_3d", 3);
+    const dbl_view vec_dbl_2d("vec_dbl_2d", 2);
+    const dbl_view vec_dbl_3d("vec_dbl_3d", 3);
 
     // Create dfad versions. Note the last extra "hidden" dimension must equal
     // num_derivs + 1
-    dfad_view vec_dfad_2d("vec_dfad_2d", 2, 3);
-    dfad_view vec_dfad_3d("vec_dfad_3d", 3, 4);
+    const dfad_view vec_dfad_2d("vec_dfad_2d", 2, 3);
+    const dfad_view vec_dfad_3d("vec_dfad_3d", 3, 4);
 
     // Create sfad versions.
-    sfad_2d_view vec_sfad_2d("vec_dfad_2d");
-    sfad_3d_view vec_sfad_3d("vec_dfad_3d");
+    const sfad_2d_view vec_sfad_2d("vec_dfad_2d");
+    const sfad_3d_view vec_sfad_3d("vec_dfad_3d");
 
     // Create host mirrors for initialization
     auto vec_dbl_2d_host = Kokkos::create_mirror_view(vec_dbl_2d);
@@ -636,14 +642,16 @@ void normTest()
     Kokkos::deep_copy(vec_sfad_3d, vec_sfad_3d_host);
 
     // Make result views.
-    dbl_results_view dbl_result("dbl_result");
+    const dbl_results_view dbl_result("dbl_result");
 
     // Note we still need to specify the compile-time dimension size.
-    dfad_results_view dfad_2d_results("2d_dfad_results", num_dfad_result, 3);
-    dfad_results_view dfad_3d_results("3d_dfad_results", num_dfad_result, 4);
+    const dfad_results_view dfad_2d_results(
+        "2d_dfad_results", num_dfad_result, 3);
+    const dfad_results_view dfad_3d_results(
+        "3d_dfad_results", num_dfad_result, 4);
 
-    sfad_2d_results_view sfad_2d_results("2d_sfad_results");
-    sfad_3d_results_view sfad_3d_results("3d_sfad_results");
+    const sfad_2d_results_view sfad_2d_results("2d_sfad_results");
+    const sfad_3d_results_view sfad_3d_results("3d_sfad_results");
 
     const double tol = 1.0;
 
@@ -738,25 +746,27 @@ void metricNormTest()
         = Kokkos::View<dfad_type[num_dfad_result], PHX::mem_space>;
 
     // Create the inputs for 2d
-    dfad_vector_view vec_dfad_2d("vec_dfad_2d", 2, 3);
-    dbl_view vec_dbl_2d("vec_dbl_2d", 2);
-    dfad_matrix_view identity_dfad_2d("identity_dfad_2d", 2, 2, 3);
-    dbl_matrix_view identity_dbl_2d("identity_dbl_2d", 2, 2);
-    dfad_matrix_view metric_dfad_2d("metric_dfad_2d", 2, 2, 3);
-    dbl_matrix_view metric_dbl_2d("metric_dbl_2d", 2, 2);
+    const dfad_vector_view vec_dfad_2d("vec_dfad_2d", 2, 3);
+    const dbl_view vec_dbl_2d("vec_dbl_2d", 2);
+    const dfad_matrix_view identity_dfad_2d("identity_dfad_2d", 2, 2, 3);
+    const dbl_matrix_view identity_dbl_2d("identity_dbl_2d", 2, 2);
+    const dfad_matrix_view metric_dfad_2d("metric_dfad_2d", 2, 2, 3);
+    const dbl_matrix_view metric_dbl_2d("metric_dbl_2d", 2, 2);
 
     // Create the inputs for 3d
-    dfad_vector_view vec_dfad_3d("vec_dfad_3d", 3, 4);
-    dbl_view vec_dbl_3d("vec_dbl_3d", 3);
-    dfad_matrix_view identity_dfad_3d("identity_dfad_3d", 3, 3, 4);
-    dbl_matrix_view identity_dbl_3d("identity_dbl_3d", 3, 3);
-    dfad_matrix_view metric_dfad_3d("metric_dfad_3d", 3, 3, 4);
-    dbl_matrix_view metric_dbl_3d("metric_dbl_3d", 3, 3);
+    const dfad_vector_view vec_dfad_3d("vec_dfad_3d", 3, 4);
+    const dbl_view vec_dbl_3d("vec_dbl_3d", 3);
+    const dfad_matrix_view identity_dfad_3d("identity_dfad_3d", 3, 3, 4);
+    const dbl_matrix_view identity_dbl_3d("identity_dbl_3d", 3, 3);
+    const dfad_matrix_view metric_dfad_3d("metric_dfad_3d", 3, 3, 4);
+    const dbl_matrix_view metric_dbl_3d("metric_dbl_3d", 3, 3);
 
     // Make result views
-    dbl_results_view dbl_result("dbl_result");
-    dfad_results_view dfad_2d_result("dfad_2d_result", num_dfad_result, 3);
-    dfad_results_view dfad_3d_result("dfad_3d_result", num_dfad_result, 4);
+    const dbl_results_view dbl_result("dbl_result");
+    const dfad_results_view dfad_2d_result(
+        "dfad_2d_result", num_dfad_result, 3);
+    const dfad_results_view dfad_3d_result(
+        "dfad_3d_result", num_dfad_result, 4);
 
     // Create host mirror views for initialization
     auto vec_dbl_2d_host = Kokkos::create_mirror_view(vec_dbl_2d);
@@ -948,8 +958,9 @@ void hypot3DTest()
 
     // Make result views.
     constexpr int num_result = 13;
-    Kokkos::View<double[num_result], PHX::mem_space> dbl_result("dbl_result");
-    Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
+    const Kokkos::View<double[num_result], PHX::mem_space> dbl_result(
+        "dbl_result");
+    const Kokkos::View<fad_type[num_result], PHX::mem_space> fad_result(
         "fad_result");
 
     // Setup test values.

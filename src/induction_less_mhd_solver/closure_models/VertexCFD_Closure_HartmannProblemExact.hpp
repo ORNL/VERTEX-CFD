@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_HARTMANNPROBLEMEXACT_HPP
 #define VERTEXCFD_CLOSURE_HARTMANNPROBLEMEXACT_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -30,10 +28,9 @@ class HartmannProblemExact : public panzer::EvaluatorWithBaseImpl<Traits>,
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    HartmannProblemExact(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& user_params);
+    HartmannProblemExact(const panzer::IntegrationRule& ir,
+                         const Teuchos::ParameterList& closure_params,
+                         const Teuchos::ParameterList& user_params);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;
@@ -51,12 +48,12 @@ class HartmannProblemExact : public panzer::EvaluatorWithBaseImpl<Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _exact_elec_pot;
 
   private:
+    double _nu;
     double _sigma;
     double _rho;
-    double _nu;
     double _L;
     double _B;
-    double _M;
+    double _Ha;
     int _ir_degree;
     int _ir_index;
 

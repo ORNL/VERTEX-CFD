@@ -9,11 +9,12 @@ import numpy as np
 #   `k + k_t` for turbulent cases.
 
 
-def continuity_flux(rho, nu, nu_t, beta, grad_lagrange_pres,
-                    build_turbulence_model, num_space_dim):
-    fv_continuity_flux = rho * nu * grad_lagrange_pres / beta
+def continuity_flux(rho, nu, nu_t, gamma, kappa, cp, beta, grad_lagrange_pres,
+                    build_turbulence_model, ndim):
+    fv_continuity_flux_isothermal = rho * nu * grad_lagrange_pres / beta
+    fv_continuity_flux = gamma * kappa * grad_lagrange_pres / (rho * cp * beta)
 
-    return fv_continuity_flux[0:num_space_dim]
+    return fv_continuity_flux_isothermal[0:ndim], fv_continuity_flux[0:ndim]
 
 
 def momentum_flux(rho, nu, nu_t, grad_vel, build_turbulence_model,
@@ -38,6 +39,7 @@ kappa = 0.5
 nu = 0.375
 nu_t = 4.0
 cp = 0.2
+gamma = 3.0
 Pr_t = 0.8
 beta = 2.0
 
@@ -64,11 +66,14 @@ for dim in dims:
             print("\nTurbulence Model is " + str(build_turbulence_model) +
                   "\n")
 
-            fv_continuity = continuity_flux(rho, nu, nu_t, beta,
-                                            grad_lagrange_pres,
-                                            build_turbulence_model, dim)
+            fv_continuity_isothermal, fv_continuity = continuity_flux(
+                rho, nu, nu_t, gamma, kappa, cp, beta, grad_lagrange_pres,
+                build_turbulence_model, dim)
             print("fv_continuity for AC Model:", np.zeros([dim]))
-            print("fv_continuity for EDAC Model:", fv_continuity)
+            print("fv_continuity for EDAC Model without temperature equation:",
+                  fv_continuity_isothermal)
+            print("fv_continuity for EDAC Model with temperature equation:",
+                  fv_continuity)
 
             fv_momentum_0 = momentum_flux(rho, nu, nu_t, grad_vel[0],
                                           build_turbulence_model, dim)

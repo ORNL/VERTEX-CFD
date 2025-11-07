@@ -17,6 +17,8 @@ namespace VertexCFD
 namespace Response
 {
 
+//---------------------------------------------------------------------------//
+// Build workset descriptors for side sets.
 std::vector<panzer::WorksetDescriptor>
 buildWorksetDescriptors(const Teuchos::ParameterList& sideset_plist);
 

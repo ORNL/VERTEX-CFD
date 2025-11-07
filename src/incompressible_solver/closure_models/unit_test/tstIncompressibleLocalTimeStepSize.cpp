@@ -71,7 +71,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
 
     KOKKOS_INLINE_FUNCTION void operator()(const int c) const
     {
-        int num_point = _element_length.extent(1);
+        const int num_point = _element_length.extent(1);
         for (int qp = 0; qp < num_point; ++qp)
         {
             _element_length(c, qp, 0) = _h[0];
@@ -166,7 +166,8 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "IncompressibleLocalTimeStepSize";
     test_fixture.eval_name = "Incompressible Local Time Step Size";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
     test_fixture.template buildAndTest<

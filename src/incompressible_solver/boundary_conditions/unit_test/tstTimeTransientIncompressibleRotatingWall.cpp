@@ -1,5 +1,5 @@
+#include "VertexCFD_EvaluatorTestHarness.hpp"
 #include "incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleRotatingWall.hpp"
-#include <VertexCFD_EvaluatorTestHarness.hpp>
 
 #include <Phalanx_Evaluator_Derived.hpp>
 #include <Phalanx_Evaluator_WithBaseImpl.hpp>
@@ -47,6 +47,8 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_lagrange_pressure;
 
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> _normals;
+
     Dependencies(const panzer::IntegrationRule& ir,
                  const bool build_tmp_equ,
                  const ContinuityModel continuity_model)
@@ -58,6 +60,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         , _continuity_model(continuity_model)
         , _grad_temperature("GRAD_temperature", ir.dl_vector)
         , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
+        , _normals("Side Normal", ir.dl_vector)
     {
         this->addEvaluatedField(_lagrange_pressure);
         this->addEvaluatedField(_grad_velocity_0);
@@ -67,7 +70,10 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         if (build_tmp_equ)
             this->addEvaluatedField(_grad_temperature);
         if (_continuity_model == ContinuityModel::EDAC)
+        {
+            this->addEvaluatedField(_normals);
             this->addEvaluatedField(_grad_lagrange_pressure);
+        }
 
         this->setName(
             "Time Transient Incompressible Rotating Wall Unit Test "
@@ -96,7 +102,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         {
             for (int d = 0; d < num_space_dim; d++)
             {
-                const int dqp = (d + 1 + num_space_dim) * (qp + 1);
+                const int dqp = (d + 1 + num_space_dim);
                 _grad_velocity_0(c, qp, d) = 0.1 * dqp;
                 _grad_velocity_1(c, qp, d) = 0.2 * dqp;
                 if (num_space_dim == 3)
@@ -106,7 +112,10 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
                     _grad_temperature(c, qp, d) = 325 * dqp;
 
                 if (_continuity_model == ContinuityModel::EDAC)
-                    _grad_lagrange_pressure(c, qp, d) = 0.4;
+                {
+                    _normals(c, qp, d) = 0.1 * dqp;
+                    _grad_lagrange_pressure(c, qp, d) = 1.0 * dqp;
+                }
             }
         }
     }
@@ -128,14 +137,16 @@ void testEval(const Kokkos::Array<double, 3> time_values,
     EvaluatorTestFixture test_fixture(
         num_grad_dim, integration_order, basis_order);
 
-    std::string continuity_model_name = "";
+    const double nan_val = std::numeric_limits<double>::quiet_NaN();
+
+    bool is_edac = false;
     switch (continuity_model)
     {
         case (ContinuityModel::AC):
-            continuity_model_name = "AC";
+            is_edac = false;
             break;
         case (ContinuityModel::EDAC):
-            continuity_model_name = "EDAC";
+            is_edac = true;
             break;
     }
 
@@ -190,10 +201,9 @@ void testEval(const Kokkos::Array<double, 3> time_values,
 
     // Create evaluator.
     auto isotherm_eval = Teuchos::rcp(
-        new BoundaryCondition::IncompressibleRotatingWall<EvalType,
-                                                          panzer::Traits,
-                                                          num_space_dim>(
-            *test_fixture.ir, fluid_prop, bc_params, continuity_model_name));
+        new BoundaryCondition::
+            IncompressibleRotatingWall<EvalType, panzer::Traits, num_space_dim>(
+                *test_fixture.ir, fluid_prop, bc_params, is_edac));
     test_fixture.registerEvaluator<EvalType>(isotherm_eval);
 
     // Add required test fields.
@@ -231,6 +241,11 @@ void testEval(const Kokkos::Array<double, 3> time_values,
     const auto boundary_phi_result = test_fixture.getTestFieldData<EvalType>(
         isotherm_eval->_boundary_lagrange_pressure);
 
+    const double exp_grad_lagrange_pres[3]
+        = {num_space_dim == 3 ? 0.92 : 2.25,
+           num_space_dim == 3 ? 1.15 : 3.0,
+           num_space_dim == 3 ? 1.38 : nan_val};
+
     // Assert variables and gradients at each quadrature points
     const int num_point = boundary_phi_result.extent(1);
     for (int qp = 0; qp < num_point; ++qp)
@@ -257,7 +272,7 @@ void testEval(const Kokkos::Array<double, 3> time_values,
 
         for (int d = 0; d < num_grad_dim; ++d)
         {
-            const int dqp = (d + 1 + num_space_dim) * (qp + 1);
+            const int dqp = (d + 1 + num_space_dim);
             for (int vel_dim = 0; vel_dim < num_space_dim; ++vel_dim)
             {
                 const auto boundary_grad_velocity_d_result
@@ -279,14 +294,14 @@ void testEval(const Kokkos::Array<double, 3> time_values,
 
                 if (continuity_model == ContinuityModel::EDAC)
                 {
-                    const double exp_val = 0.4;
                     const auto boundary_grad_lagrange_pressure_result
                         = test_fixture.getTestFieldData<EvalType>(
                             isotherm_eval->_boundary_grad_lagrange_pressure);
-                    EXPECT_DOUBLE_EQ(
-                        exp_val,
+                    EXPECT_NEAR(
+                        exp_grad_lagrange_pres[d],
                         fieldValue(
-                            boundary_grad_lagrange_pressure_result, 0, qp, d));
+                            boundary_grad_lagrange_pressure_result, 0, qp, d),
+                        1e-12);
                 }
             }
         }

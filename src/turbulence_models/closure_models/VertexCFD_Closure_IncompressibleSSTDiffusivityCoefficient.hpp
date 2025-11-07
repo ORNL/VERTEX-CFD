@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLESSTDIFFUSIVITYCOEFFICIENT_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLESSTDIFFUSIVITYCOEFFICIENT_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -30,7 +28,6 @@ class IncompressibleSSTDiffusivityCoefficient
 
     IncompressibleSSTDiffusivityCoefficient(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
         const Teuchos::ParameterList& user_params);
 
     void evaluateFields(typename Traits::EvalData workset) override;
@@ -43,8 +40,8 @@ class IncompressibleSSTDiffusivityCoefficient
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu_t;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>
         _sst_blending_function;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _nu;
 
-    double _nu;
     double _sigma_k1;
     double _sigma_k2;
     double _sigma_w1;

@@ -4,18 +4,28 @@
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleBuoyancySource.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConstantSource.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConvectiveFlux.hpp"
+#include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConvectiveFluxMachineLearning.hpp"
+#include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleEnstrophy.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleErrorNorms.hpp"
+#include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleGradDiv.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleLiftDrag.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleLocalTimeStepSize.hpp"
+#include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleNusseltNumber.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressiblePlanarPoiseuilleExact.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleRotatingAnnulusExact.hpp"
+#include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleSUPGExactSolution.hpp"
+#include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleSUPGFlux.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleShearVariables.hpp"
+#include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleTauSUPG.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleTaylorGreenVortexExactSolution.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleTimeDerivative.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousFlux.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousHeat.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory.hpp"
 #include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
+
+#include "closure_models/VertexCFD_Closure_MethodManufacturedSolution.hpp"
+#include "closure_models/VertexCFD_Closure_MethodManufacturedSolutionSource.hpp"
 
 namespace VertexCFD
 {
@@ -26,8 +36,9 @@ template<class EvalType, int NumSpaceDim>
 void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     const std::string& closure_type,
     const Teuchos::RCP<panzer::IntegrationRule>& ir,
+    const Teuchos::RCP<panzer::GlobalData>& global_data,
     const Teuchos::ParameterList& user_params,
-    const Teuchos::ParameterList& /**closure_params**/,
+    const Teuchos::ParameterList& closure_params,
     const bool use_turbulence_model,
     bool& found_model,
     std::string& error_msg,
@@ -36,29 +47,17 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
 {
     // Define local variables
     constexpr int num_space_dim = NumSpaceDim;
-    Teuchos::RCP<PHX::Evaluator<panzer::Traits>> eval;
+    const Teuchos::RCP<PHX::Evaluator<panzer::Traits>> eval;
 
     // Fluid properties
-    Teuchos::ParameterList fluid_prop_list
-        = user_params.sublist("Fluid Properties");
-    const bool build_temp_equ
-        = user_params.isType<bool>("Build Temperature Equation")
-              ? user_params.get<bool>("Build Temperature Equation")
-              : false;
-    const bool build_buoyancy_source
-        = user_params.isType<bool>("Build Buoyancy Source")
-              ? user_params.get<bool>("Build Buoyancy Source")
-              : false;
-    const bool build_ind_less_equ
-        = user_params.isType<bool>("Build Inductionless MHD Equation")
-              ? user_params.get<bool>("Build Inductionless MHD Equation")
-              : false;
-    fluid_prop_list.set<bool>("Build Temperature Equation", build_temp_equ);
-    fluid_prop_list.set<bool>("Build Buoyancy Source", build_buoyancy_source);
-    fluid_prop_list.set<bool>("Build Inductionless MHD Equation",
-                              build_ind_less_equ);
-    FluidProperties::ConstantFluidProperties incompressible_fluidprop_params
+    const Teuchos::ParameterList fluid_prop_list
+        = user_params.sublist("Fluid Properties List");
+    const FluidProperties::ConstantFluidProperties incompressible_fluidprop_params
         = FluidProperties::ConstantFluidProperties(fluid_prop_list);
+
+    // Stability parameter list
+    const Teuchos::ParameterList stability_param_list
+        = user_params.sublist("Stability Parameters");
 
     // Closure models
     if (closure_type == "IncompressibleTimeDerivative")
@@ -74,7 +73,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleLiftDrag<EvalType, panzer::Traits, num_space_dim>(
-                *ir, incompressible_fluidprop_params, user_params));
+                *ir, user_params, use_turbulence_model));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -83,10 +82,25 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleConvectiveFlux<EvalType, panzer::Traits, num_space_dim>(
-                *ir, incompressible_fluidprop_params));
+                *ir, incompressible_fluidprop_params, user_params));
         evaluators->push_back(eval);
         found_model = true;
     }
+
+#ifdef VERTEXCFD_HAVE_TENSORFLOW
+    if (closure_type == "IncompressibleConvectiveFluxMachineLearning")
+    {
+        auto eval = Teuchos::rcp(
+            new IncompressibleConvectiveFluxMachineLearning<EvalType,
+                                                            panzer::Traits,
+                                                            num_space_dim>(
+                *ir, incompressible_fluidprop_params, closure_params));
+        evaluators->push_back(eval);
+        found_model = true;
+    }
+#else
+    (void)closure_params;
+#endif
 
     if (closure_type == "IncompressibleViscousFlux")
     {
@@ -96,6 +110,15 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
                 incompressible_fluidprop_params,
                 user_params,
                 use_turbulence_model));
+        evaluators->push_back(eval);
+        found_model = true;
+    }
+
+    if (closure_type == "IncompressibleGradDiv")
+    {
+        auto eval = Teuchos::rcp(
+            new IncompressibleGradDiv<EvalType, panzer::Traits, num_space_dim>(
+                *ir, stability_param_list));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -114,7 +137,10 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleConstantSource<EvalType, panzer::Traits, num_space_dim>(
-                *ir, incompressible_fluidprop_params, user_params));
+                *ir,
+                incompressible_fluidprop_params,
+                global_data,
+                closure_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -132,7 +158,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleViscousHeat<EvalType, panzer::Traits, num_space_dim>(
-                *ir, incompressible_fluidprop_params));
+                *ir));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -143,7 +169,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
             new IncompressibleRotatingAnnulusExact<EvalType,
                                                    panzer::Traits,
                                                    num_space_dim>(
-                *ir, incompressible_fluidprop_params, user_params));
+                *ir, closure_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -154,7 +180,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
             new IncompressiblePlanarPoiseuilleExact<EvalType,
                                                     panzer::Traits,
                                                     num_space_dim>(
-                *ir, incompressible_fluidprop_params, user_params));
+                *ir, closure_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -174,7 +200,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
             new IncompressibleTaylorGreenVortexExactSolution<EvalType,
                                                              panzer::Traits,
                                                              num_space_dim>(
-                *ir, incompressible_fluidprop_params));
+                *ir, closure_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -183,7 +209,81 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleShearVariables<EvalType, panzer::Traits, num_space_dim>(
-                *ir, incompressible_fluidprop_params));
+                *ir));
+        evaluators->push_back(eval);
+        found_model = true;
+    }
+
+    if (closure_type == "IncompressibleNusseltNumber")
+    {
+        auto eval = Teuchos::rcp(
+            new IncompressibleNusseltNumber<EvalType, panzer::Traits>(*ir));
+        evaluators->push_back(eval);
+        found_model = true;
+    }
+
+    if (closure_type == "IncompressibleEnstrophy")
+    {
+        auto eval = Teuchos::rcp(
+            new IncompressibleEnstrophy<EvalType, panzer::Traits, num_space_dim>(
+                *ir));
+        evaluators->push_back(eval);
+        found_model = true;
+    }
+
+    if (closure_type == "IncompressibleTauSUPG")
+    {
+        auto eval = Teuchos::rcp(
+            new IncompressibleTauSUPG<EvalType, panzer::Traits, num_space_dim>(
+                *ir, incompressible_fluidprop_params, closure_params));
+        evaluators->push_back(eval);
+        found_model = true;
+    }
+
+    if (closure_type == "IncompressibleSUPGFlux")
+    {
+        auto eval = Teuchos::rcp(
+            new IncompressibleSUPGFlux<EvalType, panzer::Traits, num_space_dim>(
+                *ir, incompressible_fluidprop_params, closure_params));
+        evaluators->push_back(eval);
+        found_model = true;
+    }
+
+    if (closure_type == "IncompressibleSUPGExactSolution")
+    {
+        auto eval
+            = Teuchos::rcp(new IncompressibleSUPGExactSolution<EvalType,
+                                                               panzer::Traits,
+                                                               num_space_dim>(
+                *ir, closure_params));
+        evaluators->push_back(eval);
+        found_model = true;
+    }
+
+    // NOTE: the method of manufactured solution (MMS) is kept here
+    // as a template for future use. This is currently not used in any input
+    // files.
+    if (closure_type == "MethodManufacturedSolution")
+    {
+        auto eval = Teuchos::rcp(
+            new MethodManufacturedSolution<EvalType, panzer::Traits, num_space_dim>(
+                *ir));
+        evaluators->push_back(eval);
+        found_model = true;
+    }
+
+    if (closure_type == "MethodManufacturedSolutionSource")
+    {
+        bool build_viscous_flux = false;
+        if (user_params.isType<bool>("Build Viscous Flux"))
+        {
+            build_viscous_flux = user_params.get<bool>("Build Viscous Flux");
+        }
+        auto eval
+            = Teuchos::rcp(new MethodManufacturedSolutionSource<EvalType,
+                                                                panzer::Traits,
+                                                                num_space_dim>(
+                *ir, build_viscous_flux, closure_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -193,15 +293,24 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     error_msg += "IncompressibleBuoyancySource\n";
     error_msg += "IncompressibleConstantSource\n";
     error_msg += "IncompressibleConvectiveFlux\n";
+    error_msg += "IncompressibleConvectiveFluxMachineLearning\n";
+    error_msg += "IncompressibleEnstrophy\n";
     error_msg += "IncompressibleErrorNorm\n";
+    error_msg += "IncompressibleGradDiv\n";
     error_msg += "IncompressibleLiftDrag\n";
     error_msg += "IncompressibleLocalTimeStepSize\n";
+    error_msg += "IncompressibleNusseltNumber\n";
     error_msg += "IncompressiblePlanarPoiseuilleExact\n";
     error_msg += "IncompressibleRotatingAnnulusExact\n";
     error_msg += "IncompressibleShearVariables\n";
+    error_msg += "IncompressibleSUPGExactSolution\n";
+    error_msg += "IncompressibleSUPGFlux\n";
+    error_msg += "IncompressibleTauSUPG\n";
     error_msg += "IncompressibleTimeDerivative\n";
     error_msg += "IncompressibleViscousFlux\n";
     error_msg += "IncompressibleViscousHeat\n";
+    error_msg += "MethodManufacturedSolution\n";
+    error_msg += "MethodManufacturedSolutionSource\n";
 }
 
 //---------------------------------------------------------------------------//

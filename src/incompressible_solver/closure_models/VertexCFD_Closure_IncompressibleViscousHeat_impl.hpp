@@ -1,7 +1,7 @@
 #ifndef VERTEXCFD_CLOSURE_VISCOUSHEAT_IMPL_HPP
 #define VERTEXCFD_CLOSURE_VISCOUSHEAT_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 
@@ -14,13 +14,12 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleViscousHeat<EvalType, Traits, NumSpaceDim>::IncompressibleViscousHeat(
-    const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
-    const std::string& gradient_prefix)
-    : _viscous_heat_continuity_source("VISCOUS_HEAT_continuity", ir.dl_scalar)
-    , _viscous_heat_energy_source("VISCOUS_HEAT_energy", ir.dl_scalar)
-    , _rho(fluid_prop.constantDensity())
-    , _nu(fluid_prop.constantKinematicViscosity())
+    const panzer::IntegrationRule& ir)
+    : _viscous_heat_continuity_source("VISCOUS_HEAT_SOURCE_continuity",
+                                      ir.dl_scalar)
+    , _viscous_heat_energy_source("VISCOUS_HEAT_SOURCE_energy", ir.dl_scalar)
+    , _rho("density", ir.dl_scalar)
+    , _nu("kinematic_viscosity", ir.dl_scalar)
 {
     // Evaluated fields
     this->addEvaluatedField(_viscous_heat_continuity_source);
@@ -29,14 +28,14 @@ IncompressibleViscousHeat<EvalType, Traits, NumSpaceDim>::IncompressibleViscousH
     Utils::addEvaluatedVectorField(*this,
                                    ir.dl_scalar,
                                    _viscous_heat_momentum_source,
-                                   "VISCOUS_HEAT_"
+                                   "VISCOUS_HEAT_SOURCE_"
                                    "momentum_");
 
     // Dependent fields
-    Utils::addDependentVectorField(*this,
-                                   ir.dl_vector,
-                                   _grad_velocity,
-                                   gradient_prefix + "GRAD_velocity_");
+    this->addDependentField(_rho);
+    this->addDependentField(_nu);
+    Utils::addDependentVectorField(
+        *this, ir.dl_vector, _grad_velocity, "GRAD_velocity_");
 
     this->setName("Incompressible Viscous Heat "
                   + std::to_string(num_space_dim) + "D");
@@ -80,7 +79,8 @@ IncompressibleViscousHeat<EvalType, Traits, NumSpaceDim>::operator()(
 
                     // Add contribution from each dimension to energy source
                     _viscous_heat_energy_source(cell, point)
-                        += 2.0 * _rho * _nu * e_ij * e_ij;
+                        += 2.0 * _rho(cell, point) * _nu(cell, point) * e_ij
+                           * e_ij;
                 }
 
                 // No momentum contribution for this source term

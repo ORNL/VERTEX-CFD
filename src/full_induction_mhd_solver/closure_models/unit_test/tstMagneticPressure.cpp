@@ -1,9 +1,10 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_MagneticPressure.hpp"
 
-#include "utils/VertexCFD_Utils_VectorField.hpp"
+#include "utils/VertexCFD_Utils_MagneticDim.hpp"
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
 
 #include <gtest/gtest.h>
 
@@ -17,25 +18,41 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
 {
     using scalar_type = typename EvalType::ScalarT;
 
-    Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>, 3>
+    const Kokkos::Array<double, num_magnetic_field_dim> _b;
+
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, MagneticDim>
         tot_magn_field;
 
-    const Kokkos::Array<double, 3> _b;
-
     Dependencies(const panzer::IntegrationRule& ir,
-                 const Kokkos::Array<double, 3> b)
+                 const Kokkos::Array<double, num_magnetic_field_dim> b)
         : _b(b)
+        , tot_magn_field(
+              "total_magnetic_field",
+              Utils::buildMagneticLayout(ir.dl_scalar, num_magnetic_field_dim))
     {
-        Utils::addEvaluatedVectorField(
-            *this, ir.dl_scalar, tot_magn_field, "total_magnetic_field_");
+        this->addEvaluatedField(tot_magn_field);
         this->setName("Magnetic Pressure");
     }
 
-    void evaluateFields(typename panzer::Traits::EvalData /**d**/) override
+    void evaluateFields(typename panzer::Traits::EvalData d) override
     {
-        const int num_field_dim = tot_magn_field.size();
-        for (int dim = 0; dim < num_field_dim; ++dim)
-            tot_magn_field[dim].deep_copy(_b[dim]);
+        Kokkos::parallel_for(
+            "magnetic pressure test dependencies",
+            Kokkos::RangePolicy<PHX::exec_space>(0, d.num_cells),
+            *this);
+    }
+
+    KOKKOS_INLINE_FUNCTION void operator()(const int c) const
+    {
+        const int num_point = tot_magn_field.extent(1);
+        const int num_magnetic_field_dim = tot_magn_field.extent(2);
+        for (int qp = 0; qp < num_point; ++qp)
+        {
+            for (int dim = 0; dim < num_magnetic_field_dim; ++dim)
+            {
+                tot_magn_field(c, qp, dim) = _b[dim];
+            }
+        }
     }
 };
 
@@ -52,7 +69,7 @@ void testEval(const int num_space_dim)
     // Initialize magnetic field components and dependencies
     const double b0 = 0.25;
     const double b1 = 0.5;
-    const double b2 = num_space_dim == 3 ? 0.75 : 0.125;
+    const double b2 = num_space_dim == num_magnetic_field_dim ? 0.75 : 0.125;
 
     // Eval dependencies
     const auto deps
@@ -63,8 +80,8 @@ void testEval(const int num_space_dim)
     const double mu_0 = 2.0e-3;
     Teuchos::ParameterList full_induction_params;
     full_induction_params.set("Vacuum Magnetic Permeability", mu_0);
-    MHDProperties::FullInductionMHDProperties mhd_props
-        = MHDProperties::FullInductionMHDProperties(full_induction_params);
+    const MHDProperties::FullInductionMHDProperties mhd_props(
+        full_induction_params);
 
     // Initialize and register
     auto eval = Teuchos::rcp(
@@ -121,11 +138,10 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "MagneticPressure";
     test_fixture.eval_name = "Magnetic Pressure";
-    test_fixture.user_params.sublist("Full Induction MHD Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties")
         .set("Vacuum Magnetic Permeability", 0.125);
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 1.5)
-        .set("Artificial compressibility", 0.1);
+    test_fixture.factory_type = "Full Induction MHD";
     test_fixture.template buildAndTest<
         ClosureModel::MagneticPressure<EvalType, panzer::Traits>,
         num_space_dim>();

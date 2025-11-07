@@ -7,6 +7,7 @@
 #include <Panzer_HierarchicParallelism.hpp>
 #include <Panzer_PureBasis.hpp>
 #include <Panzer_Workset_Utilities.hpp>
+#include <Teuchos_StandardParameterEntryValidators.hpp>
 
 #include <Teuchos_Array.hpp>
 
@@ -22,36 +23,47 @@ template<class EvalType, class Traits, int NumSpaceDim>
 Gaussian<EvalType, Traits, NumSpaceDim>::Gaussian(
     const Teuchos::ParameterList& params, const panzer::PureBasis& basis)
     : _basis_name(basis.name())
-    , _a(Kokkos::ViewAllocateWithoutInitializing("Gaussian a"),
-         basis.dimension())
-    , _b(Kokkos::ViewAllocateWithoutInitializing("Gaussian b"),
-         basis.dimension())
-    , _c(Kokkos::ViewAllocateWithoutInitializing("Gaussian c"),
-         basis.dimension())
+    , _scaling(Scaling::unscaled)
 {
-    std::string dof_name = params.get<std::string>("Equation Set Name");
+    const std::string dof_name = params.get<std::string>("Equation Set Name");
     _ic = PHX::MDField<scalar_type, panzer::Cell, panzer::BASIS>(
         dof_name, basis.functional);
     this->addEvaluatedField(_ic);
     this->addUnsharedField(_ic.fieldTag().clone());
     this->setName("Gaussian Initial Condition: " + dof_name);
 
-    auto center = params.get<Teuchos::Array<double>>("Center");
-    auto sigma = params.get<Teuchos::Array<double>>("Sigma");
+    // Get scaling flag
+    if (params.isType<std::string>("Scaling"))
+    {
+        const auto type_validator = Teuchos::rcp(
+            new Teuchos::StringToIntegralParameterEntryValidator<Scaling>(
+                Teuchos::tuple<std::string>("scaled", "unscaled"), "unscaled"));
+        _scaling = type_validator->getIntegralValue(
+            params.get<std::string>("Scaling"));
+    }
+
+    // Get Gaussian profile parameters
+    const auto center = params.get<Teuchos::Array<double>>("Center");
+    const auto sigma = params.get<Teuchos::Array<double>>("Sigma");
     _d = params.get<double>("Base");
+
     const double sqrt2pi = std::sqrt(2.0 * Constants::pi);
-    auto a_host = Kokkos::create_mirror_view(Kokkos::HostSpace{}, _a);
-    auto b_host = Kokkos::create_mirror_view(Kokkos::HostSpace{}, _b);
-    auto c_host = Kokkos::create_mirror_view(Kokkos::HostSpace{}, _c);
     for (int dim = 0; dim < basis.dimension(); ++dim)
     {
-        a_host(dim) = 1.0 / (sqrt2pi * sigma[dim]);
-        b_host(dim) = center[dim];
-        c_host(dim) = 0.5 / (sigma[dim] * sigma[dim]);
+        double scale;
+        if (_scaling == Scaling::scaled)
+        {
+            scale = params.get<double>("Scale");
+        }
+        else
+        {
+            scale = 1.0 / (sqrt2pi * sigma[dim]);
+        }
+
+        _a[dim] = scale;
+        _b[dim] = center[dim];
+        _c[dim] = 0.5 / (sigma[dim] * sigma[dim]);
     }
-    Kokkos::deep_copy(_a, a_host);
-    Kokkos::deep_copy(_b, b_host);
-    Kokkos::deep_copy(_c, c_host);
 }
 
 //---------------------------------------------------------------------------//
@@ -84,13 +96,13 @@ KOKKOS_INLINE_FUNCTION void Gaussian<EvalType, Traits, NumSpaceDim>::operator()(
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_basis), [&](const int basis) {
-            using std::exp;
+            using Kokkos::exp;
             double result = 1.0;
             for (int dim = 0; dim < num_space_dim; ++dim)
             {
                 const auto x = _basis_coords(cell, basis, dim);
-                result *= _a(dim)
-                          * exp((_b(dim) - x) * (x - _b(dim)) * _c(dim));
+                result *= _a[dim]
+                          * exp((_b[dim] - x) * (x - _b[dim]) * _c[dim]);
             }
             _ic(cell, basis) = result + _d;
         });

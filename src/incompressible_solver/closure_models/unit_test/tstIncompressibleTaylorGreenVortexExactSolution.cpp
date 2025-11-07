@@ -1,8 +1,7 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleTaylorGreenVortexExactSolution.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <gtest/gtest.h>
 
@@ -38,16 +37,13 @@ void testEval()
     Kokkos::deep_copy(ip_coord_view, ip_coord_mirror);
 
     // Initialize class object to test
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.325);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", false);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    Teuchos::ParameterList closure_params;
+    closure_params.set("Kinematic Viscosity", 0.325);
     const auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleTaylorGreenVortexExactSolution<
             EvalType,
             panzer::Traits,
-            num_space_dim>(ir, fluid_prop));
+            num_space_dim>(ir, closure_params));
 
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_lagrange_pressure);
@@ -106,9 +102,11 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.type_name = "IncompressibleTaylorGreenVortexExactSolution";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
+    test_fixture.model_params.set("Kinematic Viscosity", 0.325);
     test_fixture.eval_name
         = "Incompressible Taylor Green Vortex Exact Solution";
     test_fixture.template buildAndTest<

@@ -6,10 +6,17 @@
 #include "VertexCFD_Integrator_BoundaryGradBasisDotVector.hpp"
 
 #include "closure_models/VertexCFD_Closure_ExternalMagneticField.hpp"
+#include "closure_models/VertexCFD_Closure_VariableConvectiveFlux.hpp"
+#include "closure_models/VertexCFD_Closure_VariableDiffusionFlux.hpp"
 
+#include "incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleWallFunctionStress.hpp"
 #include "incompressible_solver/boundary_conditions/VertexCFD_IncompressibleBoundaryState_Factory.hpp"
+
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConvectiveFlux.hpp"
+#include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleGradDiv.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousFlux.hpp"
+
+#include "incompressible_solver/fluid_properties/VertexCFD_Closure_IncompressibleFluidProperties.hpp"
 #include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include "induction_less_mhd_solver/boundary_conditions/VertexCFD_ElectricPotentialBoundaryState_Factory.hpp"
@@ -18,14 +25,6 @@
 
 #include "turbulence_models/boundary_conditions/VertexCFD_BoundaryState_TurbulenceBoundaryEddyViscosity.hpp"
 #include "turbulence_models/boundary_conditions/VertexCFD_TurbulenceBoundaryState_Factory.hpp"
-#include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleVariableConvectiveFlux.hpp"
-#include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleVariableDiffusionFlux.hpp"
-
-#include "full_induction_mhd_solver/boundary_conditions/VertexCFD_FullInductionBoundaryState_Factory.hpp"
-#include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConvectiveFlux.hpp"
-#include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionResistiveFlux.hpp"
-#include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_TotalMagneticFieldGradient.hpp"
-#include "full_induction_mhd_solver/mhd_properties/VertexCFD_FullInductionMHDProperties.hpp"
 
 #include <Panzer_DOF.hpp>
 #include <Panzer_DOFGradient.hpp>
@@ -52,6 +51,11 @@ IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::IncompressibleBoundaryFlux(
     const panzer::BC& bc, const Teuchos::RCP<panzer::GlobalData>& global_data)
     : BoundaryFluxBase<EvalType, NumSpaceDim>(bc, global_data)
 {
+    // Check if boundary is an internal interface between solid and fluid
+    // regions
+    _internal_interface = bc.params()->isType<bool>("Fluid/Solid Interface")
+                              ? bc.params()->get<bool>("Fluid/Solid Interface")
+                              : false;
 }
 
 //---------------------------------------------------------------------------//
@@ -60,6 +64,25 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::setup(
     const panzer::PhysicsBlock& side_pb,
     const Teuchos::ParameterList& user_data)
 {
+    // Temperature equation boolean
+    const std::string continuity_model
+        = user_data.isType<std::string>("Continuity Model")
+              ? user_data.get<std::string>("Continuity Model")
+              : "AC";
+
+    if (continuity_model == "AC")
+    {
+        _continuity_model = ConModel::AC;
+    }
+    else if (continuity_model == "EDAC")
+    {
+        _continuity_model = ConModel::EDAC;
+    }
+    else if (continuity_model == "EDACTempNC")
+    {
+        _continuity_model = ConModel::EDACTempNC;
+    }
+
     // Viscous flux boolean.
     _build_viscous_flux = user_data.get<bool>("Build Viscous Flux");
 
@@ -74,6 +97,14 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::setup(
               ? user_data.get<bool>("Build Inductionless MHD Equation")
               : false;
 
+    // Internal interface case: temperature and electric potential equations do
+    // not need boundary conditions.
+    if (_internal_interface)
+    {
+        _build_temp_equ = false;
+        _build_ind_less_equ = false;
+    }
+
     // Turbulence model boolean
     _turbulence_model_name
         = user_data.isType<std::string>("Turbulence Model")
@@ -82,25 +113,9 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::setup(
     _turbulence_model = _turbulence_model_name == "No Turbulence Model" ? false
                                                                         : true;
 
-    // Full induction model boolean
-    _build_full_induction_model
-        = user_data.isType<bool>("Build Full Induction Model")
-              ? user_data.get<bool>("Build Full Induction Model")
-              : false;
-    bool build_magn_corr = false;
-    if (_build_full_induction_model)
-    {
-        const auto mhd_prop_list
-            = user_data.sublist("Full Induction MHD Properties");
-        if (mhd_prop_list.isType<bool>("Build Magnetic Correction Potential "
-                                       "Equation"))
-        {
-            build_magn_corr = mhd_prop_list.get<bool>(
-                "Build Magnetic Correction Potential Equation");
-        }
-    }
-
     // Initialize equation names and variable names for NS equations
+    // and temperature equation. Note that temperature equation is not
+    // added to the list if there is a solid/fluid interface.
     _equ_dof_ns_pair.insert({"continuity", "lagrange_pressure"});
     for (int d = 0; d < num_space_dim; ++d)
     {
@@ -140,21 +155,19 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::setup(
             _equ_dof_tm_pair.insert({"turb_specific_dissipation_rate_equation",
                                      "turb_specific_dissipation_rate"});
         }
-    }
-
-    // Initialize equation names and variables for FIM
-    if (_build_full_induction_model)
-    {
-        for (int d = 0; d < num_space_dim; ++d)
+        else if (std::string::npos != _turbulence_model_name.find("SST"))
         {
-            const std::string ds = std::to_string(d);
-            _equ_dof_fim_pair.insert(
-                {"induction_" + ds, "induced_magnetic_field_" + ds});
+            _equ_dof_tm_pair.insert(
+                {"turb_kinetic_energy_equation", "turb_kinetic_energy"});
+            _equ_dof_tm_pair.insert({"turb_specific_dissipation_rate_equation",
+                                     "turb_specific_dissipation_rate"});
         }
-        if (build_magn_corr)
+        else if (std::string::npos != _turbulence_model_name.find("K-Tau"))
         {
-            _equ_dof_fim_pair.insert({"magnetic_correction_potential",
-                                      "scalar_magnetic_potential"});
+            _equ_dof_tm_pair.insert(
+                {"turb_kinetic_energy_equation", "turb_kinetic_energy"});
+            _equ_dof_tm_pair.insert({"turb_specific_dissipation_rate_equation",
+                                     "turb_specific_dissipation_rate"});
         }
     }
 
@@ -169,7 +182,7 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
     PHX::FieldManager<panzer::Traits>& fm,
     const panzer::PhysicsBlock& side_pb,
     const panzer::ClosureModelFactory_TemplateManager<panzer::Traits>&,
-    const Teuchos::ParameterList&,
+    const Teuchos::ParameterList& closure_models,
     const Teuchos::ParameterList& user_data) const
 {
     // Map to store residuals for each equation listed in `_equ_dof_ns_pair`
@@ -196,14 +209,49 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
         this->registerDOFsGradient(fm, side_pb, pair.second);
     }
 
-    // Create degree of freedom and gradients for TM equations
-    for (auto& pair : _equ_dof_fim_pair)
-    {
-        this->registerDOFsGradient(fm, side_pb, pair.second);
-    }
-
     // Register normals
     this->registerSideNormals(fm, side_pb);
+
+    // Fluid properties: model id is stored in a sublist called `child0`.
+    const std::string model_id
+        = side_pb.getParameterList()->sublist("child0").get<std::string>(
+            "Model ID");
+
+    // Stabilization method: model id is stored in a sublist called `child0`.
+    const std::string stabilization_method
+        = side_pb.getParameterList()->sublist("child0").get<std::string>(
+            "Stabilization Method");
+
+    // Define the stability parameter list as an empty list then populate the
+    // list if parameter list exists in the input file.
+    Teuchos::ParameterList stability_param_list;
+    if (closure_models.sublist(model_id).isSublist("Stability Parameters"))
+    {
+        stability_param_list
+            = closure_models.sublist(model_id).sublist("Stability Parameters");
+    }
+
+    // Fluid properties
+    Teuchos::ParameterList fluid_prop_list
+        = closure_models.sublist(model_id).sublist("Fluid Properties");
+
+    const bool build_buoyancy
+        = user_data.isType<bool>("Build Buoyancy Source")
+              ? user_data.get<bool>("Build Buoyancy Source")
+              : false;
+
+    fluid_prop_list.set<bool>("Build Temperature Equation", _build_temp_equ);
+    fluid_prop_list.set<bool>("Build Buoyancy Source", build_buoyancy);
+    fluid_prop_list.set<bool>("Build Inductionless MHD Equation",
+                              _build_ind_less_equ);
+
+    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+
+    auto eval = Teuchos::rcp(
+        new FluidProperties::IncompressibleFluidProperties<EvalType,
+                                                           panzer::Traits>(
+            *ir, fluid_prop_list));
+    this->template registerEvaluator<EvalType>(fm, eval);
 
     // Create boundary state operators for NS equations and EP equation
     // Get bc sublist
@@ -218,7 +266,8 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
                                              panzer::Traits,
                                              num_space_dim>::create(*ir,
                                                                     ns_bc_sublist,
-                                                                    user_data);
+                                                                    user_data,
+                                                                    fluid_prop);
     this->template registerEvaluator<EvalType>(fm, incomp_ns_boundary_state_op);
 
     // EP equations
@@ -232,14 +281,6 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
         this->template registerEvaluator<EvalType>(fm, ep_boundary_state_op);
     }
 
-    // Fluid properties
-    Teuchos::ParameterList fluid_prop_list
-        = user_data.sublist("Fluid Properties");
-    fluid_prop_list.set<bool>("Build Temperature Equation", _build_temp_equ);
-    fluid_prop_list.set<bool>("Build Inductionless MHD Equation",
-                              _build_ind_less_equ);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
-
     // First-order flux //
 
     // Create boundary convective fluxes for NS equations
@@ -247,11 +288,16 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
         new ClosureModel::IncompressibleConvectiveFlux<EvalType,
                                                        panzer::Traits,
                                                        num_space_dim>(
-            *ir, fluid_prop, "BOUNDARY_", "BOUNDARY_"));
+            *ir, fluid_prop, user_data, "BOUNDARY_", "BOUNDARY_"));
     this->template registerEvaluator<EvalType>(fm, convective_flux_op);
 
     for (auto& pair : _equ_dof_ns_pair)
     {
+        if (_continuity_model == ConModel::EDACTempNC
+            && std::string::npos != pair.first.find("energy"))
+        {
+            continue;
+        }
         this->registerConvectionTypeFluxOperator(
             pair, eq_vct_map, "CONVECTIVE", fm, side_pb, 1.0);
     }
@@ -264,7 +310,7 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
             new ClosureModel::ElectricPotentialCrossProductFlux<EvalType,
                                                                 panzer::Traits,
                                                                 num_space_dim>(
-                *ir, fluid_prop, "BOUNDARY_", "BOUNDARY_"));
+                *ir, "BOUNDARY_", "BOUNDARY_"));
         this->template registerEvaluator<EvalType>(fm, cross_product_flux_op);
 
         // External magnetic field
@@ -285,11 +331,92 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
     // NS equations
     if (_build_viscous_flux)
     {
+        // Create list of equations for use with viscous flux
+        std::unordered_map<std::string, std::string> _equ_dof_ns_visc_pair
+            = _equ_dof_ns_pair;
+
+        // Check if the BC is a wall function type
+        const Teuchos::ParameterList ns_bc_params
+            = bc_params.isSublist("Navier-Stokes")
+                  ? bc_params.sublist("Navier-Stokes")
+                  : bc_params;
+        const std::string bc_type = ns_bc_params.get<std::string>("Type");
+
+        const bool is_wall_func
+            = std::string::npos != bc_type.find("Wall Function") ? true : false;
+
+        // Add shear stress residual for wall function boundaries
+        if (is_wall_func)
+        {
+            // Remove momentum equations from viscous equation set so that
+            // the penalty method residual is not built in addition to the
+            // wall function residual
+            for (auto eqn = _equ_dof_ns_visc_pair.begin();
+                 eqn != _equ_dof_ns_visc_pair.end();)
+            {
+                if (std::string::npos != eqn->first.find("momentum"))
+                {
+                    eqn = _equ_dof_ns_visc_pair.erase(eqn);
+                }
+                else
+                {
+                    ++eqn;
+                }
+            }
+
+            // Create evaluator for wall function shear stress components
+            const std::string wall_func_stress_prefix = "wall_func_stress_";
+
+            const auto wall_func_stress_op = Teuchos::rcp(
+                new BoundaryCondition::IncompressibleWallFunctionStress<
+                    EvalType,
+                    panzer::Traits,
+                    num_space_dim>(*ir, wall_func_stress_prefix));
+
+            this->template registerEvaluator<EvalType>(fm, wall_func_stress_op);
+
+            // Create wall shear stress integrals
+            const auto add_wall_stress_op = [&, this](
+                                                const std::string& eqn_name,
+                                                const std::string& dof_name) {
+                // Construct basis
+                const auto basis_layout
+                    = this->getBasisIRLayout(side_pb, dof_name);
+
+                // Shear stress op
+                const std::string stress_residual_name
+                    = "WALL_FUNC_STRESS_RESIDUAL_" + eqn_name;
+
+                const auto shear_stress_op = Teuchos::rcp(
+                    new panzer::Integrator_BasisTimesScalar<EvalType,
+                                                            panzer::Traits>(
+                        panzer::EvaluatorStyle::EVALUATES,
+                        stress_residual_name,
+                        wall_func_stress_prefix + eqn_name,
+                        *basis_layout,
+                        *ir,
+                        1.0));
+
+                this->template registerEvaluator<EvalType>(fm, shear_stress_op);
+            };
+
+            // Create shear stress residual for all velocity components
+            for (auto& pair : _equ_dof_ns_pair)
+            {
+                if (std::string::npos != pair.first.find("momentum"))
+                {
+                    add_wall_stress_op(pair.first, pair.second);
+                    eq_vct_map[pair.first].push_back(
+                        "WALL_FUNC_STRESS_RESIDUAL_" + pair.first);
+                }
+            }
+        }
+
         // Register penalty and viscous gradient operators for each equation.
         for (auto& pair : _equ_dof_ns_pair)
         {
             this->registerPenaltyAndViscousGradientOperator(
-                pair, fm, side_pb, user_data);
+                pair, fm, side_pb, bc_params);
         }
 
         // Create boundary fluxes to be used with the penalty method
@@ -310,10 +437,20 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
                     flux_prefix,
                     gradient_prefix));
             this->template registerEvaluator<EvalType>(fm, viscous_flux_op);
+
+            if (std::string::npos != stabilization_method.find("Grad-Div"))
+            {
+                auto div_grad_op = Teuchos::rcp(
+                    new ClosureModel::IncompressibleGradDiv<EvalType,
+                                                            panzer::Traits,
+                                                            num_space_dim>(
+                        *ir, stability_param_list, flux_prefix, gradient_prefix));
+                this->template registerEvaluator<EvalType>(fm, div_grad_op);
+            }
         }
 
         // Create viscous flux integrals.
-        for (auto& pair : _equ_dof_ns_pair)
+        for (auto& pair : _equ_dof_ns_visc_pair)
         {
             this->registerViscousTypeFluxOperator(
                 pair, eq_vct_map, "VISCOUS", fm, side_pb, 1.0);
@@ -327,7 +464,7 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
         for (auto& pair : _equ_dof_ep_pair)
         {
             this->registerPenaltyAndViscousGradientOperator(
-                pair, fm, side_pb, user_data);
+                pair, fm, side_pb, bc_params);
         }
 
         // Create boundary fluxes to be used with the penalty method
@@ -340,7 +477,7 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
             auto diffusion_flux_op = Teuchos::rcp(
                 new ClosureModel::ElectricPotentialDiffusionFlux<EvalType,
                                                                  panzer::Traits>(
-                    *ir, fluid_prop, flux_prefix, gradient_prefix));
+                    *ir, flux_prefix, gradient_prefix));
             this->template registerEvaluator<EvalType>(fm, diffusion_flux_op);
         }
 
@@ -384,8 +521,7 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
             num_space_dim>::create(*ir,
                                    turb_bc_params,
                                    user_data,
-                                   _turbulence_model_name,
-                                   fluid_prop);
+                                   _turbulence_model_name);
 
         for (std::size_t i = 0; i < tm_boundary_state_op.size(); ++i)
         {
@@ -402,10 +538,9 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
 
             // Create boundary convective flux for each equation
             const auto convective_flux_op = Teuchos::rcp(
-                new ClosureModel::IncompressibleVariableConvectiveFlux<
-                    EvalType,
-                    panzer::Traits,
-                    num_space_dim>(
+                new ClosureModel::VariableConvectiveFlux<EvalType,
+                                                         panzer::Traits,
+                                                         num_space_dim>(
                     *ir, tm_name_list, "BOUNDARY_", "BOUNDARY_"));
             this->template registerEvaluator<EvalType>(fm, convective_flux_op);
 
@@ -416,7 +551,7 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
             // equation.
             BoundaryFluxBase<EvalType, NumSpaceDim>::
                 registerPenaltyAndViscousGradientOperator(
-                    pair_tm, fm, side_pb, user_data);
+                    pair_tm, fm, side_pb, bc_params);
 
             // Create boundary fluxes to be used with the penalty method
             for (auto& pair_bnd :
@@ -426,10 +561,8 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
                 const std::string gradient_prefix = pair_bnd.second;
 
                 const auto diffusion_flux_op = Teuchos::rcp(
-                    new ClosureModel::IncompressibleVariableDiffusionFlux<
-                        EvalType,
-                        panzer::Traits,
-                        NumSpaceDim>(
+                    new ClosureModel::VariableDiffusionFlux<EvalType,
+                                                            panzer::Traits>(
                         *ir, tm_name_list, flux_prefix, gradient_prefix));
                 this->template registerEvaluator<EvalType>(fm,
                                                            diffusion_flux_op);
@@ -438,84 +571,6 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
             // Create diffusion flux integral
             BoundaryFluxBase<EvalType, NumSpaceDim>::registerViscousTypeFluxOperator(
                 pair_tm, eq_vct_map, "DIFFUSION", fm, side_pb, 1.0);
-        }
-    }
-
-    // Full Induction Model boundary fluxes
-
-    if (_build_full_induction_model)
-    {
-        const auto full_induction_params
-            = user_data.sublist("Full Induction MHD Properties");
-        const MHDProperties::FullInductionMHDProperties mhd_props(
-            full_induction_params);
-
-        // Register boundary conditions for the induciton equations
-        const auto fim_boundary_state_op = FullInductionBoundaryStateFactory<
-            EvalType,
-            panzer::Traits,
-            num_space_dim>::create(*ir,
-                                   bc_params.sublist("Full Induction Model"),
-                                   user_data,
-                                   mhd_props);
-
-        for (std::size_t i = 0; i < fim_boundary_state_op.size(); ++i)
-        {
-            this->template registerEvaluator<EvalType>(
-                fm, fim_boundary_state_op[i]);
-        }
-
-        auto induction_flux_op = Teuchos::rcp(
-            new ClosureModel::InductionConvectiveFlux<EvalType,
-                                                      panzer::Traits,
-                                                      num_space_dim>(
-                *ir, mhd_props, "BOUNDARY_", "BOUNDARY_"));
-        this->template registerEvaluator<EvalType>(fm, induction_flux_op);
-
-        for (auto& pair_fim : _equ_dof_fim_pair)
-        {
-            BoundaryFluxBase<EvalType, NumSpaceDim>::registerConvectionTypeFluxOperator(
-                pair_fim, eq_vct_map, "CONVECTIVE", fm, side_pb, 1.0);
-        }
-
-        if (mhd_props.buildResistiveFlux())
-        {
-            for (auto& pair_fim : _equ_dof_fim_pair)
-            {
-                // Register penalty and resistive gradient operators for each
-                // equation.
-                BoundaryFluxBase<EvalType, NumSpaceDim>::
-                    registerPenaltyAndViscousGradientOperator(
-                        pair_fim, fm, side_pb, user_data);
-
-                // Create boundary fluxes to be used with the penalty method
-                for (auto& pair_bnd :
-                     BoundaryFluxBase<EvalType, NumSpaceDim>::bnd_prefix)
-                {
-                    const std::string flux_prefix = pair_bnd.first;
-                    const std::string gradient_prefix = pair_bnd.second;
-
-                    // Need total magnetic field symmetry and penalty gradients
-                    const auto tot_magn_field_grad_op = Teuchos::rcp(
-                        new ClosureModel::TotalMagneticFieldGradient<
-                            EvalType,
-                            panzer::Traits,
-                            NumSpaceDim>(*ir, gradient_prefix));
-                    this->template registerEvaluator<EvalType>(
-                        fm, tot_magn_field_grad_op);
-
-                    const auto resistive_flux_op = Teuchos::rcp(
-                        new ClosureModel::InductionResistiveFlux<EvalType,
-                                                                 panzer::Traits,
-                                                                 NumSpaceDim>(
-                            *ir, mhd_props, flux_prefix, gradient_prefix));
-                    this->template registerEvaluator<EvalType>(
-                        fm, resistive_flux_op);
-                }
-                // Create resistive flux integral
-                BoundaryFluxBase<EvalType, NumSpaceDim>::registerViscousTypeFluxOperator(
-                    pair_fim, eq_vct_map, "RESISTIVE", fm, side_pb, 1.0);
-            }
         }
     }
 
@@ -533,13 +588,6 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluato
 
     // Compose total residual for TM equation
     for (auto& pair : _equ_dof_tm_pair)
-    {
-        BoundaryFluxBase<EvalType, NumSpaceDim>::registerResidual(
-            pair, eq_vct_map, fm, side_pb);
-    }
-
-    // Compose total residual for FIM equations
-    for (auto& pair : _equ_dof_fim_pair)
     {
         BoundaryFluxBase<EvalType, NumSpaceDim>::registerResidual(
             pair, eq_vct_map, fm, side_pb);
@@ -566,12 +614,6 @@ void IncompressibleBoundaryFlux<EvalType, NumSpaceDim>::
     }
 
     for (auto& pair : _equ_dof_tm_pair)
-    {
-        BoundaryFluxBase<EvalType, NumSpaceDim>::registerScatterOperator(
-            pair, fm, side_pb, lof);
-    }
-
-    for (auto& pair : _equ_dof_fim_pair)
     {
         BoundaryFluxBase<EvalType, NumSpaceDim>::registerScatterOperator(
             pair, fm, side_pb, lof);

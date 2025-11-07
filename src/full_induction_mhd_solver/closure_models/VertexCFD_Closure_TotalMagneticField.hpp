@@ -1,6 +1,8 @@
 #ifndef VERTEXCFD_CLOSURE_TOTALMAGNETICFIELD_HPP
 #define VERTEXCFD_CLOSURE_TOTALMAGNETICFIELD_HPP
 
+#include "utils/VertexCFD_Utils_MagneticDim.hpp"
+
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -42,11 +44,12 @@ class TotalMagneticField : public panzer::EvaluatorWithBaseImpl<Traits>,
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         _induced_magnetic_field;
-    Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>, 3>
+    Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
+                  num_magnetic_field_dim>
         _external_magnetic_field;
 
   public:
-    Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>, 3>
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, MagneticDim>
         _total_magnetic_field;
 };
 

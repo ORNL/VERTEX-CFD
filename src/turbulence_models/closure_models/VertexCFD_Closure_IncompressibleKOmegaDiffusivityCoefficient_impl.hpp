@@ -1,5 +1,5 @@
-#ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLEKEPSILONDIFFUSIVITYCOEFFICIENT_IMPL_HPP
-#define VERTEXCFD_CLOSURE_INCOMPRESSIBLEKEPSILONDIFFUSIVITYCOEFFICIENT_IMPL_HPP
+#ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLEKOMEGADIFFUSIVITYCOEFFICIENT_IMPL_HPP
+#define VERTEXCFD_CLOSURE_INCOMPRESSIBLEKOMEGADIFFUSIVITYCOEFFICIENT_IMPL_HPP
 
 #include "utils/VertexCFD_Utils_SmoothMath.hpp"
 
@@ -14,12 +14,11 @@ template<class EvalType, class Traits>
 IncompressibleKOmegaDiffusivityCoefficient<EvalType, Traits>::
     IncompressibleKOmegaDiffusivityCoefficient(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
         const Teuchos::ParameterList& user_params)
     : _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
     , _turb_specific_dissipation_rate("turb_specific_dissipation_rate",
                                       ir.dl_scalar)
-    , _nu(fluid_prop.constantKinematicViscosity())
+    , _nu("kinematic_viscosity", ir.dl_scalar)
     , _sigma_k(0.6)
     , _sigma_w(0.5)
     , _diffusivity_var_k("diffusivity_turb_kinetic_energy", ir.dl_scalar)
@@ -29,12 +28,12 @@ IncompressibleKOmegaDiffusivityCoefficient<EvalType, Traits>::
     // Check for user-defined coefficients or parameters
     if (user_params.isSublist("Turbulence Parameters"))
     {
-        Teuchos::ParameterList turb_list
+        const Teuchos::ParameterList turb_list
             = user_params.sublist("Turbulence Parameters");
 
         if (turb_list.isSublist("K-Omega Parameters"))
         {
-            Teuchos::ParameterList k_w_list
+            const Teuchos::ParameterList k_w_list
                 = turb_list.sublist("K-Omega Parameters");
 
             if (k_w_list.isType<double>("sigma_w"))
@@ -52,6 +51,7 @@ IncompressibleKOmegaDiffusivityCoefficient<EvalType, Traits>::
     // Add dependent fields
     this->addDependentField(_turb_kinetic_energy);
     this->addDependentField(_turb_specific_dissipation_rate);
+    this->addDependentField(_nu);
 
     // Add evaluated fields
     this->addEvaluatedField(_diffusivity_var_k);
@@ -89,8 +89,10 @@ IncompressibleKOmegaDiffusivityCoefficient<EvalType, Traits>::operator()(
                 = SmoothMath::max(_turb_kinetic_energy(cell, point), k_tol, 0.0)
                   / SmoothMath::max(
                       _turb_specific_dissipation_rate(cell, point), w_tol, 0.0);
-            _diffusivity_var_k(cell, point) = _nu + _sigma_k * turb_ratio;
-            _diffusivity_var_w(cell, point) = _nu + _sigma_w * turb_ratio;
+            _diffusivity_var_k(cell, point) = _nu(cell, point)
+                                              + _sigma_k * turb_ratio;
+            _diffusivity_var_w(cell, point) = _nu(cell, point)
+                                              + _sigma_w * turb_ratio;
         });
 }
 

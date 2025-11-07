@@ -1,6 +1,6 @@
-#include <VertexCFD_ParameterUnitTestConfig.hpp>
+#include "VertexCFD_ParameterUnitTestConfig.hpp"
 
-#include <parameters/VertexCFD_ParameterDatabase.hpp>
+#include "parameters/VertexCFD_ParameterDatabase.hpp"
 
 #include <Teuchos_DefaultComm.hpp>
 #include <Teuchos_ParameterList.hpp>
@@ -8,6 +8,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdio>
+#include <fstream>
 #include <string>
 
 //---------------------------------------------------------------------------//
@@ -25,7 +27,7 @@ void testDefaultDatabase()
         Teuchos::DefaultComm<int>::getComm());
 
     // Create database.
-    VertexCFD::Parameter::ParameterDatabase parameter_db(comm);
+    const VertexCFD::Parameter::ParameterDatabase parameter_db(comm);
 
     // Check that all parameter lists got populated.
     EXPECT_TRUE(Teuchos::nonnull(parameter_db.meshParameters()));
@@ -62,7 +64,8 @@ TEST(ParameterDatabase, default_test)
 
 //---------------------------------------------------------------------------//
 void testInputParser(const Teuchos::RCP<const Teuchos::MpiComm<int>>& comm,
-                     const VertexCFD::Parameter::ParameterDatabase& parameter_db)
+                     const VertexCFD::Parameter::ParameterDatabase& parameter_db,
+                     const bool new_input_format = false)
 {
     // Check that all parameter lists got populated.
     EXPECT_DOUBLE_EQ(1.0, parameter_db.meshParameters()->get<double>("value"));
@@ -97,6 +100,11 @@ void testInputParser(const Teuchos::RCP<const Teuchos::MpiComm<int>>& comm,
                      parameter_db.scalarParameters()->get<double>("value"));
     EXPECT_DOUBLE_EQ(
         2.6, parameter_db.generalScalarParameters()->get<double>("value"));
+    if (new_input_format)
+    {
+        EXPECT_DOUBLE_EQ(
+            2.7, parameter_db.assemblyParameters()->get<double>("value"));
+    }
 
     // Check the parameter communicator.
     EXPECT_EQ(comm->getRank(), parameter_db.comm()->getRank());
@@ -111,24 +119,199 @@ void testInputParser(const Teuchos::RCP<const Teuchos::MpiComm<int>>& comm,
 }
 
 //---------------------------------------------------------------------------//
-TEST(ParameterDatabase, argv_test)
+TEST(ParameterDatabase, argv_test_wrong_format)
 {
     // Get the MPI communicator.
     auto comm = Teuchos::rcp_dynamic_cast<const Teuchos::MpiComm<int>>(
         Teuchos::DefaultComm<int>::getComm());
 
     // Parse input.
-    int argc = 2;
-    std::string option = "--i=";
-    std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
-    std::string file = "input_parser_test.xml";
+    const int argc = 2;
+    const std::string option = "--i=";
+    const std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
+    const std::string file = "input_parser_test.csv";
     std::string argv_str = option + location + file;
     char* argv[2];
     argv[1] = &argv_str[0];
-    VertexCFD::Parameter::ParameterDatabase parameter_db(comm, argc, argv);
 
-    // Test
+    const std::string exp_msg
+        = "\n\nERROR: Vertex-CFD only supports input files of XML and YMAL "
+          "formats.\n\n";
+
+    EXPECT_THROW(
+        try {
+            const VertexCFD::Parameter::ParameterDatabase parameter_db(
+                comm, argc, argv);
+        } catch (const std::runtime_error& e) {
+            EXPECT_EQ(exp_msg, e.what());
+            throw;
+        },
+        std::runtime_error);
+}
+//---------------------------------------------------------------------------//
+TEST(ParameterDatabase, argv_test_xml)
+{
+    // Get the MPI communicator.
+    auto comm = Teuchos::rcp_dynamic_cast<const Teuchos::MpiComm<int>>(
+        Teuchos::DefaultComm<int>::getComm());
+
+    // Parse input.
+    const int argc = 3;
+    const std::string option = "--i=";
+    const std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
+    const std::string file = "input_parser_test.xml";
+    std::string argv_str = option + location + file;
+    std::string argv_str_two = "--no-conversion-to-yaml";
+    char* argv[3];
+    argv[1] = &argv_str[0];
+    argv[2] = &argv_str_two[0];
+    const VertexCFD::Parameter::ParameterDatabase parameter_db(
+        comm, argc, argv);
+
+    // Test output
     testInputParser(comm, parameter_db);
+
+    // Check that the generated file is not there
+    argv_str = location + "input_parser_test_generated.yaml";
+    try
+    {
+        ASSERT_TRUE(fopen(&argv_str[0], "r") == NULL);
+    }
+    catch (const std::runtime_error& e)
+    {
+        std::remove(&argv_str[0]);
+        std::cout << "Error: " << e.what() << std::endl;
+    }
+}
+
+//---------------------------------------------------------------------------//
+TEST(ParameterDatabase, argv_test_yaml)
+{
+    // Get the MPI communicator.
+    auto comm = Teuchos::rcp_dynamic_cast<const Teuchos::MpiComm<int>>(
+        Teuchos::DefaultComm<int>::getComm());
+
+    // Parse input.
+    const int argc = 3;
+    const std::string option = "--i=";
+    const std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
+    const std::string file = "input_parser_test.yaml";
+    std::string argv_str = option + location + file;
+    std::string argv_str_two = "--no-conversion-to-xml";
+    char* argv[3];
+    argv[1] = &argv_str[0];
+    argv[2] = &argv_str_two[0];
+    const VertexCFD::Parameter::ParameterDatabase parameter_db(
+        comm, argc, argv);
+
+    // Test output
+    testInputParser(comm, parameter_db);
+
+    // Check that the generated file is not there
+    argv_str = location + "input_parser_test_generated.xml";
+    try
+    {
+        ASSERT_TRUE(fopen(&argv_str[0], "r") == NULL);
+    }
+    catch (const std::runtime_error& e)
+    {
+        std::remove(&argv_str[0]);
+        std::cout << "Error: " << e.what() << std::endl;
+    }
+}
+
+//---------------------------------------------------------------------------//
+TEST(ParameterDatabase, argv_test_generated_xml)
+{
+    // Get the MPI communicator.
+    auto comm = Teuchos::rcp_dynamic_cast<const Teuchos::MpiComm<int>>(
+        Teuchos::DefaultComm<int>::getComm());
+
+    // Parse input.
+    const int argc = 3;
+    const std::string option = "--i=";
+    const std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
+    const std::string file = "input_parser_test.xml";
+    std::string argv_str = option + location + file;
+    std::string argv_str_two = "--conversion-to-yaml";
+    char* argv[3];
+    argv[1] = &argv_str[0];
+    argv[2] = &argv_str_two[0];
+    const VertexCFD::Parameter::ParameterDatabase parameter_db(
+        comm, argc, argv);
+
+    // Test output
+    testInputParser(comm, parameter_db);
+
+    // Compare generated file against gold file and delete generated file if
+    // successfull
+    try
+    {
+        argv_str = location + "input_parser_test_generated_gold.yaml";
+        std::ifstream file_ifstream_gold(&argv_str[0]);
+        const std::string file_str_gold(
+            (std::istreambuf_iterator<char>(file_ifstream_gold)),
+            std::istreambuf_iterator<char>());
+
+        argv_str = location + "input_parser_test_generated.yaml";
+        std::ifstream file_ifstream(&argv_str[0]);
+        const std::string file_str(
+            (std::istreambuf_iterator<char>(file_ifstream)),
+            std::istreambuf_iterator<char>());
+        ASSERT_EQ(file_str_gold, file_str);
+        std::remove(&argv_str[0]);
+    }
+    catch (const std::runtime_error& e)
+    {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
+}
+
+//---------------------------------------------------------------------------//
+TEST(ParameterDatabase, argv_test_generated_yaml)
+{
+    // Get the MPI communicator.
+    auto comm = Teuchos::rcp_dynamic_cast<const Teuchos::MpiComm<int>>(
+        Teuchos::DefaultComm<int>::getComm());
+
+    // Parse input.
+    const int argc = 3;
+    const std::string option = "--i=";
+    const std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
+    const std::string file = "input_parser_test.yaml";
+    std::string argv_str = option + location + file;
+    std::string argv_str_two = "--conversion-to-xml";
+    char* argv[3];
+    argv[1] = &argv_str[0];
+    argv[2] = &argv_str_two[0];
+    const VertexCFD::Parameter::ParameterDatabase parameter_db(
+        comm, argc, argv);
+
+    // Test output
+    testInputParser(comm, parameter_db);
+
+    // Compare generated file against gold file and delete generated file if
+    // successfull
+    try
+    {
+        argv_str = location + "input_parser_test_generated_gold.xml";
+        std::ifstream file_ifstream_gold(&argv_str[0]);
+        const std::string file_str_gold(
+            (std::istreambuf_iterator<char>(file_ifstream_gold)),
+            std::istreambuf_iterator<char>());
+
+        argv_str = location + "input_parser_test_generated.xml";
+        std::ifstream file_ifstream(&argv_str[0]);
+        const std::string file_str(
+            (std::istreambuf_iterator<char>(file_ifstream)),
+            std::istreambuf_iterator<char>());
+        ASSERT_EQ(file_str_gold, file_str);
+        std::remove(&argv_str[0]);
+    }
+    catch (const std::runtime_error& e)
+    {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -139,10 +322,10 @@ TEST(ParameterDatabase, file_test)
         Teuchos::DefaultComm<int>::getComm());
 
     // Parse input.
-    std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
-    std::string file = "input_parser_test.xml";
-    std::string filename = location + file;
-    VertexCFD::Parameter::ParameterDatabase parameter_db(comm, filename);
+    const std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
+    const std::string file = "input_parser_test.xml";
+    const std::string filename = location + file;
+    const VertexCFD::Parameter::ParameterDatabase parameter_db(comm, filename);
 
     // Test
     testInputParser(comm, parameter_db);
@@ -156,17 +339,40 @@ TEST(ParameterDatabase, list_test)
         Teuchos::DefaultComm<int>::getComm());
 
     // Parse input.
-    std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
-    std::string file = "input_parser_test.xml";
-    std::string filename = location + file;
-    VertexCFD::Parameter::ParameterDatabase file_db(comm, filename);
+    const std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
+    const std::string file = "input_parser_test.xml";
+    const std::string filename = location + file;
+    const VertexCFD::Parameter::ParameterDatabase file_db(comm, filename);
 
     // Create a new parameter database from the input list.
-    VertexCFD::Parameter::ParameterDatabase parameter_db(
+    const VertexCFD::Parameter::ParameterDatabase parameter_db(
         comm, file_db.allParameters());
 
     // Test
     testInputParser(comm, parameter_db);
+}
+
+//---------------------------------------------------------------------------//
+TEST(ParameterDatabase, list_test_new)
+{
+    // Get the MPI communicator.
+    auto comm = Teuchos::rcp_dynamic_cast<const Teuchos::MpiComm<int>>(
+        Teuchos::DefaultComm<int>::getComm());
+
+    // Parse input.
+    const std::string location = VERTEXCFD_PARAMETER_TEST_DATA_DIR;
+    const std::string file = "input_parser_test_new.xml";
+    const std::string filename = location + file;
+    const VertexCFD::Parameter::ParameterDatabase file_db(comm, filename);
+
+    // Create a new parameter database from the input list.
+    auto parameter_list = file_db.allParameters();
+    parameter_list->set<bool>("Use New Input Format", true);
+    const VertexCFD::Parameter::ParameterDatabase parameter_db(comm,
+                                                               parameter_list);
+
+    // Test
+    testInputParser(comm, parameter_db, true);
 }
 
 //---------------------------------------------------------------------------//

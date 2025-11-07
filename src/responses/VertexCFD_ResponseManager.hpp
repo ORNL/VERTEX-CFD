@@ -51,7 +51,10 @@ class ResponseManager
                           const Teuchos::Array<double>& point);
     void activateResponse(const int index = 0);
     void activateResponse(const std::string& name);
+    void activateAll();
     void deactivateAll();
+    bool isActive(const int index);
+    bool isActive(const std::string& name);
     void
     evaluateResponses(const Teuchos::RCP<Thyra::VectorBase<double>>& x,
                       const Teuchos::RCP<Thyra::VectorBase<double>>& x_dot);
@@ -84,6 +87,13 @@ class ResponseManager
         const std::vector<panzer::WorksetDescriptor>& workset_descriptors,
         const Builder& builder);
 };
+
+//---------------------------------------------------------------------------//
+// Create a response manager from a parameter list.
+Teuchos::RCP<ResponseManager>
+createResponseManager(Teuchos::RCP<PhysicsManager> physics_manager,
+                      Teuchos::ParameterList& response_params,
+                      std::vector<int>& response_output_freq);
 
 } // namespace Response
 } // namespace VertexCFD

@@ -2,7 +2,14 @@
 #define VERTEXCFD_BOUNDARYCONDITION_FACTORY_HPP
 
 #include "VertexCFD_BCStrategy_IncompressibleBoundaryFlux.hpp"
+#include "VertexCFD_BCStrategy_IncompressibleLSVOFBoundaryFlux.hpp"
 #include "VertexCFD_BCStrategy_StrongDirichletMMS.hpp"
+#include "conduction/boundary_conditions/VertexCFD_BCStrategy_ConductionBoundaryFlux.hpp"
+#include "induction_less_mhd_solver/boundary_conditions/VertexCFD_BCStrategy_SolidElectricBoundaryFlux.hpp"
+
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
+#include "full_induction_mhd_solver/boundary_conditions/VertexCFD_BCStrategy_FullInductionMHDBoundaryFlux.hpp"
+#endif
 
 #include <Panzer_BCStrategy_Factory.hpp>
 #include <Panzer_BCStrategy_TemplateManager.hpp>
@@ -60,15 +67,42 @@ class Factory : public panzer::BCStrategyFactory
 
         if (bc_strategy == "IncompressibleBoundaryFlux")
         {
-            Impl::TemplateBuilder<IncompressibleBoundaryFlux, NumSpaceDim> builder(
-                bc, global_data);
+            const Impl::TemplateBuilder<IncompressibleBoundaryFlux, NumSpaceDim>
+                builder(bc, global_data);
+            template_manager->buildObjects(builder);
+        }
+        else if (bc_strategy == "IncompressibleLSVOFBoundaryFlux")
+        {
+            const Impl::TemplateBuilder<IncompressibleLSVOFBoundaryFlux, NumSpaceDim>
+                builder(bc, global_data);
+            template_manager->buildObjects(builder);
+        }
+        else if (bc_strategy == "SolidInductionLessMHDBoundaryFlux")
+        {
+            const Impl::TemplateBuilder<SolidElectricBoundaryFlux, NumSpaceDim>
+                builder(bc, global_data);
+            template_manager->buildObjects(builder);
+        }
+        else if (bc_strategy == "ConductionBoundaryFlux")
+        {
+            const Impl::TemplateBuilder<ConductionBoundaryFlux, NumSpaceDim>
+                builder(bc, global_data);
             template_manager->buildObjects(builder);
         }
         else if (bc_strategy == "StrongDirichletMMS")
         {
-            Impl::TemplateBuilder<StrongDirichletMMS> builder(bc, global_data);
+            const Impl::TemplateBuilder<StrongDirichletMMS> builder(
+                bc, global_data);
             template_manager->buildObjects(builder);
         }
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
+        else if (bc_strategy == "FullInductionMHDBoundaryFlux")
+        {
+            const Impl::TemplateBuilder<FullInductionMHDBoundaryFlux, NumSpaceDim>
+                builder(bc, global_data);
+            template_manager->buildObjects(builder);
+        }
+#endif
         else
         {
             throw std::runtime_error("BC strategy not valid");

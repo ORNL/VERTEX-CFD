@@ -13,10 +13,8 @@ namespace BoundaryCondition
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 TurbulenceKEpsilonWallFunction<EvalType, Traits, NumSpaceDim>::
-    TurbulenceKEpsilonWallFunction(
-        const panzer::IntegrationRule& ir,
-        const Teuchos::ParameterList& bc_params,
-        const FluidProperties::ConstantFluidProperties& fluid_prop)
+    TurbulenceKEpsilonWallFunction(const panzer::IntegrationRule& ir,
+                                   const Teuchos::ParameterList& bc_params)
     : _boundary_k("BOUNDARY_turb_kinetic_energy", ir.dl_scalar)
     , _boundary_e("BOUNDARY_turb_dissipation_rate", ir.dl_scalar)
     , _boundary_grad_k("BOUNDARY_GRAD_turb_kinetic_energy", ir.dl_vector)
@@ -29,8 +27,8 @@ TurbulenceKEpsilonWallFunction<EvalType, Traits, NumSpaceDim>::
     , _grad_k("GRAD_turb_kinetic_energy", ir.dl_vector)
     , _grad_e("GRAD_turb_dissipation_rate", ir.dl_vector)
     , _normals("Side Normal", ir.dl_vector)
+    , _nu("kinematic_viscosity", ir.dl_scalar)
     , _C_mu(0.09)
-    , _nu(fluid_prop.constantKinematicViscosity())
     , _kappa(0.41)
     , _yp_tr(11.06)
     , _neumann(false)
@@ -73,6 +71,7 @@ TurbulenceKEpsilonWallFunction<EvalType, Traits, NumSpaceDim>::
     this->addDependentField(_grad_k);
     this->addDependentField(_grad_e);
     this->addDependentField(_normals);
+    this->addDependentField(_nu);
     Utils::addDependentVectorField(*this, ir.dl_scalar, _velocity, "velocity_");
 
     this->setName("Boundary State Turbulence Model K-Epsilon Wall Function "
@@ -138,7 +137,7 @@ TurbulenceKEpsilonWallFunction<EvalType, Traits, NumSpaceDim>::operator()(
                 mag_u / _yp_tr,
                 0.0);
 
-            const double nu_t_w = _kappa * _yp_tr * _nu;
+            const scalar_type nu_t_w = _kappa * _yp_tr * _nu(cell, point);
 
             // Set epsilon and nu_t at boundary according to user setting
             if (_neumann)

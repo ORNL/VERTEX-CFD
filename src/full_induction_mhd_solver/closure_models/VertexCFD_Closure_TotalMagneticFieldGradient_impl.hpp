@@ -1,6 +1,7 @@
 #ifndef VERTEXCFD_CLOSURE_TOTALMAGNETICFIELDGRADIENT_IMPL_HPP
 #define VERTEXCFD_CLOSURE_TOTALMAGNETICFIELDGRADIENT_IMPL_HPP
 
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
 #include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
@@ -14,6 +15,11 @@ template<class EvalType, class Traits, int NumSpaceDim>
 TotalMagneticFieldGradient<EvalType, Traits, NumSpaceDim>::TotalMagneticFieldGradient(
     const panzer::IntegrationRule& ir, const std::string& gradient_prefix)
     : _uniform_external_field(true)
+    , _grad_total_magnetic_field(
+          gradient_prefix + "GRAD_total_magnetic_field",
+          Utils::buildMagneticGradLayout(ir.dl_vector, num_magnetic_field_dim))
+    , _divergence_total_magnetic_field(
+          gradient_prefix + "divergence_total_magnetic_field", ir.dl_scalar)
 {
     // Add dependent fields
     Utils::addDependentVectorField(
@@ -30,11 +36,8 @@ TotalMagneticFieldGradient<EvalType, Traits, NumSpaceDim>::TotalMagneticFieldGra
     }
 
     // Add evaluated fields
-    Utils::addEvaluatedVectorField(
-        *this,
-        ir.dl_vector,
-        _grad_total_magnetic_field,
-        gradient_prefix + "GRAD_total_magnetic_field_");
+    this->addEvaluatedField(_grad_total_magnetic_field);
+    this->addEvaluatedField(_divergence_total_magnetic_field);
 
     // Closure model name
     this->setName("Total Magnetic Field Gradient"
@@ -58,42 +61,53 @@ TotalMagneticFieldGradient<EvalType, Traits, NumSpaceDim>::operator()(
     const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const
 {
     const int cell = team.league_rank();
-    const int num_point = _grad_total_magnetic_field[0].extent(1);
-    const int num_grad_dim = _grad_total_magnetic_field[0].extent(2);
-    const int num_field_dim = _grad_total_magnetic_field.size();
+    const int num_point = _grad_total_magnetic_field.extent(1);
+    const int num_grad_dim = _grad_total_magnetic_field.extent(2);
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
-            for (int dim = 0; dim < num_space_dim; ++dim)
+            for (int field_dim = 0; field_dim < num_space_dim; ++field_dim)
             {
                 for (int grad_dim = 0; grad_dim < num_grad_dim; ++grad_dim)
                 {
-                    _grad_total_magnetic_field[dim](cell, point, grad_dim)
-                        = _grad_induced_magnetic_field[dim](
+                    _grad_total_magnetic_field(cell, point, grad_dim, field_dim)
+                        = _grad_induced_magnetic_field[field_dim](
                             cell, point, grad_dim);
                 }
             }
 
-            if (num_space_dim < num_field_dim)
+            for (int field_dim = num_space_dim;
+                 field_dim < num_magnetic_field_dim;
+                 ++field_dim)
             {
                 for (int grad_dim = 0; grad_dim < num_grad_dim; ++grad_dim)
                 {
-                    _grad_total_magnetic_field[2](cell, point, grad_dim) = 0.0;
+                    _grad_total_magnetic_field(cell, point, grad_dim, field_dim)
+                        = 0.0;
                 }
             }
 
             if (!_uniform_external_field)
             {
-                for (int field_dim = 0; field_dim < num_field_dim; ++field_dim)
+                for (int field_dim = 0; field_dim < num_magnetic_field_dim;
+                     ++field_dim)
                 {
                     for (int grad_dim = 0; grad_dim < num_grad_dim; ++grad_dim)
                     {
-                        _grad_total_magnetic_field[field_dim](
-                            cell, point, grad_dim)
+                        _grad_total_magnetic_field(
+                            cell, point, grad_dim, field_dim)
                             += _grad_external_magnetic_field[field_dim](
                                 cell, point, grad_dim);
                     }
                 }
+            }
+
+            _divergence_total_magnetic_field(cell, point) = 0.0;
+            for (int grad_dim = 0; grad_dim < num_grad_dim; ++grad_dim)
+            {
+                _divergence_total_magnetic_field(cell, point)
+                    += _grad_total_magnetic_field(
+                        cell, point, grad_dim, grad_dim);
             }
         });
 }

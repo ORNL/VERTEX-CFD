@@ -1,9 +1,11 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_MagneticCorrectionDampingSource.hpp"
 
 #include "full_induction_mhd_solver/mhd_properties/VertexCFD_FullInductionMHDProperties.hpp"
+
+#include <Teuchos_ParameterList.hpp>
 
 #include <gtest/gtest.h>
 
@@ -61,8 +63,8 @@ void testEval(const bool use_default_alpha)
         full_induction_params.set("Hyperbolic Divergence Cleaning Speed", 1.1);
         full_induction_params.set("Magnetic Correction Damping Factor", alpha);
     }
-    MHDProperties::FullInductionMHDProperties mhd_props
-        = MHDProperties::FullInductionMHDProperties(full_induction_params);
+    const MHDProperties::FullInductionMHDProperties mhd_props(
+        full_induction_params);
 
     // Initialize class object to test
     auto deps = Teuchos::rcp(new Dependencies<EvalType>(ir));
@@ -90,25 +92,25 @@ void testEval(const bool use_default_alpha)
 }
 
 //-----------------------------------------------------------------//
-TEST(MagneticCorrectionDampingSource, residual_test)
+TEST(MagneticCorrectionDampingSource, Residual)
 {
     testEval<panzer::Traits::Residual>(false);
 }
 
 //-----------------------------------------------------------------//
-TEST(MagneticCorrectionDampingSource, jacobian_test)
+TEST(MagneticCorrectionDampingSource, Jacobian)
 {
     testEval<panzer::Traits::Jacobian>(false);
 }
 
 //-----------------------------------------------------------------//
-TEST(MagneticCorrectionDampingSourceDefaultAlpha, residual_test)
+TEST(MagneticCorrectionDampingSourceDefaultAlpha, Residual)
 {
     testEval<panzer::Traits::Residual>(true);
 }
 
 //-----------------------------------------------------------------//
-TEST(MagneticCorrectionDampingSourceDefaultAlpha, jacobian_test)
+TEST(MagneticCorrectionDampingSourceDefaultAlpha, Jacobian)
 {
     testEval<panzer::Traits::Jacobian>(true);
 }
@@ -119,13 +121,12 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.sublist("Full Induction MHD Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties")
         .set("Vacuum Magnetic Permeability", 0.1)
         .set("Build Magnetic Correction Potential Equation", false)
         .set("Hyperbolic Divergence Cleaning Speed", 1.0);
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 1.5)
-        .set("Artificial compressibility", 0.1);
+    test_fixture.factory_type = "Full Induction MHD";
     test_fixture.type_name = "MagneticCorrectionDampingSource";
     test_fixture.eval_name = "Magnetic Correction Damping Source";
     test_fixture.template buildAndTest<
@@ -133,22 +134,22 @@ void testFactory()
         num_space_dim>();
 }
 
-TEST(MagneticCorrectionDampingSource_Factory2D, residual_test)
+TEST(MagneticCorrectionDampingSourceFactory2D, Residual)
 {
     testFactory<panzer::Traits::Residual, 2>();
 }
 
-TEST(MagneticCorrectionDampingSource_Factory2D, jacobian_test)
+TEST(MagneticCorrectionDampingSourceFactory2D, Jacobian)
 {
     testFactory<panzer::Traits::Jacobian, 2>();
 }
 
-TEST(MagneticCorrectionDampingSource_Factory3D, residual_test)
+TEST(MagneticCorrectionDampingSourceFactory3D, Residual)
 {
     testFactory<panzer::Traits::Residual, 3>();
 }
 
-TEST(MagneticCorrectionDampingSource_Factory3D, jacobian_test)
+TEST(MagneticCorrectionDampingSourceFactory3D, Jacobian)
 {
     testFactory<panzer::Traits::Jacobian, 3>();
 }

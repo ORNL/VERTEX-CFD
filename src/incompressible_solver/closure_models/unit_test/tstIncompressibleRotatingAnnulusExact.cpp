@@ -1,8 +1,7 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleRotatingAnnulusExact.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <gtest/gtest.h>
 
@@ -33,28 +32,22 @@ void testEval()
     auto& ir = *test_fixture.ir;
 
     // Set list of parameters to pass to the test evaluator
-    Teuchos::ParameterList user_params;
-    user_params.set("Outer radius", 4.0);
-    user_params.set("Inner radius", 2.0);
-    user_params.set("Angular velocity", 0.5);
-    user_params.set("Outer wall temperature", 274.0);
-    user_params.set("Inner wall temperature", 273.0);
-
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 50.0);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", true);
-    fluid_prop_list.set("Thermal conductivity", 0.5);
-    fluid_prop_list.set("Specific heat capacity", 5.0);
-
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    Teuchos::ParameterList closure_params;
+    closure_params.set("Outer radius", 4.0);
+    closure_params.set("Inner radius", 2.0);
+    closure_params.set("Angular velocity", 0.5);
+    closure_params.set("Outer wall temperature", 274.0);
+    closure_params.set("Inner wall temperature", 273.0);
+    closure_params.set("Kinematic viscosity", 50.0);
+    closure_params.set("Density", 1.0);
+    closure_params.set("Thermal conductivity", 0.5);
 
     // Create test evaluator
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleRotatingAnnulusExact<EvalType,
                                                              panzer::Traits,
                                                              num_space_dim>(
-            ir, fluid_prop, user_params));
+            ir, closure_params));
 
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_lagrange_pressure);
@@ -124,14 +117,18 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "IncompressibleRotatingAnnulusExact";
     test_fixture.eval_name = "Exact Solution Rotating Annulus";
-    test_fixture.user_params.sublist("Fluid Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
         .set("Artificial compressibility", 2.0);
-    test_fixture.user_params.set("Outer radius", 2.0)
+    test_fixture.model_params.set("Outer radius", 2.0)
         .set("Inner radius", 3.0)
         .set("Angular velocity", 4.0)
         .set("Outer wall temperature", 5.0)
-        .set("Inner wall temperature", 6.0);
+        .set("Inner wall temperature", 6.0)
+        .set("Kinematic viscosity", 50.0)
+        .set("Density", 1.0)
+        .set("Thermal conductivity", 0.5);
     test_fixture.template buildAndTest<
         ClosureModel::IncompressibleRotatingAnnulusExact<EvalType,
                                                          panzer::Traits,

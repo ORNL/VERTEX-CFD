@@ -15,6 +15,7 @@ constexpr T pi_v = std::enable_if_t<std::is_floating_point<T>::value, T>{
 
 // Most common case.
 constexpr double pi = pi_v<double>;
+constexpr unsigned int MAX_NUM_VIEW = 200;
 
 } // namespace Constants
 } // namespace VertexCFD

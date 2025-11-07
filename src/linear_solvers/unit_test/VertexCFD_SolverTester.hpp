@@ -3,7 +3,6 @@
 #include <Teuchos_DefaultMpiComm.hpp>
 #include <Tpetra_CrsMatrix.hpp>
 #include <Tpetra_Map.hpp>
-#include <Trilinos_version.h>
 
 //---------------------------------------------------------------------------//
 // TESTS
@@ -35,11 +34,7 @@ class SolverTester : public ::testing::Test
         // Build 2D Laplacian with Dirichlet BCs
         Teuchos::ArrayRCP<GO> row_inds(entries_per_row);
         Teuchos::ArrayRCP<double> row_vals(entries_per_row);
-#if TRILINOS_MAJOR_MINOR_VERSION >= 130400
         LO num_local_rows = _map->getLocalNumElements();
-#else
-        LO num_local_rows = _map->getNodeNumElements();
-#endif
         for (LO local_row = 0; local_row < num_local_rows; ++local_row)
         {
             GO global_row = _map->getGlobalElement(local_row);

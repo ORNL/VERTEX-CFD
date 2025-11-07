@@ -1,7 +1,7 @@
 #ifndef VERTEXCFD_CLOSURE_LORENTZFORCE_IMPL_HPP
 #define VERTEXCFD_CLOSURE_LORENTZFORCE_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 
@@ -14,9 +14,8 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 LorentzForce<EvalType, Traits, NumSpaceDim>::LorentzForce(
-    const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop)
-    : _sigma(fluid_prop.constantElectricalConductivity())
+    const panzer::IntegrationRule& ir)
+    : _sigma("electrical_conductivity", ir.dl_scalar)
     , _grad_electric_potential("GRAD_electric_potential", ir.dl_vector)
 {
     // Evaluated fields
@@ -24,6 +23,7 @@ LorentzForce<EvalType, Traits, NumSpaceDim>::LorentzForce(
         *this, ir.dl_scalar, _lorentz_force, "VOLUMETRIC_SOURCE_momentum_");
 
     // Dependent fields
+    this->addDependentField(_sigma);
     this->addDependentField(_grad_electric_potential);
     Utils::addDependentVectorField(*this, ir.dl_scalar, _velocity, "velocity_");
     Utils::addDependentVectorField(
@@ -102,7 +102,7 @@ LorentzForce<EvalType, Traits, NumSpaceDim>::operator()(
                     += _ext_magn_field[dim](cell, point) * B_dot_u;
                 _lorentz_force[dim](cell, point)
                     -= B2 * _velocity[dim](cell, point);
-                _lorentz_force[dim](cell, point) *= _sigma;
+                _lorentz_force[dim](cell, point) *= _sigma(cell, point);
             }
         });
 }

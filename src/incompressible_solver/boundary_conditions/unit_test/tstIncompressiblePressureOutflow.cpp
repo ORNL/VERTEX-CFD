@@ -120,19 +120,19 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
     EvaluatorTestFixture test_fixture(
         num_grad_dim, integration_order, basis_order);
 
-    std::string continuity_model_name = "";
+    bool is_edac = false;
     switch (continuity_model)
     {
         case (ContinuityModel::AC):
-            continuity_model_name = "AC";
+            is_edac = false;
             break;
         case (ContinuityModel::EDAC):
-            continuity_model_name = "EDAC";
+            is_edac = true;
             break;
     }
 
     // Create dependencies
-    double nanval = std::numeric_limits<double>::quiet_NaN();
+    const double nanval = std::numeric_limits<double>::quiet_NaN();
     const double phi = 0.1;
     const double u0 = 0.2;
     const double u1 = 0.3;
@@ -164,7 +164,7 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
         new BoundaryCondition::IncompressiblePressureOutflow<EvalType,
                                                              panzer::Traits,
                                                              num_space_dim>(
-            *test_fixture.ir, fluid_prop, bc_params, continuity_model_name));
+            *test_fixture.ir, fluid_prop, bc_params, is_edac));
     test_fixture.registerEvaluator<EvalType>(press_eval);
 
     // Add required test fields.

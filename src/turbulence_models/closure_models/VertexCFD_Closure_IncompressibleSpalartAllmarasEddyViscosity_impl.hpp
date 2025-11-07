@@ -12,17 +12,16 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits>
 IncompressibleSpalartAllmarasEddyViscosity<EvalType, Traits>::
-    IncompressibleSpalartAllmarasEddyViscosity(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop)
+    IncompressibleSpalartAllmarasEddyViscosity(const panzer::IntegrationRule& ir)
     : _sa_var("spalart_allmaras_variable", ir.dl_scalar)
-    , _nu(fluid_prop.constantKinematicViscosity())
+    , _nu("kinematic_viscosity", ir.dl_scalar)
     , _cv1(7.1)
     , _num_grad_dim(ir.spatial_dimension)
     , _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
 {
     // Add dependent fields
     this->addDependentField(_sa_var);
+    this->addDependentField(_nu);
 
     // Add evaluated fields
     this->addEvaluatedField(_nu_t);
@@ -57,7 +56,7 @@ IncompressibleSpalartAllmarasEddyViscosity<EvalType, Traits>::operator()(
             const auto sa_var = _sa_var(cell, point);
             if (sa_var >= 0.0)
             {
-                const scalar_type xi3 = pow(sa_var / _nu, 3.0);
+                const scalar_type xi3 = pow(sa_var / _nu(cell, point), 3.0);
                 const scalar_type f_v1 = xi3 / (xi3 + _cv1 * _cv1 * _cv1);
                 _nu_t(cell, point) = sa_var * f_v1;
             }

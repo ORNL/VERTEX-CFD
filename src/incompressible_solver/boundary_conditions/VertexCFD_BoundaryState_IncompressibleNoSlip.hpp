@@ -32,7 +32,7 @@ class IncompressibleNoSlip : public panzer::EvaluatorWithBaseImpl<Traits>,
         const panzer::IntegrationRule& ir,
         const FluidProperties::ConstantFluidProperties& fluid_prop,
         const Teuchos::ParameterList& bc_params,
-        const std::string& continuity_model_name);
+        const bool is_edac);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -59,6 +59,7 @@ class IncompressibleNoSlip : public panzer::EvaluatorWithBaseImpl<Traits>,
 
   private:
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _lagrange_pressure;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _temperature;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_lagrange_pressure;
     Kokkos::Array<
@@ -67,11 +68,25 @@ class IncompressibleNoSlip : public panzer::EvaluatorWithBaseImpl<Traits>,
         _grad_velocity;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _grad_temperature;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
+        _normals;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _kappa;
 
     bool _solve_temp;
-    std::string _continuity_model_name;
+    bool _set_lagrange_pressure;
+    double _lp_wall;
     bool _is_edac;
     double _T_wall;
+    double _wall_flux;
+
+    enum TempProfile
+    {
+        isothermal,
+        adiabatic,
+        flux
+    };
+
+    TempProfile _temperature_profile;
 };
 
 //---------------------------------------------------------------------------//

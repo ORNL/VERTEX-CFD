@@ -13,21 +13,21 @@ namespace ClosureModel
 template<class EvalType, class Traits>
 ElectricPotentialDiffusionFlux<EvalType, Traits>::ElectricPotentialDiffusionFlux(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
     const std::string& flux_prefix,
     const std::string& gradient_prefix)
     : _electric_potential_flux(
           flux_prefix + "ELECTRIC_POTENTIAL_FLUX_electric_potential_equation",
           ir.dl_vector)
+    , _sigma("electrical_conductivity", ir.dl_scalar)
     , _grad_electric_potential(gradient_prefix + "GRAD_electric_potential",
                                ir.dl_vector)
-    , _sigma(fluid_prop.constantElectricalConductivity())
     , _num_grad_dim(ir.spatial_dimension)
 {
     // Evaluated fields
     this->addEvaluatedField(_electric_potential_flux);
 
     // Dependent fields
+    this->addDependentField(_sigma);
     this->addDependentField(_grad_electric_potential);
 
     this->setName("Electric Potential Diffusion Flux "
@@ -58,7 +58,8 @@ ElectricPotentialDiffusionFlux<EvalType, Traits>::operator()(
             for (int dim = 0; dim < _num_grad_dim; ++dim)
             {
                 _electric_potential_flux(cell, point, dim)
-                    = -_sigma * _grad_electric_potential(cell, point, dim);
+                    = -_sigma(cell, point)
+                      * _grad_electric_potential(cell, point, dim);
             }
         });
 }

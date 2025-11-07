@@ -49,13 +49,16 @@ IncompressibleKEpsilonEddyViscosity<EvalType, Traits>::operator()(
 {
     const int cell = team.league_rank();
     const int num_point = _nu_t.extent(1);
-    const auto max_tol = 1.0e-10;
+    const auto max_tol = 1.0e-6;
     using std::pow;
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             _nu_t(cell, point)
-                = _C_nu * pow(_turb_kinetic_energy(cell, point), 2.0)
+                = _C_nu
+                  * pow(SmoothMath::max(
+                            _turb_kinetic_energy(cell, point), max_tol, 0.0),
+                        2.0)
                   / SmoothMath::max(
                       _turb_dissipation_rate(cell, point), max_tol, 0.0);
         });

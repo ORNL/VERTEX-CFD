@@ -13,8 +13,8 @@ namespace Test
 //---------------------------------------------------------------------------//
 void kokkosTest()
 {
-    int size = 10;
-    Kokkos::View<int*, PHX::mem_space> data("data", size);
+    const int size = 10;
+    const Kokkos::View<int*, PHX::mem_space> data("data", size);
     Kokkos::parallel_for(
         "fill_data",
         Kokkos::RangePolicy<PHX::exec_space>(0, size),

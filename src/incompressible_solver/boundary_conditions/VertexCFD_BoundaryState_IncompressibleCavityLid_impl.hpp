@@ -16,7 +16,7 @@ IncompressibleCavityLid<EvalType, Traits, NumSpaceDim>::IncompressibleCavityLid(
     const panzer::IntegrationRule& ir,
     const FluidProperties::ConstantFluidProperties& fluid_prop,
     const Teuchos::ParameterList& bc_params,
-    const std::string& continuity_model_name)
+    const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
     , _boundary_grad_lagrange_pressure("BOUNDARY_GRAD_lagrange_pressure",
                                        ir.dl_vector)
@@ -27,8 +27,7 @@ IncompressibleCavityLid<EvalType, Traits, NumSpaceDim>::IncompressibleCavityLid(
     , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
     , _solve_temp(fluid_prop.solveTemperature())
-    , _continuity_model_name(continuity_model_name)
-    , _is_edac(continuity_model_name == "EDAC" ? true : false)
+    , _is_edac(is_edac)
     , _wall_dir(bc_params.get<int>("Wall Normal Direction"))
     , _vel_dir(bc_params.get<int>("Velocity Direction"))
     , _h(bc_params.get<double>("Half Width"))

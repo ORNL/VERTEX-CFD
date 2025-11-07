@@ -1,8 +1,7 @@
 #ifndef VERTEXCFD_CLOSURE_WALLDISTANCE_HPP
 #define VERTEXCFD_CLOSURE_WALLDISTANCE_HPP
 
-#include <drivers/VertexCFD_MeshManager.hpp>
-#include <mesh/VertexCFD_Mesh_GeometryData.hpp>
+#include "mesh/VertexCFD_Mesh_GeometryData.hpp"
 
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
@@ -12,15 +11,7 @@
 #include <Phalanx_FieldManager.hpp>
 #include <Phalanx_config.hpp>
 
-#include <Shards_BasicTopologies.hpp>
-#include <Shards_CellTopology.hpp>
-
 #include <Kokkos_Core.hpp>
-
-#include "Panzer_CommonArrayFactories.hpp"
-#include <Panzer_CellData.hpp>
-#include <Panzer_STK_Interface.hpp>
-#include <Panzer_STK_SetupUtilities.hpp>
 
 namespace VertexCFD
 {
@@ -45,8 +36,7 @@ class WallDistance : public panzer::EvaluatorWithBaseImpl<Traits>,
     static constexpr int num_space_dim = NumSpaceDim;
 
     WallDistance(const panzer::IntegrationRule& ir,
-                 Teuchos::RCP<MeshManager> mesh_manager,
-                 const Teuchos::ParameterList closure_params);
+                 Teuchos::RCP<Mesh::Topology::SidesetGeometry> sideset_geometry);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;
@@ -81,7 +71,6 @@ class WallDistance : public panzer::EvaluatorWithBaseImpl<Traits>,
     // Field of the coordinates of the integration points
     PHX::MDField<const double, panzer::Cell, panzer::Point, panzer::Dim> _ip_coords;
 
-    Teuchos::RCP<const shards::CellTopology> _topology;
     unsigned _key;
 
     // View for storing the vector of global side data

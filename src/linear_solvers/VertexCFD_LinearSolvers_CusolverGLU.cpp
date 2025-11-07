@@ -1,7 +1,5 @@
 #include "VertexCFD_LinearSolvers_CusolverGLU.hpp"
 
-#include <Trilinos_version.h>
-
 #include <cassert>
 #include <sstream>
 
@@ -41,9 +39,9 @@ void CusolverGLU::setMatrix(Teuchos::RCP<const Tpetra::RowMatrix<>> A)
     _A_values_host.clear();
 
     // Extract matrix data for factorizations
-    int local_rows = this->num_local_rows();
+    int local_rows = _A->getLocalNumRows();
     std::size_t num_entries;
-    std::size_t max_entries = this->max_entries_per_row();
+    std::size_t max_entries = _A->getLocalMaxNumRowEntries();
     Tpetra::RowMatrix<>::nonconst_local_inds_host_view_type row_inds(
         "row_indices", max_entries);
     Tpetra::RowMatrix<>::nonconst_values_host_view_type row_vals("row_values",
@@ -89,8 +87,8 @@ void CusolverGLU::initialize()
     // copies. For now, the only way to get the data is to extract the values
     // row-by-row on the host and then explicitly copy to the device.
 
-    int num_rows = this->num_local_rows();
-    int A_nnz = this->num_local_entries();
+    int num_rows = _A->getLocalNumRows();
+    int A_nnz = _A->getLocalNumEntries();
 
     cusolverStatus_t stat;
     cusolverSpCreate(&_handle);
@@ -205,8 +203,8 @@ void CusolverGLU::compute()
     assert(_initialized);
     assert(!_computed);
 
-    int num_rows = this->num_local_rows();
-    int A_nnz = this->num_local_entries();
+    int num_rows = _A->getLocalNumRows();
+    int A_nnz = _A->getLocalNumEntries();
 
     cusolverStatus_t stat;
     stat = cusolverSpDgluReset(_handle,
@@ -236,8 +234,8 @@ void CusolverGLU::solve(const Tpetra::MultiVector<>& b,
     assert(_initialized);
     assert(_computed);
 
-    int num_rows = this->num_local_rows();
-    int A_nnz = this->num_local_entries();
+    int num_rows = _A->getLocalNumRows();
+    int A_nnz = _A->getLocalNumEntries();
 
     // Get Kokkos Views
     auto b_view = b.getLocalViewDevice(Tpetra::Access::ReadOnly);
@@ -287,36 +285,6 @@ void CusolverGLU::check_status(cusolverStatus_t stat,
         ss << msg << " failed with status " << stat;
         throw std::runtime_error(ss.str());
     }
-}
-
-//---------------------------------------------------------------------------//
-// Trilinos interface functions that vary with versioning
-//---------------------------------------------------------------------------//
-int CusolverGLU::num_local_rows() const
-{
-#if TRILINOS_MAJOR_MINOR_VERSION >= 130400
-    return _A->getLocalNumRows();
-#else
-    return _A->getNodeNumRows();
-#endif
-}
-
-std::size_t CusolverGLU::num_local_entries() const
-{
-#if TRILINOS_MAJOR_MINOR_VERSION >= 130400
-    return _A->getLocalNumEntries();
-#else
-    return _A->getNodeNumEntries();
-#endif
-}
-
-std::size_t CusolverGLU::max_entries_per_row() const
-{
-#if TRILINOS_MAJOR_MINOR_VERSION >= 130400
-    return _A->getLocalMaxNumRowEntries();
-#else
-    return _A->getNodeMaxNumRowEntries();
-#endif
 }
 
 //---------------------------------------------------------------------------//

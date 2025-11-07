@@ -14,8 +14,8 @@ namespace Test
 void captureTest()
 {
     // Make some Kokkos views.
-    Kokkos::View<double[1], PHX::mem_space> dbl_view("dbl_view");
-    Kokkos::View<int[1][1], PHX::mem_space> int_view("int_view");
+    const Kokkos::View<double[1], PHX::mem_space> dbl_view("dbl_view");
+    const Kokkos::View<int[1][1], PHX::mem_space> int_view("int_view");
 
     // Make a parameter pack so we can capture them as a group.
     auto pack = Utils::makeParameterPack(dbl_view, int_view);

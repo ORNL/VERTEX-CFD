@@ -1,6 +1,8 @@
 #ifndef VERTEXCFD_CLOSURE_TOTALMAGNETICFIELDGRADIENT_HPP
 #define VERTEXCFD_CLOSURE_TOTALMAGNETICFIELDGRADIENT_HPP
 
+#include "utils/VertexCFD_Utils_MagneticDim.hpp"
+
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -46,14 +48,14 @@ class TotalMagneticFieldGradient
         _grad_induced_magnetic_field;
     Kokkos::Array<
         PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
-        3>
+        num_magnetic_field_dim>
         _grad_external_magnetic_field;
 
   public:
-    Kokkos::Array<
-        PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
-        3>
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim, MagneticDim>
         _grad_total_magnetic_field;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point>
+        _divergence_total_magnetic_field;
 };
 
 //---------------------------------------------------------------------------//

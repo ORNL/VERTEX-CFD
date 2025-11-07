@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLEROTATINGANNULUSEXACT_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLEROTATINGANNULUSEXACT_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -33,8 +31,7 @@ class IncompressibleRotatingAnnulusExact
 
     IncompressibleRotatingAnnulusExact(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& user_params);
+        const Teuchos::ParameterList& closure_params);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;

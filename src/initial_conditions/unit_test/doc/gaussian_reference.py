@@ -64,11 +64,26 @@ show(one / result1)
 
 # two-dimensional mesh
 print("\n2D case:")
-print("Gaussian")
+print("Gaussian: Unscaled")
 result0 = dimResult(a0, b0, c0, r0) * dimResult(a1, b1, c1, r0) + base
 result1 = dimResult(a0, b0, c0, r1) * dimResult(a1, b1, c1, r0) + base
 result2 = dimResult(a0, b0, c0, r1) * dimResult(a1, b1, c1, r1) + base
 result3 = dimResult(a0, b0, c0, r0) * dimResult(a1, b1, c1, r1) + base
+
+show(result0)
+show(result1)
+show(result2)
+show(result3)
+
+print("Gaussian: Scaled")
+result0 = dimResult(a0, b0, c0, r0) / a0 * dimResult(a1, b1, c1,
+                                                     r0) / a1 + base
+result1 = dimResult(a0, b0, c0, r1) / a0 * dimResult(a1, b1, c1,
+                                                     r0) / a1 + base
+result2 = dimResult(a0, b0, c0, r1) / a0 * dimResult(a1, b1, c1,
+                                                     r1) / a1 + base
+result3 = dimResult(a0, b0, c0, r0) / a0 * dimResult(a1, b1, c1,
+                                                     r1) / a1 + base
 
 show(result0)
 show(result1)
@@ -84,7 +99,7 @@ show(one / result3)
 
 # three-dimensional mesh
 print("\n3D case:")
-print("Gaussian")
+print("Gaussian: Unscaled")
 result0 = dimResult(a0, b0, c0, r0) * dimResult(a1, b1, c1, r0) * dimResult(
     a2, b2, c2, r0) + base
 result1 = dimResult(a0, b0, c0, r1) * dimResult(a1, b1, c1, r0) * dimResult(
@@ -101,6 +116,33 @@ result6 = dimResult(a0, b0, c0, r1) * dimResult(a1, b1, c1, r1) * dimResult(
     a2, b2, c2, r1) + base
 result7 = dimResult(a0, b0, c0, r0) * dimResult(a1, b1, c1, r1) * dimResult(
     a2, b2, c2, r1) + base
+
+show(result0)
+show(result1)
+show(result2)
+show(result3)
+show(result4)
+show(result5)
+show(result6)
+show(result7)
+
+print("Gaussian: Scaled")
+result0 = dimResult(a0, b0, c0, r0) / a0 * dimResult(
+    a1, b1, c1, r0) / a1 * dimResult(a2, b2, c2, r0) / a2 + base
+result1 = dimResult(a0, b0, c0, r1) / a0 * dimResult(
+    a1, b1, c1, r0) / a1 * dimResult(a2, b2, c2, r0) / a2 + base
+result2 = dimResult(a0, b0, c0, r1) / a0 * dimResult(
+    a1, b1, c1, r1) / a1 * dimResult(a2, b2, c2, r0) / a2 + base
+result3 = dimResult(a0, b0, c0, r0) / a0 * dimResult(
+    a1, b1, c1, r1) / a1 * dimResult(a2, b2, c2, r0) / a2 + base
+result4 = dimResult(a0, b0, c0, r0) / a0 * dimResult(
+    a1, b1, c1, r0) / a1 * dimResult(a2, b2, c2, r2) / a2 + base
+result5 = dimResult(a0, b0, c0, r1) / a0 * dimResult(
+    a1, b1, c1, r0) / a1 * dimResult(a2, b2, c2, r2) / a2 + base
+result6 = dimResult(a0, b0, c0, r1) / a0 * dimResult(
+    a1, b1, c1, r1) / a1 * dimResult(a2, b2, c2, r1) / a2 + base
+result7 = dimResult(a0, b0, c0, r0) / a0 * dimResult(
+    a1, b1, c1, r1) / a1 * dimResult(a2, b2, c2, r1) / a2 + base
 
 show(result0)
 show(result1)

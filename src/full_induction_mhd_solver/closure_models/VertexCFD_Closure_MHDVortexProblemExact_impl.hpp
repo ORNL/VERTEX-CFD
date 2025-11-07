@@ -18,14 +18,12 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 MHDVortexProblemExact<EvalType, Traits, NumSpaceDim>::MHDVortexProblemExact(
     const panzer::IntegrationRule& ir,
-    const Teuchos::ParameterList& full_induction_params)
+    const Teuchos::ParameterList& vortex_params)
     : _ir_degree(ir.cubature_degree)
     , _lagrange_pressure("Exact_lagrange_pressure", ir.dl_scalar)
 {
-    const auto vel_0
-        = full_induction_params.get<Teuchos::Array<double>>("velocity_0");
-    const auto xy_0
-        = full_induction_params.get<Teuchos::Array<double>>("center_0");
+    const auto vel_0 = vortex_params.get<Teuchos::Array<double>>("velocity_0");
+    const auto xy_0 = vortex_params.get<Teuchos::Array<double>>("center_0");
     for (int dim = 0; dim < 2; ++dim)
     {
         _vel_0[dim] = vel_0[dim];

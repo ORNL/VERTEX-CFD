@@ -49,7 +49,7 @@ void testEval()
     const int num_coord = test_fixture.cell_topo->getNodeCount();
 
     // Set non-trivial coordinates for the degree of freedom
-    Kokkos::View<double**, Kokkos::HostSpace> x(
+    const Kokkos::View<double**, Kokkos::HostSpace> x(
         "coordinate", num_space_dim, num_coord);
     auto basis_coord_view
         = test_fixture.workset->bases[0]->basis_coordinates.get_static_view();
@@ -157,7 +157,7 @@ void testEval()
     EXPECT_EQ(num_coord, temperature_result.extent(1));
 
     // Loop over number of points and compare against reference values
-    int num_point = phi_result.extent(1);
+    const int num_point = phi_result.extent(1);
     for (int d = 0; d < num_point; ++d)
     {
         auto x_subview = Kokkos::subview(x, Kokkos::ALL(), d);

@@ -1,5 +1,5 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include <full_induction_mhd_solver/closure_models/VertexCFD_Closure_FullInductionModelErrorNorms.hpp>
 
@@ -159,10 +159,9 @@ void testFactory()
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     test_fixture.type_name = "FullInductionModelErrorNorm";
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0);
-    test_fixture.user_params.sublist("Full Induction MHD Properties");
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties");
+    test_fixture.factory_type = "Full Induction MHD";
     if (num_space_dim == 2)
         test_fixture.eval_name = "Full Induction Model Error Norms 2D";
     else if (num_space_dim == 3)

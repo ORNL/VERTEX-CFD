@@ -1,7 +1,7 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLEVISCOUSFLUX_IMPL_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLEVISCOUSFLUX_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 
@@ -20,12 +20,14 @@ IncompressibleViscousFlux<EvalType, Traits, NumSpaceDim>::IncompressibleViscousF
     const std::string& gradient_prefix)
     : _continuity_flux(flux_prefix + "VISCOUS_FLUX_continuity", ir.dl_vector)
     , _energy_flux(flux_prefix + "VISCOUS_FLUX_energy", ir.dl_vector)
+    , _rho("density", ir.dl_scalar)
+    , _nu("kinematic_viscosity", ir.dl_scalar)
+    , _cp("specific_heat_capacity", ir.dl_scalar)
+    , _k("thermal_conductivity", ir.dl_scalar)
     , _grad_press(gradient_prefix + "GRAD_lagrange_pressure", ir.dl_vector)
     , _grad_temp(gradient_prefix + "GRAD_temperature", ir.dl_vector)
     , _nu_t(flux_prefix + "turbulent_eddy_viscosity", ir.dl_scalar)
-    , _rho(fluid_prop.constantDensity())
-    , _nu(fluid_prop.constantKinematicViscosity())
-    , _kappa(std::numeric_limits<double>::quiet_NaN())
+    , _gamma(std::numeric_limits<double>::quiet_NaN())
     , _beta(fluid_prop.artificialCompressibility())
     , _solve_temp(fluid_prop.solveTemperature())
     , _use_turbulence_model(use_turbulence_model)
@@ -35,7 +37,6 @@ IncompressibleViscousFlux<EvalType, Traits, NumSpaceDim>::IncompressibleViscousF
                                                                 "Model")
                                  : "AC")
     , _is_edac(_continuity_model_name == "EDAC" ? true : false)
-    , _rhoCp(fluid_prop.constantHeatCapacity())
     , _Pr_t(_solve_temp
                 ? (user_params.isType<double>("Turbulent Prandtl Number")
                        ? user_params.get<double>("Turbulent Prandtl Number")
@@ -50,20 +51,26 @@ IncompressibleViscousFlux<EvalType, Traits, NumSpaceDim>::IncompressibleViscousF
     this->addEvaluatedField(_energy_flux);
 
     // Add dependent fields
-    if (_is_edac)
-    {
-        this->addDependentField(_grad_press);
-    }
-    if (_solve_temp)
-    {
-        _kappa = fluid_prop.constantThermalConductivity();
-        this->addDependentField(_grad_temp);
-    }
-
     Utils::addDependentVectorField(*this,
                                    ir.dl_vector,
                                    _grad_velocity,
                                    gradient_prefix + "GRAD_velocity_");
+
+    this->addDependentField(_rho);
+    this->addDependentField(_nu);
+    if (_is_edac)
+    {
+        this->addDependentField(_grad_press);
+        if (_solve_temp)
+            _gamma = fluid_prop.constantHeatCapacityRatio();
+    }
+
+    if (_solve_temp)
+    {
+        this->addDependentField(_k);
+        this->addDependentField(_cp);
+        this->addDependentField(_grad_temp);
+    }
 
     if (_use_turbulence_model)
     {
@@ -92,7 +99,6 @@ IncompressibleViscousFlux<EvalType, Traits, NumSpaceDim>::operator()(
 {
     const int cell = team.league_rank();
     const int num_point = _continuity_flux.extent(1);
-    const double ratio_kappa_t_nu_t = _rhoCp / _Pr_t;
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
@@ -102,8 +108,19 @@ IncompressibleViscousFlux<EvalType, Traits, NumSpaceDim>::operator()(
                 // Set stress tensor for EDAC continuity model
                 if (_is_edac)
                 {
-                    _continuity_flux(cell, point, i)
-                        = _rho * _nu * _grad_press(cell, point, i) / _beta;
+                    if (_solve_temp)
+                    {
+                        _continuity_flux(cell, point, i)
+                            = _gamma * _k(cell, point)
+                              * _grad_press(cell, point, i)
+                              / (_beta * _rho(cell, point) * _cp(cell, point));
+                    }
+                    else
+                    {
+                        _continuity_flux(cell, point, i)
+                            = _rho(cell, point) * _nu(cell, point)
+                              * _grad_press(cell, point, i) / _beta;
+                    }
                 }
                 // Set stress tensor to zero for AC continuity model
                 else
@@ -115,12 +132,13 @@ IncompressibleViscousFlux<EvalType, Traits, NumSpaceDim>::operator()(
                 if (_solve_temp)
                 {
                     _energy_flux(cell, point, i)
-                        = _kappa * _grad_temp(cell, point, i);
+                        = _k(cell, point) * _grad_temp(cell, point, i);
                     if (_use_turbulence_model)
                     {
                         _energy_flux(cell, point, i)
-                            += _nu_t(cell, point) * ratio_kappa_t_nu_t
-                               * _grad_temp(cell, point, i);
+                            += _nu_t(cell, point) * _rho(cell, point)
+                               * _cp(cell, point) * _grad_temp(cell, point, i)
+                               / _Pr_t;
                     }
                 }
 
@@ -128,11 +146,12 @@ IncompressibleViscousFlux<EvalType, Traits, NumSpaceDim>::operator()(
                 for (int j = 0; j < num_space_dim; ++j)
                 {
                     _momentum_flux[j](cell, point, i)
-                        = _rho * _nu * _grad_velocity[j](cell, point, i);
+                        = _rho(cell, point) * _nu(cell, point)
+                          * _grad_velocity[j](cell, point, i);
                     if (_use_turbulence_model)
                     {
                         _momentum_flux[j](cell, point, i)
-                            += _rho * _nu_t(cell, point)
+                            += _rho(cell, point) * _nu_t(cell, point)
                                * _grad_velocity[j](cell, point, i);
                     }
                 }

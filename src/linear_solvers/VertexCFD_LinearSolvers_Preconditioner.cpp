@@ -38,7 +38,7 @@ void Preconditioner::setParameters(const Teuchos::ParameterList& params)
 void Preconditioner::setMatrix(const Teuchos::RCP<const Tpetra::RowMatrix<>>& A)
 {
     auto timer = Teuchos::TimeMonitor::getNewTimer(_set_label);
-    Teuchos::TimeMonitor tm(*timer);
+    const Teuchos::TimeMonitor tm(*timer);
 
     // Depending on order of construction of AdditiveSchwarz, the matrix
     //  may be null on the first call to setMatrix. In this case, setMatrix
@@ -57,8 +57,8 @@ void Preconditioner::setMatrix(const Teuchos::RCP<const Tpetra::RowMatrix<>>& A)
 void Preconditioner::initialize()
 {
     auto timer = Teuchos::TimeMonitor::getNewTimer(_init_label);
-    Teuchos::TimeMonitor tm(*timer);
-    double start_time = Teuchos::Time::wallTime();
+    const Teuchos::TimeMonitor tm(*timer);
+    const double start_time = Teuchos::Time::wallTime();
 
     _local_solver->initialize();
     _initialized = true;
@@ -72,8 +72,8 @@ void Preconditioner::initialize()
 void Preconditioner::compute()
 {
     auto timer = Teuchos::TimeMonitor::getNewTimer(_compute_label);
-    Teuchos::TimeMonitor tm(*timer);
-    double start_time = Teuchos::Time::wallTime();
+    const Teuchos::TimeMonitor tm(*timer);
+    const double start_time = Teuchos::Time::wallTime();
 
     _local_solver->compute();
     _computed = true;
@@ -91,8 +91,8 @@ void Preconditioner::apply(const Tpetra::MultiVector<>& x,
                            double beta) const
 {
     auto timer = Teuchos::TimeMonitor::getNewTimer(_apply_label);
-    Teuchos::TimeMonitor tm(*timer);
-    double start_time = Teuchos::Time::wallTime();
+    const Teuchos::TimeMonitor tm(*timer);
+    const double start_time = Teuchos::Time::wallTime();
 
     _num_apply++;
 
@@ -124,7 +124,7 @@ void Preconditioner::apply(const Tpetra::MultiVector<>& x,
     else
     {
         // For nonzero beta, need temporary vector
-        Teuchos::RCP<Tpetra::MultiVector<>> z = MV_Traits::Clone(x, 1);
+        const Teuchos::RCP<Tpetra::MultiVector<>> z = MV_Traits::Clone(x, 1);
         _local_solver->solve(x, *z);
 
         MV_Traits::MvAddMv(alpha, *z, beta, y, y);

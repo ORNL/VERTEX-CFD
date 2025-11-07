@@ -66,8 +66,12 @@ class BoundaryFluxBase : public panzer::BCStrategy<EvalType>,
     void initialize(const panzer::PhysicsBlock& side_pb,
                     std::unordered_map<std::string, std::string>& dof_eq_map);
 
-    auto getIntegrationBasis(const panzer::PhysicsBlock& side_pb,
-                             const std::string& dof_name) const;
+    void getModelID(const Teuchos::ParameterList& bc_params,
+                    const panzer::PhysicsBlock& side_pb,
+                    std::string& model_id) const;
+
+    auto getBasisIRLayout(const panzer::PhysicsBlock& side_pb,
+                          const std::string& dof_name) const;
 
     void registerDOFsGradient(PHX::FieldManager<panzer::Traits>& fm,
                               const panzer::PhysicsBlock& side_pb,
@@ -88,7 +92,7 @@ class BoundaryFluxBase : public panzer::BCStrategy<EvalType>,
         std::pair<const std::string, std::string> dof_eq_pair,
         PHX::FieldManager<panzer::Traits>& fm,
         const panzer::PhysicsBlock& side_pb,
-        const Teuchos::ParameterList& user_params) const;
+        const Teuchos::ParameterList& bc_params) const;
 
     void registerViscousTypeFluxOperator(
         std::pair<const std::string, std::string> dof_eq_pair,
@@ -114,9 +118,10 @@ class BoundaryFluxBase : public panzer::BCStrategy<EvalType>,
 
   protected:
     std::unordered_map<std::string, std::string> bnd_prefix;
+    std::unordered_map<std::string, Teuchos::RCP<panzer::PureBasis>>
+        _dof_basis_pair;
 
   private:
-    int _integration_order;
     Teuchos::RCP<panzer::IntegrationRule> _ir;
 };
 

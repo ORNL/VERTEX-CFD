@@ -43,9 +43,10 @@ BoundaryGradBasisDotVector<EvalType, Traits>::BoundaryGradBasisDotVector(
 
     if (!basis.getBasis()->supportsGrad())
     {
-        std::string msg = "Error:  BoundaryGradBasisDotVector:  Basis of type "
-                          + basis.getBasis()->name()
-                          + " does not support the gradient operator.";
+        const std::string msg
+            = "Error:  BoundaryGradBasisDotVector:  Basis of type "
+              + basis.getBasis()->name()
+              + " does not support the gradient operator.";
         throw std::logic_error(msg);
     }
 
@@ -344,7 +345,8 @@ void BoundaryGradBasisDotVector<EvalType, Traits>::evaluateFields(
 {
     _grad_basis = this->wda(workset).bases[_basis_index]->weighted_grad_basis;
 
-    bool use_shared_memory = panzer::HP::inst().useSharedMemory<ScalarT>();
+    const bool use_shared_memory
+        = panzer::HP::inst().useSharedMemory<ScalarT>();
     if (use_shared_memory)
     {
         int bytes;

@@ -48,6 +48,22 @@ class IncompressibleWALEEddyViscosity
     double _C_k;
     double _C_w;
 
+    enum TmpVars
+    {
+        MAG_SQR_S,
+        MAG_SQR_W,
+        MAG_SQR_SD,
+        SD_IJ,
+        NUM_TMPS
+    };
+
+    /// View type for shared memory
+    using scratch_view
+        = Kokkos::View<scalar_type**,
+                       typename PHX::DevLayout<scalar_type>::type,
+                       typename PHX::exec_space::scratch_memory_space,
+                       Kokkos::MemoryUnmanaged>;
+
   public:
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _k_sgs;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _nu_t;

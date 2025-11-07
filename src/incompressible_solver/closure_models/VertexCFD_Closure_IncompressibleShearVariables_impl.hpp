@@ -15,20 +15,20 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleShearVariables<EvalType, Traits, NumSpaceDim>::
-    IncompressibleShearVariables(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop)
+    IncompressibleShearVariables(const panzer::IntegrationRule& ir)
     : _tau_w("wall_shear_stress", ir.dl_scalar)
     , _u_tau("friction_velocity", ir.dl_scalar)
+    , _rho("density", ir.dl_scalar)
+    , _nu("kinematic_viscosity", ir.dl_scalar)
     , _normals("Side Normal", ir.dl_vector)
-    , _nu(fluid_prop.constantKinematicViscosity())
-    , _rho(fluid_prop.constantDensity())
 {
     // Add evaluated field
     this->addEvaluatedField(_tau_w);
     this->addEvaluatedField(_u_tau);
 
     // Add dependent field
+    this->addDependentField(_rho);
+    this->addDependentField(_nu);
     this->addDependentField(_normals);
     Utils::addDependentVectorField(
         *this, ir.dl_vector, _grad_velocity, "GRAD_velocity_");
@@ -75,11 +75,11 @@ IncompressibleShearVariables<EvalType, Traits, NumSpaceDim>::operator()(
             }
             _tau_w(cell, point)
                 = sqrt(SmoothMath::max(_tau_w(cell, point), 1.0E-10, 0.0));
-            _tau_w(cell, point) *= _nu;
+            _tau_w(cell, point) *= _nu(cell, point);
 
             // Friction velocity
             _u_tau(cell, point) = sqrt(_tau_w(cell, point));
-            _tau_w(cell, point) *= _rho;
+            _tau_w(cell, point) *= _rho(cell, point);
         });
 }
 

@@ -9,6 +9,7 @@
 #include <Panzer_Workset_Utilities.hpp>
 
 #include "utils/VertexCFD_Utils_Constants.hpp"
+#include "utils/VertexCFD_Utils_SmoothMath.hpp"
 
 #include <Teuchos_Array.hpp>
 
@@ -23,12 +24,12 @@ namespace InitialCondition
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleLaminarFlow<EvalType, Traits, NumSpaceDim>::IncompressibleLaminarFlow(
     const Teuchos::ParameterList& ic_params,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
+    const bool solve_temp,
     const panzer::PureBasis& basis)
     : _lagrange_pressure("lagrange_pressure", basis.functional)
     , _temperature("temperature", basis.functional)
     , _basis_name(basis.name())
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _solve_temp(solve_temp)
     , _min(ic_params.get<double>("Minimum height"))
     , _max(ic_params.get<double>("Maximum height"))
     , _vel_avg(ic_params.get<double>("Average velocity"))
@@ -80,18 +81,25 @@ IncompressibleLaminarFlow<EvalType, Traits, NumSpaceDim>::operator()(
     const int cell = team.league_rank();
     const int num_basis = _velocity[0].extent(1);
 
+    using std::pow;
+
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_basis), [&](const int basis) {
-            double r2 = _basis_coords(cell, basis, 1)
-                        * _basis_coords(cell, basis, 1);
             const double H = 0.5 * (_max - _min);
+
+            // y-axis can be at arbitrary location
+            const double y_0 = _min + H;
+            double r2 = pow(_basis_coords(cell, basis, 1) - y_0, 2.0);
             _velocity[1](cell, basis) = 0.0;
             if (num_space_dim == 3)
             {
-                r2 += _basis_coords(cell, basis, 2)
-                      * _basis_coords(cell, basis, 2);
+                // Assumes z-axis is centered about z = 0
+                r2 += pow(_basis_coords(cell, basis, 2), 2.0);
                 _velocity[2](cell, basis) = 0.0;
             }
+            // Limit radius to set zero velocity in areas of domain that may
+            // be outside of the characteristic radius
+            r2 = SmoothMath::min(r2, H * H, 0.0);
             _velocity[0](cell, basis) = _vel_max * (1.0 - r2 / (H * H));
             _lagrange_pressure(cell, basis) = 0.0;
             if (_solve_temp)

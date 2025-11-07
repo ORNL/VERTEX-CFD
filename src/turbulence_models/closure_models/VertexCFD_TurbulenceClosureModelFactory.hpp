@@ -1,6 +1,7 @@
 #ifndef VERTEXCFD_TURBULENCECLOSUREMODELFACTORY_HPP
 #define VERTEXCFD_TURBULENCECLOSUREMODELFACTORY_HPP
 
+#include <Panzer_GlobalData.hpp>
 #include <Panzer_Traits.hpp>
 
 #include <Phalanx_Evaluator.hpp>
@@ -21,6 +22,7 @@ class TurbulenceFactory
 
     void buildClosureModel(
         const Teuchos::RCP<panzer::IntegrationRule>& ir,
+        const Teuchos::RCP<panzer::GlobalData>& global_data,
         const Teuchos::ParameterList& user_params,
         const std::string& turbulence_model_name,
         Teuchos::RCP<std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>>>

@@ -1,10 +1,12 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConvectiveFlux.hpp"
 
 #include "full_induction_mhd_solver/mhd_properties/VertexCFD_FullInductionMHDProperties.hpp"
 
+#include "utils/VertexCFD_Utils_MagneticDim.hpp"
+#include "utils/VertexCFD_Utils_MagneticLayout.hpp"
 #include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <gtest/gtest.h>
@@ -34,7 +36,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         vel;
-    Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>, 3> mag;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point, MagneticDim> mag;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> magn_pot;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> magn_pres;
 
@@ -53,6 +55,8 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         , _psi(psi)
         , _p_mag(p_mag)
         , _build_magn_corr(build_magn_corr)
+        , mag("total_magnetic_field",
+              Utils::buildMagneticLayout(ir.dl_scalar, 3))
         , magn_pot(field_pre + "scalar_magnetic_potential", ir.dl_scalar)
         , magn_pres("magnetic_pressure", ir.dl_scalar)
     {
@@ -62,8 +66,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
                                        flux_pre + "CONVECTIVE_FLUX_momentum_");
         Utils::addEvaluatedVectorField(
             *this, ir.dl_scalar, vel, field_pre + "velocity_");
-        Utils::addEvaluatedVectorField(
-            *this, ir.dl_scalar, mag, "total_magnetic_field_");
+        this->addEvaluatedField(mag);
         this->addEvaluatedField(magn_pres);
         if (_build_magn_corr)
         {
@@ -83,12 +86,12 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
 
     KOKKOS_INLINE_FUNCTION void operator()(const int c) const
     {
-        const int num_point = mag[0].extent(1);
+        const int num_point = mag.extent(1);
         for (int qp = 0; qp < num_point; ++qp)
         {
             for (int field_dim = 0; field_dim < 3; ++field_dim)
             {
-                mag[field_dim](c, qp) = _b[field_dim];
+                mag(c, qp, field_dim) = _b[field_dim];
             }
             for (int vel_dim = 0; vel_dim < num_space_dim; ++vel_dim)
             {
@@ -132,16 +135,15 @@ void testEval(const bool build_magn_corr,
 
     // Initialize class object to test
     Teuchos::ParameterList full_induction_params;
-    full_induction_params.set("Vacuum Magnetic Permeability", 0.05);
-    full_induction_params.set("Build Magnetic Correction Potential Equation",
-                              build_magn_corr);
+    full_induction_params.set("Vacuum Magnetic Permeability", 0.05)
+        .set("Build Magnetic Correction Potential Equation", build_magn_corr);
     if (build_magn_corr)
     {
         full_induction_params.set("Hyperbolic Divergence Cleaning Speed", 5.0);
     }
 
-    MHDProperties::FullInductionMHDProperties mhd_props
-        = MHDProperties::FullInductionMHDProperties(full_induction_params);
+    const MHDProperties::FullInductionMHDProperties mhd_props(
+        full_induction_params);
 
     auto eval = Teuchos::rcp(
         new ClosureModel::
@@ -275,12 +277,11 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.sublist("Full Induction MHD Properties")
+    test_fixture.closure_params.sublist(test_fixture.model_id)
+        .sublist("Full Induction MHD Properties")
         .set("Vacuum Magnetic Permeability", 0.1)
         .set("Build Magnetic Correction Potential Equation", false);
-    test_fixture.user_params.sublist("Fluid Properties")
-        .set("Kinematic viscosity", 1.5)
-        .set("Artificial compressibility", 0.1);
+    test_fixture.factory_type = "Full Induction MHD";
     test_fixture.type_name = "InductionConvectiveFlux";
     test_fixture.eval_name = "Induction Convective Flux "
                              + std::to_string(num_space_dim) + "D";

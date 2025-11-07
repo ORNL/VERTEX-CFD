@@ -79,7 +79,7 @@ struct Fixture
         auto conn_manager = Teuchos::rcp(new panzer_stk::STKConnManager(_mesh));
         _dof_manager = Teuchos::rcp(
             new panzer::DOFManager(conn_manager, MPI_COMM_WORLD));
-        shards::CellTopology cell_topo(
+        const shards::CellTopology cell_topo(
             shards::getCellTopologyData<shards::Quadrilateral<4>>());
         auto field_pattern
             = Teuchos::rcp(new panzer::NodalFieldPattern(cell_topo));
@@ -154,7 +154,7 @@ struct Fixture
         std::vector<panzer::GlobalOrdinal> elem_dofs;
         for (int i = 0; i < num_local_elem; ++i)
         {
-            stk::mesh::EntityId elem_id
+            const stk::mesh::EntityId elem_id
                 = _mesh->elementGlobalId(local_elems[i]);
             const bool is_local = std::binary_search(
                 owned_elem_ids.begin(), owned_elem_ids.end(), elem_id);
@@ -174,7 +174,7 @@ struct Fixture
                     // non-owned DOFs Need to check for existence here
                     if (itr != global_to_local.end())
                     {
-                        int dof_lid = itr->second;
+                        const int dof_lid = itr->second;
 
                         // For the periodic case, multiple coordinates map to a
                         // single DoF. Using min here ensures a unique solution
@@ -228,7 +228,7 @@ struct Fixture
 void testReadOnly(const std::string& lin_alg_type, const bool with_periodic_bc)
 {
     // Create test fixture.
-    Fixture fix(lin_alg_type, with_periodic_bc);
+    const Fixture fix(lin_alg_type, with_periodic_bc);
 
     // Read the file we have stored. Put some garbage in the new vectors to
     // make sure they are overwritten.
@@ -269,7 +269,7 @@ void testReadOnly(const std::string& lin_alg_type, const bool with_periodic_bc)
 void testWriteRead(const std::string& lin_alg_type, const bool with_periodic_bc)
 {
     // Create test fixture.
-    Fixture fix(lin_alg_type, with_periodic_bc);
+    const Fixture fix(lin_alg_type, with_periodic_bc);
 
     // Ordinarily, an exception is thrown if we attempt to overwrite an
     // existing DOF Map file. This will allow overwriting to avoid exceptions

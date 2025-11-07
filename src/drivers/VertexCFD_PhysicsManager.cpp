@@ -1,12 +1,25 @@
 #include "VertexCFD_PhysicsManager.hpp"
 #include "boundary_conditions/VertexCFD_BCStrategy_Factory.hpp"
 #include "closure_models/VertexCFD_ClosureModelFactory_TemplateBuilder.hpp"
-#include "equation_sets/VertexCFD_EquationSet_Factory.hpp"
+#include "conduction/closure_models/VertexCFD_ConductionClosureModelFactory_TemplateBuilder.hpp"
+#include "equation_sets/VertexCFD_EquationSet_ConductionFactory.hpp"
+#include "equation_sets/VertexCFD_EquationSet_FluidFactory.hpp"
+#include "equation_sets/VertexCFD_EquationSet_RADFactory.hpp"
+#include "equation_sets/VertexCFD_EquationSet_SolidInductionLessMHDFactory.hpp"
+#include "induction_less_mhd_solver/closure_models/VertexCFD_SolidElectricPotentialClosureModelFactory_TemplateBuilder.hpp"
 #include "linear_solvers/VertexCFD_LinearSolvers_LOWSFactoryBuilder.hpp"
+#include "rad_solver/closure_models/VertexCFD_RADClosureModelFactory_TemplateBuilder.hpp"
+
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
+#include "equation_sets/VertexCFD_EquationSet_FullInductionMHDFactory.hpp"
+#include "full_induction_mhd_solver/closure_models/VertexCFD_FullInductionClosureModelFactory_TemplateBuilder.hpp"
+#include "full_induction_mhd_solver/closure_models/VertexCFD_SolidFullInductionClosureModelFactory_TemplateBuilder.hpp"
+#endif
 
 #include <PanzerAdaptersSTK_config.hpp>
 #include <Panzer_BlockedEpetraLinearObjFactory.hpp>
 #include <Panzer_BlockedTpetraLinearObjFactory.hpp>
+#include <Panzer_ClosureModel_Factory_Composite_TemplateBuilder.hpp>
 #include <Panzer_ClosureModel_Factory_TemplateManager.hpp>
 #include <Panzer_DOFManagerFactory.hpp>
 #include <Panzer_ElementBlockIdToPhysicsIdMap.hpp>
@@ -67,7 +80,43 @@ PhysicsManager::PhysicsManager(
     const int default_integration_order = 2;
     const bool build_transient_support = true;
     const std::vector<std::string> tangent_param_names;
-    _eq_set_factory = Teuchos::rcp(new VertexCFD::EquationSet::Factory);
+
+    // Initialize equation set factory vector
+    std::vector<Teuchos::RCP<panzer::EquationSetFactory>> eq_set_factories;
+
+    // Conduction equation set
+    const Teuchos::RCP<panzer::EquationSetFactory> eq_set_cond_factory
+        = Teuchos::rcp(new VertexCFD::EquationSet::ConductionFactory);
+    eq_set_factories.push_back(eq_set_cond_factory);
+
+    // Solid induction-less MHD equation set
+    const Teuchos::RCP<panzer::EquationSetFactory> eq_set_silmhd_factory
+        = Teuchos::rcp(
+            new VertexCFD::EquationSet::SolidInductionLessMHDFactory);
+    eq_set_factories.push_back(eq_set_silmhd_factory);
+
+    // RAD equation set
+    const Teuchos::RCP<panzer::EquationSetFactory> eq_set_rad_factory
+        = Teuchos::rcp(new VertexCFD::EquationSet::RADFactory);
+    eq_set_factories.push_back(eq_set_rad_factory);
+
+    // Fluid equation sets
+    const Teuchos::RCP<panzer::EquationSetFactory> eq_set_fluid_factory
+        = Teuchos::rcp(new VertexCFD::EquationSet::FluidFactory);
+    eq_set_factories.push_back(eq_set_fluid_factory);
+
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
+    // Full-induction MHD equations
+    const Teuchos::RCP<panzer::EquationSetFactory> eq_set_fimhd_factory
+        = Teuchos::rcp(new VertexCFD::EquationSet::FullInductionMHDFactory);
+    eq_set_factories.push_back(eq_set_fimhd_factory);
+#endif
+
+    // Initialize composite equation set factory
+    _eq_set_factory = Teuchos::rcp(
+        new panzer::EquationSet_FactoryComposite(eq_set_factories));
+
+    // Initialize physics blocks
     panzer::buildPhysicsBlocks(block_ids_to_physics_ids,
                                block_ids_to_cell_topo,
                                physics_params,
@@ -93,8 +142,8 @@ PhysicsManager::PhysicsManager(
         // them to the database.
         auto pb = _physics_blocks[i];
         const auto& block_fields = pb->getProvidedDOFs();
-        std::set<panzer::StrPureBasisPair, panzer::StrPureBasisComp> field_names(
-            block_fields.begin(), block_fields.end());
+        const std::set<panzer::StrPureBasisPair, panzer::StrPureBasisComp>
+            field_names(block_fields.begin(), block_fields.end());
         for (auto field = field_names.begin(); field != field_names.end();
              ++field)
         {
@@ -104,7 +153,7 @@ PhysicsManager::PhysicsManager(
     _mesh_manager->completeMeshConstruction();
     // Generate connectivity and DOF managers.
     auto conn_manager = _mesh_manager->connectivityManager();
-    panzer::DOFManagerFactory dof_manager_factory;
+    const panzer::DOFManagerFactory dof_manager_factory;
     _dof_manager = dof_manager_factory.buildGlobalIndexer(
         Teuchos::opaqueWrapper(Teuchos::getRawMpiComm(*comm)),
         _physics_blocks,
@@ -152,13 +201,71 @@ PhysicsManager::PhysicsManager(
                                            build_transient_support,
                                            _t_init));
 
-    // Create additional factories.
+    // Create BC factory.
     _bc_factory = Teuchos::rcp(
         new VertexCFD::BoundaryCondition::Factory<num_space_dim>());
-    VertexCFD::ClosureModel::FactoryTemplateBuilder<num_space_dim> cm_builder;
+
+    // Create NS factory
+    auto ns_cm_factory = Teuchos::rcp(
+        new panzer::ClosureModelFactory_TemplateManager<panzer::Traits>());
+    const VertexCFD::ClosureModel::FactoryTemplateBuilder<num_space_dim>
+        ns_cm_builder;
+    ns_cm_factory->buildObjects(ns_cm_builder);
+
+    // Create conduction factory
+    auto cond_cm_factory = Teuchos::rcp(
+        new panzer::ClosureModelFactory_TemplateManager<panzer::Traits>());
+    const VertexCFD::ClosureModel::ConductionFactoryTemplateBuilder<num_space_dim>
+        cond_cm_builder;
+    cond_cm_factory->buildObjects(cond_cm_builder);
+
+    // Create rad factory
+    auto rad_cm_factory = Teuchos::rcp(
+        new panzer::ClosureModelFactory_TemplateManager<panzer::Traits>());
+    const VertexCFD::ClosureModel::RADFactoryTemplateBuilder<num_space_dim>
+        rad_cm_builder;
+    rad_cm_factory->buildObjects(rad_cm_builder);
+
+    // Create solid induction-less MHD factory
+    auto solid_ep_cm_factory = Teuchos::rcp(
+        new panzer::ClosureModelFactory_TemplateManager<panzer::Traits>());
+    const VertexCFD::ClosureModel::SolidElectricPotentialFactoryTemplateBuilder<
+        num_space_dim>
+        solid_ep_cm_builder;
+    solid_ep_cm_factory->buildObjects(solid_ep_cm_builder);
+
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
+    // Create full induction MHD factory
+    auto fim_cm_factory = Teuchos::rcp(
+        new panzer::ClosureModelFactory_TemplateManager<panzer::Traits>());
+    const VertexCFD::ClosureModel::FullInductionFactoryTemplateBuilder<num_space_dim>
+        fim_cm_builder;
+    fim_cm_factory->buildObjects(fim_cm_builder);
+
+    // Create solid full induction MHD factory
+    auto sfim_cm_factory = Teuchos::rcp(
+        new panzer::ClosureModelFactory_TemplateManager<panzer::Traits>());
+    const VertexCFD::ClosureModel::SolidFullInductionFactoryTemplateBuilder<
+        num_space_dim>
+        sfim_cm_builder;
+    sfim_cm_factory->buildObjects(sfim_cm_builder);
+#endif
+
+    // Initialize composite builder
+    panzer::ClosureModelFactoryComposite_TemplateBuilder comp_cm_builder;
+    comp_cm_builder.addFactory(ns_cm_factory);
+    comp_cm_builder.addFactory(cond_cm_factory);
+    comp_cm_builder.addFactory(rad_cm_factory);
+    comp_cm_builder.addFactory(solid_ep_cm_factory);
+#ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
+    comp_cm_builder.addFactory(fim_cm_factory);
+    comp_cm_builder.addFactory(sfim_cm_factory);
+#endif
+
+    // Add composible builder to global builder
     _cm_factory = Teuchos::rcp(
         new panzer::ClosureModelFactory_TemplateManager<panzer::Traits>());
-    _cm_factory->buildObjects(cm_builder);
+    _cm_factory->buildObjects(comp_cm_builder);
 }
 
 //---------------------------------------------------------------------------//
@@ -180,7 +287,7 @@ template PhysicsManager::PhysicsManager(
 int PhysicsManager::addScalarParameter(const std::string& name,
                                        const double value)
 {
-    int param_id = _model_evaluator->addParameter(name, value);
+    const int param_id = _model_evaluator->addParameter(name, value);
     _parameter_indices.emplace(name, param_id);
     return param_id;
 }
@@ -203,6 +310,7 @@ void PhysicsManager::setupModel()
     // Create worksets.
     auto user_params = _parameter_db->userParameters();
     auto mesh = _mesh_manager->mesh();
+
     auto workset_factory = Teuchos::rcp(new panzer_stk::WorksetFactory(mesh));
     _workset_container = Teuchos::rcp(new panzer::WorksetContainer);
     _workset_container->setFactory(workset_factory);
@@ -223,8 +331,6 @@ void PhysicsManager::setupModel()
     // Setup model.
     auto closure_params = _parameter_db->closureModelParameters();
     const bool write_graph = user_params->get<bool>("Output Graph");
-    user_params->set<const Teuchos::RCP<MeshManager>>("MeshManager",
-                                                      _mesh_manager);
     _model_evaluator->setupModel(_workset_container,
                                  _physics_blocks,
                                  _boundary_conditions,

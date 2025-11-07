@@ -1,0 +1,240 @@
+<ParameterList>
+
+  <ParameterList name="Mesh">
+    <Parameter name="Mesh Input Type" type="string" value="Inline"/>
+    <ParameterList name="Inline">
+      <Parameter name="Element Type" type="string" value="Quad4"/>
+      <ParameterList name="Mesh">
+        <Parameter name="X Blocks" type="int" value="1"/>
+        <Parameter name="Y Blocks" type="int" value="1"/>
+        <Parameter name="X Elements" type="int" value="40"/>
+        <Parameter name="Y Elements" type="int" value="40"/>
+        <Parameter name="X0" type="double" value="0.0"/>
+        <Parameter name="Y0" type="double" value="0.0"/>
+        <Parameter name="Xf" type="double" value="1.0"/>
+        <Parameter name="Yf" type="double" value="1.0"/>
+      </ParameterList> <!-- Mesh -->
+    </ParameterList> <!-- Inline -->
+  </ParameterList> <!-- Mesh -->
+
+  <ParameterList name="Solution Output">
+    <Parameter name="Exodus Output File" type="string" value="solid_mhd_inverse_proportional_2d_solution.exo"/>
+    <Parameter name="Exodus Write Frequency" type="int" value="2"/>
+    <ParameterList name="Cell Average Quantities">
+      <Parameter name="eblock-0_0" type="string" value="Exact_electric_potential"/>
+    </ParameterList> <!-- Cell Average Quantities -->
+  </ParameterList> <!-- Solution Output -->
+
+  <ParameterList name="Block ID to Physics ID Mapping">
+    <Parameter name="eblock-0_0" type="string" value="FluidPhysicsBlock"/>
+  </ParameterList> <!-- Block ID to Physics ID Mapping -->
+
+  <ParameterList name="Physics Blocks">
+    <ParameterList name="FluidPhysicsBlock">
+      <ParameterList>
+        <Parameter name="Type" type="string" value="SolidInductionLessMHD"/>
+        <Parameter name="Basis Order" type="int" value="1"/>
+        <Parameter name="Integration Order" type="int" value="2"/>
+        <Parameter name="Model ID" type="string" value="solid"/>
+      </ParameterList> <!-- -->
+    </ParameterList> <!-- FluidPhysicsBlock -->
+  </ParameterList> <!-- Physics Blocks -->
+
+  <ParameterList name="User Data">
+    <Parameter name="Linear Algebra Type" type="string" value="Epetra"/>
+    <Parameter name="Output Graph" type="bool" value="false"/>
+    <Parameter name="Workset Size" type="int" value="256"/>
+    <Parameter name="CFL" type="double" value="1000.0"/>
+    <Parameter name="Build Inductionless MHD Equation" type="bool" value="true"/>
+    <ParameterList name="Compute Error Norms">
+      <Parameter name="Output Frequency" type="int" value="2"/>
+      <Parameter name="Compute Time Integral" type="bool" value="false"/>
+    </ParameterList> <!-- Compute Error Norms -->
+  </ParameterList> <!-- User Data -->
+
+  <ParameterList name="Boundary Conditions">
+    <ParameterList>
+      <Parameter name="Sideset ID" type="string" value="right"/>
+      <Parameter name="Element Block ID" type="string" value="eblock-0_0"/>
+      <Parameter name="Strategy" type="string" value="SolidInductionLessMHDBoundaryFlux"/>
+      <ParameterList name="Data">
+        <Parameter name="Type" type="string" value="Fixed"/>
+        <Parameter name="electric_potential Value" type="double" value="2.0"/>
+      </ParameterList> <!-- Data -->
+    </ParameterList> <!-- -->
+    <ParameterList>
+      <Parameter name="Sideset ID" type="string" value="left"/>
+      <Parameter name="Element Block ID" type="string" value="eblock-0_0"/>
+      <Parameter name="Strategy" type="string" value="SolidInductionLessMHDBoundaryFlux"/>
+      <ParameterList name="Data">
+        <Parameter name="Type" type="string" value="Fixed"/>
+        <Parameter name="electric_potential Value" type="double" value="20.0"/>
+      </ParameterList> <!-- Data -->
+    </ParameterList> <!-- -->
+    <ParameterList>
+      <Parameter name="Sideset ID" type="string" value="top"/>
+      <Parameter name="Element Block ID" type="string" value="eblock-0_0"/>
+      <Parameter name="Strategy" type="string" value="SolidInductionLessMHDBoundaryFlux"/>
+      <ParameterList name="Data">
+        <Parameter name="Type" type="string" value="Extrapolate"/>
+      </ParameterList> <!-- Data -->
+    </ParameterList> <!-- -->
+    <ParameterList>
+      <Parameter name="Sideset ID" type="string" value="bottom"/>
+      <Parameter name="Element Block ID" type="string" value="eblock-0_0"/>
+      <Parameter name="Strategy" type="string" value="SolidInductionLessMHDBoundaryFlux"/>
+      <ParameterList name="Data">
+        <Parameter name="Type" type="string" value="InsulatingWall"/>
+      </ParameterList> <!-- Data -->
+    </ParameterList> <!-- -->
+  </ParameterList> <!-- Boundary Conditions -->
+
+  <ParameterList name="Initial Conditions">
+    <ParameterList name="eblock-0_0">
+      <ParameterList name="Electric Potential">
+        <Parameter name="Type" type="string" value="Constant"/>
+        <Parameter name="Equation Set Name" type="string" value="electric_potential"/>
+        <Parameter name="Value" type="double" value="2.0"/>
+      </ParameterList> <!-- Electric Potential -->
+    </ParameterList> <!-- eblock-0_0 -->
+  </ParameterList> <!-- Initial Conditions -->
+
+  <ParameterList name="Closure Models">
+    <ParameterList name="solid">
+      <Parameter name="Closure Factory Type" type="string" value="SolidElectricPotential"/>
+      <ParameterList name="Material Properties">
+        <Parameter name="Type" type="string" value="SolidElectricConductivity"/>
+        <Parameter name="Electric Conductivity Type" type="string" value="inverse_proportional"/>
+        <Parameter name="Electric Conductivity Coefficient" type="double" value="2.0"/>
+      </ParameterList> <!-- Material Properties -->
+      <ParameterList name="Local Time Step">
+        <Parameter name="Type" type="string" value="SolidElectricTimeStepSize"/>
+      </ParameterList> <!-- Local Time Step -->
+      <ParameterList name="Error Norm">
+        <Parameter name="Type" type="string" value="SolidElectricPotentialErrorNorms"/>
+      </ParameterList> <!-- Error Norm -->
+      <ParameterList name="Exact Solution">
+        <Parameter name="Type" type="string" value="SolidElectricPotentialExactSolution"/>
+        <Parameter name="Electrical Conductivity Coefficient" type="double" value="2.0"/>
+        <Parameter name="Right Electric Boundary Value" type="double" value="2.0"/>
+        <Parameter name="Left Electric Boundary Value" type="double" value="20.0"/>
+      </ParameterList> <!-- Exact Solution -->
+    </ParameterList> <!-- solid -->
+  </ParameterList> <!-- Closure Models -->
+
+  <ParameterList name="Linear Solver">
+    <Parameter name="Linear Solver Type" type="string" value="Belos"/>
+    <Parameter name="Preconditioner Type" type="string" value="Ifpack"/>
+    <ParameterList name="Linear Solver Types">
+      <ParameterList name="Amesos2">
+        <ParameterList name="VerboseObject">
+          <Parameter name="Verbosity Level" type="string" value="none"/>
+        </ParameterList> <!-- VerboseObject -->
+      </ParameterList> <!-- Amesos2 -->
+      <ParameterList name="Belos">
+        <ParameterList name="VerboseObject">
+          <Parameter name="Verbosity Level" type="string" value="none"/>
+        </ParameterList> <!-- VerboseObject -->
+      </ParameterList> <!-- Belos -->
+    </ParameterList> <!-- Linear Solver Types -->
+    <ParameterList name="Preconditioner Types">
+      <ParameterList name="Ifpack">
+        <Parameter name="Prec Type" type="string" value="Amesos"/>
+        <Parameter name="Overlap" type="int" value="1"/>
+        <ParameterList name="Ifpack Settings">
+          <Parameter name="amesos: solver type" type="string" value="Pardiso"/>
+        </ParameterList> <!-- Ifpack Settings -->
+        <ParameterList name="VerboseObject">
+          <Parameter name="Verbosity Level" type="string" value="none"/>
+        </ParameterList> <!-- VerboseObject -->
+      </ParameterList> <!-- Ifpack -->
+    </ParameterList> <!-- Preconditioner Types -->
+  </ParameterList> <!-- Linear Solver -->
+
+  <ParameterList name="Tempus">
+    <Parameter name="Integrator Name" type="string" value="Default Integrator"/>
+    <ParameterList name="Default Integrator">
+      <Parameter name="Integrator Type" type="string" value="Integrator Basic"/>
+      <Parameter name="Stepper Name" type="string" value="Default Stepper"/>
+      <ParameterList name="Solution History">
+        <Parameter name="Storage Type" type="string" value="Undo"/>
+        <Parameter name="Storage Limit" type="int" value="2"/>
+      </ParameterList> <!-- Solution History -->
+      <ParameterList name="Time Step Control">
+        <Parameter name="Initial Time" type="double" value="0.0"/>
+        <Parameter name="Final Time" type="double" value="10.0"/>
+        <Parameter name="Final Time Index" type="int" value="2"/>
+        <Parameter name="Minimum Time Step" type="double" value="0.0001"/>
+        <Parameter name="Initial Time Step" type="double" value="0.0001"/>
+        <Parameter name="Maximum Time Step" type="double" value="0.0001"/>
+        <Parameter name="Minimum Order" type="int" value="1"/>
+        <Parameter name="Initial Order" type="int" value="1"/>
+        <Parameter name="Maximum Order" type="int" value="2"/>
+        <Parameter name="Maximum Absolute Error" type="double" value="1.0e-8"/>
+        <Parameter name="Maximum Relative Error" type="double" value="1.0e-8"/>
+        <Parameter name="Integrator Step Type" type="string" value="Constant"/>
+        <Parameter name="Maximum Number of Stepper Failures" type="int" value="10"/>
+        <Parameter name="Maximum Number of Consecutive Stepper Failures" type="int" value="5"/>
+      </ParameterList> <!-- Time Step Control -->
+    </ParameterList> <!-- Default Integrator -->
+    <ParameterList name="Default Stepper">
+      <Parameter name="Stepper Type" type="string" value="SDIRK 2 Stage 2nd order"/>
+      <Parameter name="Solver Name" type="string" value="Default Solver"/>
+      <Parameter name="Zero Initial Guess" type="bool" value="false"/>
+      <ParameterList name="Default Solver">
+        <ParameterList name="NOX">
+          <ParameterList name="Direction">
+            <Parameter name="Method" type="string" value="Newton"/>
+            <ParameterList name="Newton">
+              <Parameter name="Forcing Term Method" type="string" value="Constant"/>
+              <Parameter name="Rescue Bad Newton Solve" type="bool" value="1"/>
+              <ParameterList name="Stratimikos Linear Solver">
+                <ParameterList name="NOX Stratimikos Options">
+                </ParameterList>
+              </ParameterList> <!-- Stratimikos Linear Solver -->
+            </ParameterList> <!-- Newton -->
+          </ParameterList> <!-- Direction -->
+          <ParameterList name="Line Search">
+            <Parameter name="Method" type="string" value="Full Step"/>
+            <ParameterList name="Full Step">
+              <Parameter name="Full Step" type="double" value="1"/>
+            </ParameterList> <!-- Full Step -->
+          </ParameterList> <!-- Line Search -->
+          <Parameter name="Nonlinear Solver" type="string" value="Line Search Based"/>
+          <ParameterList name="Printing">
+            <Parameter name="Output Precision" type="int" value="3"/>
+            <Parameter name="Output Processor" type="int" value="0"/>
+            <ParameterList name="Output Information">
+              <Parameter name="Error" type="bool" value="1"/>
+              <Parameter name="Warning" type="bool" value="1"/>
+              <Parameter name="Outer Iteration" type="bool" value="0"/>
+              <Parameter name="Parameters" type="bool" value="0"/>
+              <Parameter name="Details" type="bool" value="0"/>
+              <Parameter name="Linear Solver Details" type="bool" value="0"/>
+              <Parameter name="Stepper Iteration" type="bool" value="0"/>
+              <Parameter name="Stepper Details" type="bool" value="0"/>
+              <Parameter name="Stepper Parameters" type="bool" value="0"/>
+            </ParameterList> <!-- Output Information -->
+          </ParameterList> <!-- Printing -->
+          <ParameterList name="Solver Options">
+            <Parameter name="Status Test Check Type" type="string" value="Minimal"/>
+          </ParameterList> <!-- Solver Options -->
+          <ParameterList name="Status Tests">
+            <Parameter name="Test Type" type="string" value="Combo"/>
+            <Parameter name="Combo Type" type="string" value="OR"/>
+            <Parameter name="Number of Tests" type="int" value="2"/>
+            <ParameterList name="Test 0">
+              <Parameter name="Test Type" type="string" value="NormF"/>
+              <Parameter name="Tolerance" type="double" value="1.0e-8"/>
+            </ParameterList> <!-- Test 0 -->
+            <ParameterList name="Test 1">
+              <Parameter name="Test Type" type="string" value="MaxIters"/>
+              <Parameter name="Maximum Iterations" type="int" value="10"/>
+            </ParameterList> <!-- Test 1 -->
+          </ParameterList> <!-- Status Tests -->
+        </ParameterList> <!-- NOX -->
+      </ParameterList> <!-- Default Solver -->
+    </ParameterList> <!-- Default Stepper -->
+  </ParameterList> <!-- Tempus -->
+
+</ParameterList>

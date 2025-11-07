@@ -1,8 +1,7 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-#include <turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKEpsilonDiffusivityCoefficient.hpp>
+#include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKEpsilonDiffusivityCoefficient.hpp"
 
 #include <gtest/gtest.h>
 
@@ -16,11 +15,14 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
 {
     using scalar_type = typename EvalType::ScalarT;
 
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> nu;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> nu_t;
 
     Dependencies(const panzer::IntegrationRule& ir)
-        : nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
+        : nu("kinematic_viscosity", ir.dl_scalar)
+        , nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
     {
+        this->addEvaluatedField(nu);
         this->addEvaluatedField(nu_t);
         this->setName(
             "K-Epsilon Incompressible Diffusivity Coefficient Unit "
@@ -30,6 +32,7 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
 
     void evaluateFields(typename panzer::Traits::EvalData /**d**/) override
     {
+        nu.deep_copy(0.25);
         nu_t.deep_copy(1.5);
     }
 };
@@ -56,17 +59,12 @@ void testEval()
 
     // Fluid properties
     const auto nu = 0.25;
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", nu);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", false);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
 
     // Initialize and register
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleKEpsilonDiffusivityCoefficient<
             EvalType,
-            panzer::Traits>(ir, fluid_prop));
+            panzer::Traits>(ir));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_diffusivity_var_k);
     test_fixture.registerTestField<EvalType>(eval->_diffusivity_var_e);
@@ -92,13 +90,13 @@ void testEval()
 }
 
 //-----------------------------------------------------------------//
-TEST(IncompressibleKEpsilonDiffusivityCoefficient, residual_test)
+TEST(IncompressibleKEpsilonDiffusivityCoefficient, Residual)
 {
     testEval<panzer::Traits::Residual>();
 }
 
 //-----------------------------------------------------------------//
-TEST(IncompressibleKEpsilonDiffusivityCoefficient, jacobian_test)
+TEST(IncompressibleKEpsilonDiffusivityCoefficient, Jacobian)
 {
     testEval<panzer::Traits::Jacobian>();
 }

@@ -29,7 +29,7 @@ Circle<EvalType, Traits, NumSpaceDim>::Circle(
         _origin[dim] = origin[dim];
     }
     _radius = params.get<double>("Radius");
-    std::string dof_name = params.get<std::string>("Equation Set Name");
+    const std::string dof_name = params.get<std::string>("Equation Set Name");
     _ic = PHX::MDField<scalar_type, panzer::Cell, panzer::BASIS>(
         dof_name, basis.functional);
     this->addEvaluatedField(_ic);

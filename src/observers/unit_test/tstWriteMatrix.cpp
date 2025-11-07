@@ -9,7 +9,6 @@
 #include <Tempus_IntegratorBasic.hpp>
 #include <Tempus_StepperForwardEuler.hpp>
 #include <Teuchos_RCP.hpp>
-#include <Trilinos_version.h>
 
 #include <CDR_Model.hpp>
 
@@ -42,19 +41,19 @@ class WriteMatrixTester : public ::testing::Test
 
     void checkResults() const
     {
-        for (int val : write_steps_)
+        for (const int val : write_steps_)
         {
             // Test Jacobian matrix
             std::string filename = "jacobian-";
             filename += std::to_string(val) + ".mtx";
 
             Epetra_CrsMatrix* A;
-            bool transpose = false;
-            int ierr = EpetraExt::MatrixMarketFileToCrsMatrix(
+            const bool transpose = false;
+            const int ierr = EpetraExt::MatrixMarketFileToCrsMatrix(
                 filename.c_str(), *epetra_comm_, A, transpose);
 
             EXPECT_EQ(0, ierr);
-            int num_global_rows = 101;
+            const int num_global_rows = 101;
             EXPECT_EQ(num_global_rows, A->NumGlobalRows());
             EXPECT_EQ(num_global_rows, A->NumGlobalCols());
             EXPECT_EQ(301, A->NumGlobalNonzeros());
@@ -66,7 +65,7 @@ class WriteMatrixTester : public ::testing::Test
             int* col_indices;
             double* values;
             int num_entries;
-            int num_local_rows = A->NumMyRows();
+            const int num_local_rows = A->NumMyRows();
             int global_row;
             for (int local_row = 0; local_row < num_local_rows; ++local_row)
             {
@@ -75,7 +74,7 @@ class WriteMatrixTester : public ::testing::Test
                 global_row = A->GRID(local_row);
                 for (int entry = 0; entry < num_entries; ++entry)
                 {
-                    int global_col = A->GCID(col_indices[entry]);
+                    const int global_col = A->GCID(col_indices[entry]);
                     if (global_row == 0)
                     {
                         EXPECT_EQ(2, num_entries);
@@ -130,10 +129,10 @@ class WriteMatrixTester : public ::testing::Test
             filename = "residual-";
             filename += std::to_string(val) + ".mtx";
             Epetra_MultiVector* resid;
-            int err = EpetraExt::MatrixMarketFileToMultiVector(
+            const int err = EpetraExt::MatrixMarketFileToMultiVector(
                 filename.c_str(), A->RowMap(), resid);
             EXPECT_EQ(0, err);
-            int global_length = 101;
+            const int global_length = 101;
             EXPECT_EQ(global_length, resid->GlobalLength());
             std::vector<double> minval(1), maxval(1), meanval(1);
             resid->MinValue(minval.data());
@@ -168,11 +167,11 @@ class WriteMatrixTester : public ::testing::Test
     void buildEvaluator()
     {
         // Set parameters for convection-diffusion-reaction model
-        int num_elements = 100;
-        double zmin = 0.0;
-        double zmax = 1.0;
-        double a = 1.0; // convection coefficient
-        double k = 2.0; // source
+        const int num_elements = 100;
+        const double zmin = 0.0;
+        const double zmax = 1.0;
+        const double a = 1.0; // convection coefficient
+        const double k = 2.0; // source
         auto cdr_model = Teuchos::rcp(new CDR_Model<double>(
             epetra_comm_, num_elements, zmin, zmax, a, k));
 
@@ -185,7 +184,7 @@ class WriteMatrixTester : public ::testing::Test
         stratimikos_params->set("Preconditioner Type", "None");
         builder.setParameterList(stratimikos_params);
 
-        Teuchos::RCP<Thyra::LinearOpWithSolveFactoryBase<double>> lows_factory
+        const Teuchos::RCP<Thyra::LinearOpWithSolveFactoryBase<double>> lows_factory
             = builder.createLinearSolveStrategy("");
 
         cdr_model->set_W_factory(lows_factory);
@@ -224,12 +223,8 @@ class WriteMatrixTester : public ::testing::Test
             NOX::Utils::StepperIteration + NOX::Utils::StepperDetails);
 
         // Setup time integrator.
-#if TRILINOS_MAJOR_MINOR_VERSION >= 130100
         integrator_
             = Tempus::createIntegratorBasic<double>(tempus_params, model_);
-#else
-        integrator_ = Tempus::integratorBasic<double>(tempus_params, model_);
-#endif
 
         // Build observer to write matrix to file
         auto write_params = Teuchos::parameterList();
