@@ -1,6 +1,6 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
 
-#include <boundary_conditions/VertexCFD_BoundaryState_ViscousPenaltyParameter.hpp>
+#include "boundary_conditions/VertexCFD_BoundaryState_ViscousPenaltyParameter.hpp"
 
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Traits.hpp>
@@ -29,9 +29,6 @@ void testEval(int num_space_dim)
     const int basis_order = 1;
     EvaluatorTestFixture test_fixture(
         num_space_dim, integration_order, basis_order);
-
-    // Define penalty
-    const double penalty = 5.0;
 
     // Initial gradient of basis functions (one cell) and compute reference
     // values 'h_ref'
@@ -68,9 +65,7 @@ void testEval(int num_space_dim)
     auto viscous_penalty_param = Teuchos::rcp(
         new BoundaryCondition::ViscousPenaltyParameter<EvalType, panzer::Traits>(
             *test_fixture.ir,
-            *(test_fixture.workset->bases[0]->basis_layout->getBasis()),
-            dof_name,
-            penalty));
+            *(test_fixture.workset->bases[0]->basis_layout->getBasis())));
     test_fixture.registerEvaluator<EvalType>(viscous_penalty_param);
 
     // Add required test fields.
@@ -91,7 +86,7 @@ void testEval(int num_space_dim)
     for (int qp = 0; qp < num_point_rslt; ++qp)
     {
         // Compare to reference values
-        EXPECT_DOUBLE_EQ(5.0 * one_over_h_ref[qp],
+        EXPECT_DOUBLE_EQ(one_over_h_ref[qp],
                          fieldValue(boundary_penalty_param_result, 0, qp));
     }
 }

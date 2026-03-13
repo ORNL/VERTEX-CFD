@@ -62,9 +62,14 @@ class ExternalInterpolation : public panzer::EvaluatorWithBaseImpl<Traits>,
     std::vector<double> _time_values;
 
     std::vector<size_t> _reduced_to_global;
-    Kokkos::View<ArborX::ExperimentalHyperGeometry::Point<NumSpaceDim, double>*,
-                 MemorySpace>
-        _source_points;
+
+#if ARBORX_VERSION_MAJOR < 2
+    using ArborXPoint
+        = ArborX::ExperimentalHyperGeometry::Point<NumSpaceDim, double>;
+#else
+    using ArborXPoint = ArborX::Point<NumSpaceDim, double>;
+#endif
+    Kokkos::View<ArborXPoint*, MemorySpace> _source_points;
     Kokkos::View<double*, MemorySpace> _nodal_values;
     Kokkos::View<double*, Kokkos::HostSpace> _nodal_values_host;
     Kokkos::View<double*, Kokkos::HostSpace> _nodal_values_host_reduced;

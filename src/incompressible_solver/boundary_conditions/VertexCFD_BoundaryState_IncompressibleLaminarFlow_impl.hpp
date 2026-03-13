@@ -1,7 +1,7 @@
 #ifndef VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLELAMINARFLOW_IMPL_HPP
 #define VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLELAMINARFLOW_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 #include <Panzer_Workset_Utilities.hpp>
@@ -14,7 +14,7 @@ namespace BoundaryCondition
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleLaminarFlow<EvalType, Traits, NumSpaceDim>::IncompressibleLaminarFlow(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
+    const Teuchos::ParameterList& fluid_params,
     const Teuchos::ParameterList& bc_params,
     const std::string& continuity_model_name)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
@@ -27,7 +27,7 @@ IncompressibleLaminarFlow<EvalType, Traits, NumSpaceDim>::IncompressibleLaminarF
     , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
     , _normals("Side Normal", ir.dl_vector)
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
     , _continuity_model_name(continuity_model_name)
     , _radius(bc_params.get<double>("Characteristic Radius"))
     , _vel_avg(bc_params.get<double>("Average velocity"))

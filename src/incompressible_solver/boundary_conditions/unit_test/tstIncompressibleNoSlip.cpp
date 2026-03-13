@@ -2,7 +2,6 @@
 
 #include "incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleNoSlip.hpp"
 #include "incompressible_solver/fluid_properties/VertexCFD_Closure_IncompressibleFluidProperties.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <Phalanx_Evaluator_Derived.hpp>
 #include <Phalanx_Evaluator_WithBaseImpl.hpp>
@@ -46,6 +45,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _velocity_0;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _velocity_1;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _velocity_2;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _thermal_conductivity;
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> _normals;
 
@@ -79,6 +79,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         , _velocity_0("velocity_0", ir.dl_scalar)
         , _velocity_1("velocity_1", ir.dl_scalar)
         , _velocity_2("velocity_2", ir.dl_scalar)
+        , _thermal_conductivity("thermal_conductivity", ir.dl_scalar)
         , _normals("Side Normal", ir.dl_vector)
         , _grad_velocity_0("GRAD_velocity_0", ir.dl_vector)
         , _grad_velocity_1("GRAD_velocity_1", ir.dl_vector)
@@ -92,6 +93,8 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         this->addEvaluatedField(_velocity_0);
         this->addEvaluatedField(_velocity_1);
         this->addEvaluatedField(_velocity_2);
+        if (_build_tmp_equ)
+            this->addEvaluatedField(_thermal_conductivity);
 
         this->addEvaluatedField(_normals);
 
@@ -113,6 +116,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         _velocity_0.deep_copy(_u_0);
         _velocity_1.deep_copy(_u_1);
         _velocity_2.deep_copy(_u_2);
+        _thermal_conductivity.deep_copy(0.5);
         if (_build_tmp_equ)
             _temperature.deep_copy(_u_0 + _u_1);
 
@@ -189,24 +193,9 @@ void testEval(const bool set_lagrange_pressure,
         *test_fixture.ir, phi, u, v, w, build_temp_equ, continuity_model));
     test_fixture.registerEvaluator<EvalType>(dep_eval);
 
-    // Equation of state
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.375);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", build_temp_equ);
-    if (build_temp_equ)
-    {
-        fluid_prop_list.set("Thermal conductivity", 0.5);
-        fluid_prop_list.set("Specific heat capacity", 0.6);
-    }
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
-
-    const auto eval_prop = Teuchos::rcp(
-        new FluidProperties::IncompressibleFluidProperties<EvalType,
-                                                           panzer::Traits>(
-            *test_fixture.ir, fluid_prop_list));
-
-    test_fixture.registerEvaluator<EvalType>(eval_prop);
+    // Flow parameters
+    Teuchos::ParameterList fluid_param_list;
+    fluid_param_list.set("Build Temperature Equation", build_temp_equ);
 
     // Boundary condition
     Teuchos::ParameterList bc_params;
@@ -234,7 +223,7 @@ void testEval(const bool set_lagrange_pressure,
     auto no_slip_eval = Teuchos::rcp(
         new BoundaryCondition::
             IncompressibleNoSlip<EvalType, panzer::Traits, num_space_dim>(
-                *test_fixture.ir, fluid_prop, bc_params, is_edac));
+                *test_fixture.ir, fluid_param_list, bc_params, is_edac));
     test_fixture.registerEvaluator<EvalType>(no_slip_eval);
 
     // Add required test fields.

@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLECONSTANTSOURCE_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLECONSTANTSOURCE_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 #include <Panzer_GlobalData.hpp>
@@ -34,7 +32,7 @@ class IncompressibleConstantSource
 
     IncompressibleConstantSource(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
+        const Teuchos::ParameterList& fluid_params,
         const Teuchos::RCP<panzer::GlobalData>& global_data,
         const Teuchos::ParameterList& closure_params);
 

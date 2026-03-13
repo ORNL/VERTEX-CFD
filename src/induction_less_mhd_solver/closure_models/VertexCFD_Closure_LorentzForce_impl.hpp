@@ -38,8 +38,21 @@ template<class EvalType, class Traits, int NumSpaceDim>
 void LorentzForce<EvalType, Traits, NumSpaceDim>::evaluateFields(
     typename Traits::EvalData workset)
 {
+    // Allocate space for thread-local temporaries in parallel for
+    size_t bytes;
+    if constexpr (Sacado::IsADType<scalar_type>::value)
+    {
+        const int fad_size = Kokkos::dimension_scalar(_sigma.get_view());
+        bytes = scratch_view::shmem_size(_sigma.extent(1), NUM_TMPS, fad_size);
+    }
+    else
+    {
+        bytes = scratch_view::shmem_size(_sigma.extent(1), NUM_TMPS);
+    }
+
     auto policy = panzer::HP::inst().teamPolicy<scalar_type, PHX::Device>(
         workset.num_cells);
+    policy.set_scratch_size(0, Kokkos::PerTeam(bytes));
     Kokkos::parallel_for(this->getName(), policy, *this);
 }
 
@@ -52,6 +65,19 @@ LorentzForce<EvalType, Traits, NumSpaceDim>::operator()(
     const int cell = team.league_rank();
     const int num_point = _grad_electric_potential.extent(1);
     const int num_grad_dim = _grad_electric_potential.extent(2);
+
+    // Initialize scratch memory
+    scratch_view tmp_field;
+    if constexpr (Sacado::IsADType<scalar_type>::value)
+    {
+        const int fad_size = Kokkos::dimension_scalar(_sigma.get_view());
+        tmp_field
+            = scratch_view(team.team_shmem(), num_point, NUM_TMPS, fad_size);
+    }
+    else
+    {
+        tmp_field = scratch_view(team.team_shmem(), num_point, NUM_TMPS);
+    }
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
@@ -85,13 +111,15 @@ LorentzForce<EvalType, Traits, NumSpaceDim>::operator()(
             // Compute B norm and \vec{u} \cdot \vec{B}. NOTE: the external
             // magnetic field is assumed of the same dimension as the mesh in
             // this implementation.
-            scalar_type B2 = 0.0;
-            scalar_type B_dot_u = 0.0;
+            auto&& b2 = tmp_field(point, B2);
+            auto&& b_dot_u = tmp_field(point, B_DOT_U);
+            b2 = 0.0;
+            b_dot_u = 0.0;
             for (int dim = 0; dim < num_grad_dim; ++dim)
             {
-                B2 += _ext_magn_field[dim](cell, point)
+                b2 += _ext_magn_field[dim](cell, point)
                       * _ext_magn_field[dim](cell, point);
-                B_dot_u += _ext_magn_field[dim](cell, point)
+                b_dot_u += _ext_magn_field[dim](cell, point)
                            * _velocity[dim](cell, point);
             }
 
@@ -99,9 +127,9 @@ LorentzForce<EvalType, Traits, NumSpaceDim>::operator()(
             for (int dim = 0; dim < num_grad_dim; ++dim)
             {
                 _lorentz_force[dim](cell, point)
-                    += _ext_magn_field[dim](cell, point) * B_dot_u;
+                    += _ext_magn_field[dim](cell, point) * b_dot_u;
                 _lorentz_force[dim](cell, point)
-                    -= B2 * _velocity[dim](cell, point);
+                    -= b2 * _velocity[dim](cell, point);
                 _lorentz_force[dim](cell, point) *= _sigma(cell, point);
             }
         });

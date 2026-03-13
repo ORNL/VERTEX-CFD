@@ -30,11 +30,6 @@ InductionConvectiveFlux<EvalType, Traits, NumSpaceDim>::InductionConvectiveFlux(
     , _magnetic_permeability(mhd_props.vacuumMagneticPermeability())
     , _c_h(mhd_props.hyperbolicDivergenceCleaningSpeed())
 {
-    // Contributed fields
-    Utils::addContributedVectorField(*this, ir.dl_vector, _momentum_flux,
-                                   flux_prefix + "CONVECTIVE_FLUX_"
-                                                 "momentum_");
-
     // Evaluated fields
     Utils::addEvaluatedVectorField(*this, ir.dl_vector, _induction_flux,
                                  flux_prefix + "CONVECTIVE_FLUX_"
@@ -85,10 +80,6 @@ InductionConvectiveFlux<EvalType, Traits, NumSpaceDim>::operator()(
             {
                 for (int vec_dim = 0; vec_dim < num_space_dim; ++vec_dim)
                 {
-                    _momentum_flux[vec_dim](cell, point, flux_dim)
-                        -= _total_magnetic_field(cell, point, flux_dim)
-                           * _total_magnetic_field(cell, point, vec_dim)
-                           / _magnetic_permeability;
                     if (vec_dim != flux_dim)
                     {
                         // Set the off-diagonal flux terms for the induction
@@ -100,9 +91,7 @@ InductionConvectiveFlux<EvalType, Traits, NumSpaceDim>::operator()(
                                     * _velocity[vec_dim](cell, point);
                     }
                 }
-                // Add the magnetic pressure contribution to momentum flux.
-                _momentum_flux[flux_dim](cell, point, flux_dim)
-                    += _magnetic_pressure(cell, point);
+
                 // Set diagonal flux terms for the induction equation, which
                 // are nonzero only when using divergence cleaning.
                 if (_solve_magn_corr)

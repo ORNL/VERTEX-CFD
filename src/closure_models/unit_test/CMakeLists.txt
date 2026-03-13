@@ -15,6 +15,7 @@ set(TEST_NAMES
   SingularValueElementLength
   VariableConvectiveFlux
   VariableDiffusionFlux
+  VariableOldField
   VariableSUPGFlux
   VariableTauSUPG
   VectorFieldDivergence

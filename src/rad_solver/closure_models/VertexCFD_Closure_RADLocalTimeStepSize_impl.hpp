@@ -16,15 +16,23 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 RADLocalTimeStepSize<EvalType, Traits, NumSpaceDim>::RADLocalTimeStepSize(
     const panzer::IntegrationRule& ir,
-    const SpeciesProperties::ConstantSpeciesProperties& species_prop)
+    const SpeciesProperties::ConstantSpeciesProperties& species_prop,
+    const std::string& neutron_flux_name)
     : _num_species(species_prop.numSpecies())
     , _local_dt("local_dt", ir.dl_scalar)
     , _element_length("element_length", ir.dl_vector)
+    , _neutron_flux(neutron_flux_name, ir.dl_scalar)
     , _bateman_matrix(Kokkos::ViewAllocateWithoutInitializing("bateman_"
                                                               "matrix"),
                       _num_species,
                       _num_species)
-    , _build_reaction(species_prop.buildReaction())
+    , _mic_cross_section(Kokkos::ViewAllocateWithoutInitializing("microscopic_"
+                                                                 "cross_"
+                                                                 "section"),
+                         _num_species,
+                         _num_species)
+    , _build_bateman(species_prop.buildBateman())
+    , _build_transmutation(species_prop.buildTransmutationSource())
     , _build_advection(species_prop.buildAdvection())
     , _build_diffusion(species_prop.buildDiffusion())
 {
@@ -32,13 +40,24 @@ RADLocalTimeStepSize<EvalType, Traits, NumSpaceDim>::RADLocalTimeStepSize(
     this->addEvaluatedField(_local_dt);
 
     // Add dependent fields
-    if (_build_reaction)
+    if (_build_bateman)
     {
         // Copy bateman matrix from host to device
         auto bateman_matrix_host
             = Kokkos::create_mirror_view(Kokkos::HostSpace{}, _bateman_matrix);
         bateman_matrix_host = species_prop.batemanMatrix();
         Kokkos::deep_copy(_bateman_matrix, bateman_matrix_host);
+    }
+
+    // Copy microscopic cross-section matrix from host to device
+    if (_build_transmutation)
+    {
+        auto mic_cross_sec_host = Kokkos::create_mirror_view(
+            Kokkos::HostSpace{}, _mic_cross_section);
+        mic_cross_sec_host = species_prop.microscopicCrossSection();
+        Kokkos::deep_copy(_mic_cross_section, mic_cross_sec_host);
+
+        this->addDependentField(_neutron_flux);
     }
 
     if (_build_advection)
@@ -103,26 +122,45 @@ RADLocalTimeStepSize<EvalType, Traits, NumSpaceDim>::operator()(
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
-            _local_dt(cell, point) = std::numeric_limits<double>::max();
+            const double max = Kokkos::Experimental::finite_max<double>::value;
+            _local_dt(cell, point) = max;
 
-            auto&& local_dt_react = tmp_field(point, LOCAL_DT_REACT);
+            auto&& local_dt_bateman = tmp_field(point, LOCAL_DT_BATEMAN);
+            auto&& local_dt_transmut = tmp_field(point, LOCAL_DT_TRANSMUT);
             auto&& local_dt_adv = tmp_field(point, LOCAL_DT_ADV);
             auto&& local_dt_dif = tmp_field(point, LOCAL_DT_DIF);
 
-            local_dt_react = 0.0;
+            local_dt_bateman = 0.0;
             local_dt_adv = 0.0;
             local_dt_dif = 0.0;
 
-            if (_build_reaction)
+            if (_build_bateman)
             {
-                local_dt_react = 1.0 / abs(_bateman_matrix(0, 0));
+                local_dt_bateman = 1.0 / abs(_bateman_matrix(0, 0));
                 for (int num = 1; num < _num_species; ++num)
                 {
-                    local_dt_react = min(local_dt_react,
-                                         1.0 / abs(_bateman_matrix(num, num)));
+                    local_dt_bateman = min(
+                        local_dt_bateman, 1.0 / abs(_bateman_matrix(num, num)));
                 }
                 _local_dt(cell, point)
-                    = min(_local_dt(cell, point), local_dt_react);
+                    = min(_local_dt(cell, point), local_dt_bateman);
+            }
+
+            if (_build_transmutation)
+            {
+                local_dt_transmut = 1.0
+                                    / abs(_mic_cross_section(0, 0)
+                                          * _neutron_flux(cell, point));
+                for (int num = 1; num < _num_species; ++num)
+                {
+                    local_dt_transmut
+                        = min(local_dt_transmut,
+                              1.0
+                                  / abs(_mic_cross_section(num, num)
+                                        * _neutron_flux(cell, point)));
+                }
+                _local_dt(cell, point)
+                    = min(_local_dt(cell, point), local_dt_transmut);
             }
 
             if (_build_advection)

@@ -2,7 +2,7 @@
 #define VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLEPRESSUREOUTFLOW_IMPL_HPP
 
 #include "utils/VertexCFD_Utils_SmoothMath.hpp"
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 
@@ -13,11 +13,10 @@ namespace BoundaryCondition
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressiblePressureOutflow<EvalType, Traits, NumSpaceDim>::
-    IncompressiblePressureOutflow(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& bc_params,
-        const bool is_edac)
+    IncompressiblePressureOutflow(const panzer::IntegrationRule& ir,
+                                  const Teuchos::ParameterList& fluid_params,
+                                  const Teuchos::ParameterList& bc_params,
+                                  const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
     , _boundary_grad_lagrange_pressure("BOUNDARY_GRAD_lagrange_pressure",
                                        ir.dl_vector)
@@ -26,7 +25,7 @@ IncompressiblePressureOutflow<EvalType, Traits, NumSpaceDim>::
     , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
     , _temperature("temperature", ir.dl_scalar)
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
     , _is_edac(is_edac)
     , _p_back(bc_params.get<double>("Back Pressure"))
 {

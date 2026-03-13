@@ -118,10 +118,8 @@ void testEval(const bool limit_production,
     const auto& ir = *test_fixture.ir;
 
     // Create parameter list for user-defined constants
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters")
-        .sublist("SST K-Omega Parameters")
-        .set<bool>("Limit Production Term", limit_production)
+    Teuchos::ParameterList turb_params;
+    turb_params.set<bool>("Limit Production Term", limit_production)
         .set<double>("sigma_w1", 0.4)
         .set<double>("sigma_w2", 0.9)
         .set<double>("beta_1", 0.07)
@@ -138,7 +136,7 @@ void testEval(const bool limit_production,
     auto eval = Teuchos::rcp(
         new ClosureModel::
             IncompressibleSSTSource<EvalType, panzer::Traits, NumSpaceDim>(
-                ir, user_params));
+                ir, turb_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_k_source);
     test_fixture.registerTestField<EvalType>(eval->_w_source);

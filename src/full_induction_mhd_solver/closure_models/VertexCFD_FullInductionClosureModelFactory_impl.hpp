@@ -6,7 +6,6 @@
 #include "closure_models/VertexCFD_Closure_VectorFieldDivergence.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleVariableTimeDerivative.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_DivergenceCleaningSource.hpp"
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_FullInductionLocalTimeStepSize.hpp"
@@ -14,6 +13,7 @@
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_GodunovPowellSource.hpp"
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConstantSource.hpp"
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConvectiveFlux.hpp"
+#include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConvectiveMomentumFlux.hpp"
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionResistiveFlux.hpp"
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_MHDVortexProblemExact.hpp"
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_MagneticCorrectionDampingSource.hpp"
@@ -94,10 +94,20 @@ FullInductionFactory<EvalType, NumSpaceDim>::buildClosureModels(
         // Closure models
         if (closure_type == "InductionConvectiveFlux")
         {
-            auto eval = Teuchos::rcp(
+            // Induction and magnetic correction equation fluxes
+            auto ind_eval = Teuchos::rcp(
                 new InductionConvectiveFlux<EvalType, panzer::Traits, num_space_dim>(
                     *ir, mhd_props));
-            evaluators->push_back(eval);
+            evaluators->push_back(ind_eval);
+
+            // Momentum equation fluxes
+            auto mtm_eval = Teuchos::rcp(
+                new InductionConvectiveMomentumFlux<EvalType,
+                                                    panzer::Traits,
+                                                    num_space_dim>(*ir,
+                                                                   mhd_props));
+            evaluators->push_back(mtm_eval);
+
             found_model = true;
         }
 
@@ -250,9 +260,12 @@ FullInductionFactory<EvalType, NumSpaceDim>::buildClosureModels(
 
         if (closure_type == "ExternalMagneticField")
         {
+            // Get external magnetic field parameters from the user params
             auto eval = Teuchos::rcp(
                 new ExternalMagneticField<EvalType, panzer::Traits>(
-                    *ir, user_params));
+                    *ir,
+                    user_params.sublist("External Magnetic Field "
+                                        "Parameters")));
             evaluators->push_back(eval);
             found_model = true;
         }

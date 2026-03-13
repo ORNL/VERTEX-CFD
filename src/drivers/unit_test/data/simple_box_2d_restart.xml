@@ -53,38 +53,21 @@
     <Parameter name="Output Graph" type="bool" value="false"/>
     <Parameter name="Workset Size" type="int" value="256"/>
     <Parameter name="CFL" type="double" value="1.0"/>
-    <Parameter name="Build Viscous Flux" type="bool" value="true"/>
   </ParameterList> <!-- User Data -->
 
   <ParameterList name="Boundary Conditions">
     <ParameterList>
-      <Parameter name="Sideset ID" type="string" value="top"/>
+      <Parameter name="Sideset ID" type="string" value="top, bottom, right"/>
       <Parameter name="Element Block ID" type="string" value="eblock-0_0"/>
       <Parameter name="Strategy" type="string" value="IncompressibleBoundaryFlux"/>
       <ParameterList name="Data">
         <Parameter name="Type" type="string" value="Dirichlet"/>
+        <Parameter name="Use Updated Penalty Parameter" type="bool" value="true"/>
         <Parameter name="velocity_0" type="double" value="1.0"/>
         <Parameter name="velocity_1" type="double" value="2.0"/>
-      </ParameterList> <!-- Data -->
-    </ParameterList> <!-- -->
-    <ParameterList>
-      <Parameter name="Sideset ID" type="string" value="bottom"/>
-      <Parameter name="Element Block ID" type="string" value="eblock-0_0"/>
-      <Parameter name="Strategy" type="string" value="IncompressibleBoundaryFlux"/>
-      <ParameterList name="Data">
-        <Parameter name="Type" type="string" value="Dirichlet"/>
-        <Parameter name="velocity_0" type="double" value="1.0"/>
-        <Parameter name="velocity_1" type="double" value="2.0"/>
-      </ParameterList> <!-- Data -->
-    </ParameterList> <!-- -->
-    <ParameterList>
-      <Parameter name="Sideset ID" type="string" value="right"/>
-      <Parameter name="Element Block ID" type="string" value="eblock-0_0"/>
-      <Parameter name="Strategy" type="string" value="IncompressibleBoundaryFlux"/>
-      <ParameterList name="Data">
-        <Parameter name="Type" type="string" value="Dirichlet"/>
-        <Parameter name="velocity_0" type="double" value="1.0"/>
-        <Parameter name="velocity_1" type="double" value="2.0"/>
+        <ParameterList name="Penalty Parameters">
+          <Parameter name="velocity_0" type="double" value="10.0"/>
+        </ParameterList> <!-- Penalty Parameters -->
       </ParameterList> <!-- Data -->
     </ParameterList> <!-- -->
     <ParameterList>
@@ -124,6 +107,7 @@
       <ParameterList name="Fluid Properties">
         <Parameter name="Kinematic viscosity" type="double" value="0.1"/>
         <Parameter name="Artificial compressibility" type="double" value="100.0"/>
+        <Parameter name="Build Viscous Flux" type="bool" value="false"/>
       </ParameterList> <!-- Fluid Properties -->
       <ParameterList name="DQDT">
         <Parameter name="Type" type="string" value="IncompressibleTimeDerivative"/>

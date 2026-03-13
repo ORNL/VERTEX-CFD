@@ -1,8 +1,8 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleTimeDerivative.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <Panzer_Dimension.hpp>
 
@@ -122,24 +122,17 @@ void testEval(const bool unscaled_density, const bool build_temp_equ)
     const double rho = unscaled_density ? 2.0 : 1.0;
     const double Cp
         = build_temp_equ ? 5.0 : std::numeric_limits<double>::quiet_NaN();
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Density", rho);
-    fluid_prop_list.set("Kinematic viscosity", 0.375);
-    fluid_prop_list.set("Artificial compressibility", beta);
-    fluid_prop_list.set("Build Temperature Equation", build_temp_equ);
-    if (build_temp_equ)
-    {
-        fluid_prop_list.set("Thermal conductivity", 0.5);
-        fluid_prop_list.set("Specific heat capacity", Cp);
-    }
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+
+    Teuchos::ParameterList fluid_params_list;
+    fluid_params_list.set("Artificial compressibility", beta);
+    fluid_params_list.set("Build Temperature Equation", build_temp_equ);
 
     // Create test evaluator.
     auto dqdt_eval = Teuchos::rcp(
         new ClosureModel::IncompressibleTimeDerivative<EvalType,
                                                        panzer::Traits,
                                                        num_space_dim>(
-            *test_fixture.ir, fluid_prop));
+            *test_fixture.ir, fluid_params_list));
     test_fixture.registerEvaluator<EvalType>(dqdt_eval);
 
     // Add required test fields.
@@ -245,7 +238,6 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)

@@ -12,17 +12,16 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleTimeDerivative<EvalType, Traits, NumSpaceDim>::
-    IncompressibleTimeDerivative(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop)
+    IncompressibleTimeDerivative(const panzer::IntegrationRule& ir,
+                                 const Teuchos::ParameterList& fluid_params)
     : _dqdt_continuity("DQDT_continuity", ir.dl_scalar)
     , _dqdt_energy("DQDT_energy", ir.dl_scalar)
     , _dxdt_lagrange_pressure("DXDT_lagrange_pressure", ir.dl_scalar)
     , _rho("density", ir.dl_scalar)
     , _cp("specific_heat_capacity", ir.dl_scalar)
     , _dxdt_temperature("DXDT_temperature", ir.dl_scalar)
-    , _solve_temp(fluid_prop.solveTemperature())
-    , _beta(fluid_prop.artificialCompressibility())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
+    , _beta(fluid_params.get<double>("Artificial compressibility"))
 {
     // Evaluated continuity
     this->addEvaluatedField(_dqdt_continuity);

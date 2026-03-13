@@ -60,10 +60,8 @@ void testEval()
     const double sigma_w = 0.75 * sigma_w1 + 0.25 * sigma_w2;
 
     // Create parameter list for user-defined constants
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters")
-        .sublist("SST K-Omega Parameters")
-        .set<double>("sigma_k1", sigma_k1)
+    Teuchos::ParameterList turb_params;
+    turb_params.set<double>("sigma_k1", sigma_k1)
         .set<double>("sigma_k2", sigma_k2)
         .set<double>("sigma_w1", sigma_w1)
         .set<double>("sigma_w2", sigma_w2);
@@ -79,7 +77,7 @@ void testEval()
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleSSTDiffusivityCoefficient<EvalType,
                                                                   panzer::Traits>(
-            ir, user_params));
+            ir, turb_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_diffusivity_var_k);
     test_fixture.registerTestField<EvalType>(eval->_diffusivity_var_w);

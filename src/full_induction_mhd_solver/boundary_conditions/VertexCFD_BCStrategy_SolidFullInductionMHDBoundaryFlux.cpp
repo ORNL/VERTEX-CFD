@@ -1,0 +1,7 @@
+#include "utils/VertexCFD_Utils_ExplicitTemplateInstantiation.hpp"
+
+#include "VertexCFD_BCStrategy_SolidFullInductionMHDBoundaryFlux.hpp"
+#include "VertexCFD_BCStrategy_SolidFullInductionMHDBoundaryFlux_impl.hpp"
+
+VERTEXCFD_INSTANTIATE_TEMPLATE_CLASS_EVAL_NUMSPACEDIM(
+    VertexCFD::BoundaryCondition::SolidFullInductionMHDBoundaryFlux)

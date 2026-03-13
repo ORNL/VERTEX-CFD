@@ -13,8 +13,7 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleLSVOFViscousFlux<EvalType, Traits, NumSpaceDim>::
     IncompressibleLSVOFViscousFlux(const panzer::IntegrationRule& ir,
-                                   const Teuchos::ParameterList& closure_params,
-                                   const Teuchos::ParameterList& user_params,
+                                   const Teuchos::ParameterList& lsvof_params,
                                    const std::string& flux_prefix,
                                    const std::string& gradient_prefix,
                                    const std::string& field_prefix)
@@ -22,11 +21,11 @@ IncompressibleLSVOFViscousFlux<EvalType, Traits, NumSpaceDim>::
     , _grad_press(gradient_prefix + "GRAD_lagrange_pressure", ir.dl_vector)
     , _rho(field_prefix + "density", ir.dl_scalar)
     , _mu(field_prefix + "dynamic_viscosity", ir.dl_scalar)
-    , _betam(closure_params.get<double>("Mixture Artificial Compressibility"))
-    , _continuity_model_name(user_params.isType<std::string>("Continuity "
-                                                             "Model")
-                                 ? user_params.get<std::string>("Continuity "
-                                                                "Model")
+    , _betam(lsvof_params.get<double>("Mixture Artificial Compressibility"))
+    , _continuity_model_name(lsvof_params.isType<std::string>("Continuity "
+                                                              "Model")
+                                 ? lsvof_params.get<std::string>("Continuity "
+                                                                 "Model")
                                  : "AC")
     , _is_edac(_continuity_model_name == "EDAC" ? true : false)
 

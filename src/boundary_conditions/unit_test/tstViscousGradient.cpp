@@ -38,8 +38,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     Dependencies(const panzer::IntegrationRule& ir)
         : _dof("lagrange_pressure", ir.dl_scalar)
         , _bnd_dof("BOUNDARY_lagrange_pressure", ir.dl_scalar)
-        , _penalty_param("viscous_penalty_parameter_lagrange_pressure",
-                         ir.dl_scalar)
+        , _penalty_param("viscous_penalty_parameter", ir.dl_scalar)
         , _normals("Side Normal", ir.dl_vector)
     {
         this->addEvaluatedField(_dof);
@@ -97,7 +96,7 @@ void testEval(const int num_space_dim)
     const std::string& dof_name = "lagrange_pressure";
     auto viscous_gradient_eval = Teuchos::rcp(
         new BoundaryCondition::ViscousGradient<EvalType, panzer::Traits>(
-            *test_fixture.ir, dof_name));
+            *test_fixture.ir, dof_name, 2.5));
     test_fixture.registerEvaluator<EvalType>(viscous_gradient_eval);
 
     // Add required test fields.
@@ -122,7 +121,7 @@ void testEval(const int num_space_dim)
         // Initialize variables to calculate reference values
         const double u = 0.1 * (qp + 1);
         const double u_bnd = 1.2 * (qp + 1);
-        const double delta = 2.1 * (qp + 1);
+        const double delta = 5.25 * (qp + 1);
 
         // Compare to reference values
         for (int dim = 0; dim < num_space_dim; ++dim)

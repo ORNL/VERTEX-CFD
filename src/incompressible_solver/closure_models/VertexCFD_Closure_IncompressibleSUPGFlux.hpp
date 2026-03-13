@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLESUPGFLUX_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLESUPGFLUX_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -30,10 +28,9 @@ class IncompressibleSUPGFlux : public panzer::EvaluatorWithBaseImpl<Traits>,
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleSUPGFlux(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& closure_params);
+    IncompressibleSUPGFlux(const panzer::IntegrationRule& ir,
+                           const Teuchos::ParameterList& fluid_params,
+                           const Teuchos::ParameterList& closure_params);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 

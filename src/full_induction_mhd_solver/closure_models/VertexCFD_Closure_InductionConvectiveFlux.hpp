@@ -47,10 +47,6 @@ class InductionConvectiveFlux : public panzer::EvaluatorWithBaseImpl<Traits>,
     Kokkos::Array<
         PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
         num_space_dim>
-        _momentum_flux;
-    Kokkos::Array<
-        PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
-        num_space_dim>
         _induction_flux;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>
         _magnetic_correction_potential_flux;

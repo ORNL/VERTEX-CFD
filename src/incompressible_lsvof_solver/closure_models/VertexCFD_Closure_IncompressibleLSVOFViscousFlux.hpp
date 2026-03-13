@@ -30,8 +30,7 @@ class IncompressibleLSVOFViscousFlux
     static constexpr int num_space_dim = NumSpaceDim;
 
     IncompressibleLSVOFViscousFlux(const panzer::IntegrationRule& ir,
-                                   const Teuchos::ParameterList& closure_params,
-                                   const Teuchos::ParameterList& user_params,
+                                   const Teuchos::ParameterList& lsvof_params,
                                    const std::string& flux_prefix = "",
                                    const std::string& gradient_prefix = "",
                                    const std::string& field_prefix = "");

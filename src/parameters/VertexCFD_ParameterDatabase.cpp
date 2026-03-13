@@ -2,6 +2,8 @@
 #include "VertexCFD_GeneralScalarParameterInput.hpp"
 #include "VertexCFD_ScalarParameterInput.hpp"
 
+#include <Panzer_String_Utilities.hpp>
+
 #include <Teuchos_CommandLineProcessor.hpp>
 #include <Teuchos_ParameterEntryXMLConverterDB.hpp>
 #include <Teuchos_XMLParameterListHelpers.hpp>
@@ -278,6 +280,79 @@ void ParameterDatabase::extractSublistsNew()
         = Teuchos::parameterList(_input_params->sublist("Physics Blocks"));
     _block_mapping_params = Teuchos::parameterList(
         _input_params->sublist("Block ID to Physics ID Mapping"));
+}
+
+//---------------------------------------------------------------------------//
+Teuchos::RCP<Teuchos::ParameterList>
+ParameterDatabase::sortedBoundaryConditions() const
+{
+    // Parameter list to store all boundary conditions in a native format
+    Teuchos::ParameterList bc_list;
+
+    // Boundary condition index
+    std::size_t bc_index = 0;
+
+    // Loop over sublists in the boundary condition block
+    for (Teuchos::ParameterList::ConstIterator bc_ptr = _bc_params->begin();
+         bc_ptr != _bc_params->end();
+         ++bc_ptr)
+    {
+        Teuchos::ParameterList& bc_ptr_second
+            = Teuchos::getValue<Teuchos::ParameterList>(bc_ptr->second);
+
+        std::vector<std::string> sideset_ids;
+        panzer::StringTokenizer(sideset_ids,
+                                bc_ptr_second.get<std::string>("Sideset ID"),
+                                ",",
+                                true);
+
+        // Loop over the sidesets of a given boundary condition
+        for (const std::string& sideset_name : sideset_ids)
+        {
+            // Multiphysics option
+            if (bc_ptr_second.get<std::string>("Strategy") == "Multiphysics")
+            {
+                for (Teuchos::ParameterList::ConstIterator bc_data_ptr
+                     = bc_ptr_second.sublist("Data").begin();
+                     bc_data_ptr != bc_ptr_second.sublist("Data").end();
+                     ++bc_data_ptr)
+                {
+                    Teuchos::ParameterList bc;
+
+                    bc.set("Element Block ID",
+                           bc_ptr_second.get<std::string>("Element Block "
+                                                          "ID"));
+                    bc.set("Strategy", bc_data_ptr->first);
+                    bc.set("Sideset ID", sideset_name);
+                    bc.sublist("Data").setParameters(
+                        Teuchos::getValue<Teuchos::ParameterList>(
+                            bc_data_ptr->second));
+
+                    bc_list.sublist("child" + std::to_string(bc_index))
+                        .setParameters(bc);
+                    ++bc_index;
+                }
+            }
+            // Native option
+            else
+            {
+                Teuchos::ParameterList bc;
+
+                bc.set("Element Block ID",
+                       bc_ptr_second.get<std::string>("Element Block ID"));
+                bc.set("Strategy", bc_ptr_second.get<std::string>("Strategy"));
+                bc.set("Sideset ID", sideset_name);
+                bc.sublist("Data").setParameters(
+                    bc_ptr_second.sublist("Data"));
+
+                bc_list.sublist("child" + std::to_string(bc_index))
+                    .setParameters(bc);
+                ++bc_index;
+            }
+        }
+    }
+
+    return Teuchos::rcp(new Teuchos::ParameterList(bc_list));
 }
 
 //---------------------------------------------------------------------------//

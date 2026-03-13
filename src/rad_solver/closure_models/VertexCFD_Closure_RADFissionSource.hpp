@@ -33,7 +33,7 @@ class RADFissionSource : public panzer::EvaluatorWithBaseImpl<Traits>,
     RADFissionSource(
         const panzer::IntegrationRule& ir,
         const SpeciesProperties::ConstantSpeciesProperties& species_prop,
-        const std::string& flux_name);
+        const std::string& neutron_flux_name);
 
     void evaluateFields(typename Traits::EvalData d) override;
 
@@ -50,7 +50,7 @@ class RADFissionSource : public panzer::EvaluatorWithBaseImpl<Traits>,
         _fission_source;
 
   private:
-    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _flux;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _neutron_flux;
     Kokkos::View<double*, Kokkos::LayoutLeft, PHX::mem_space> _gamma;
     double _xs;
     double _avagadro;

@@ -49,17 +49,6 @@ class SolidElectricBoundaryFlux
         const panzer::LinearObjFactory<panzer::Traits>& lof,
         const Teuchos::ParameterList& user_data) const override;
 
-    void buildAndRegisterGatherAndOrientationEvaluators(
-        PHX::FieldManager<panzer::Traits>& fm,
-        const panzer::PhysicsBlock& side_pb,
-        const panzer::LinearObjFactory<panzer::Traits>& lof,
-        const Teuchos::ParameterList& user_data) const override;
-
-    void postRegistrationSetup(typename panzer::Traits::SetupData d,
-                               PHX::FieldManager<panzer::Traits>& vm) override;
-
-    void evaluateFields(typename panzer::Traits::EvalData d) override;
-
   private:
     std::unordered_map<std::string, std::string> _equ_dof_cond_pair;
 };

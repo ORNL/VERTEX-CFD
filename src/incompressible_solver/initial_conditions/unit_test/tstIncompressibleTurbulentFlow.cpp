@@ -46,6 +46,7 @@ void testEval(const bool build_temp_equ)
     ic_params.set("L_z", 15.0);
     ic_params.set("Number of Modes", 5);
     ic_params.set("Add Random Perturbations", false);
+    ic_params.set("Build Temperature Equation", build_temp_equ);
     if (build_temp_equ)
         ic_params.set("Temperature", 4.0);
 
@@ -54,9 +55,7 @@ void testEval(const bool build_temp_equ)
         new InitialCondition::IncompressibleTurbulentChannel<EvalType,
                                                              panzer::Traits,
                                                              num_space_dim>(
-            ic_params,
-            build_temp_equ,
-            *test_fixture.basis_ir_layout->getBasis()));
+            ic_params, *test_fixture.basis_ir_layout->getBasis()));
     test_fixture.registerEvaluator<EvalType>(eval);
 
     test_fixture.registerTestField<EvalType>(eval->_lagrange_pressure);

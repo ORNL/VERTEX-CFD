@@ -38,7 +38,6 @@ class IncompressibleTurbulentChannel
     static constexpr auto pi = Kokkos::numbers::pi_v<double>;
 
     IncompressibleTurbulentChannel(const Teuchos::ParameterList& ic_params,
-                                   const bool& build_temp_equ,
                                    const panzer::PureBasis& basis);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
@@ -62,7 +61,6 @@ class IncompressibleTurbulentChannel
     int _basis_index;
     PHX::MDField<double, panzer::Cell, panzer::BASIS, panzer::Dim> _basis_coords;
 
-    bool _solve_temp;
     double _nu;
     double _h;
     double _Re_tau;
@@ -73,6 +71,7 @@ class IncompressibleTurbulentChannel
     Kokkos::View<double**, view_layout, PHX::mem_space> _rands;
     int _nb_modes;
     double _U_0;
+    bool _solve_temp;
     double _T_init;
 };
 

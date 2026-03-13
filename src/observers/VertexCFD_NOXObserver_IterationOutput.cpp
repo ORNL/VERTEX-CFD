@@ -23,7 +23,7 @@ void IterationOutput::runPreIterate(const NOX::Solver::Generic&) {}
 void IterationOutput::runPostIterate(const NOX::Solver::Generic& solver)
 {
     // Output nonlinear solver results after nonlinear iteration.
-    auto stats = solver.getSolverStatistics();
+    const auto stats = solver.getSolverStatistics();
     const auto& group = solver.getSolutionGroup();
     const SolveDataExtractor& data_extractor
         = dynamic_cast<const NOX::Thyra::Group&>(group);
@@ -32,9 +32,10 @@ void IterationOutput::runPostIterate(const NOX::Solver::Generic& solver)
     _ostream << "   " << std::setw(8) << std::left << std::setprecision(2)
              << std::scientific << group.getNormF();
     _ostream << "   " << std::setw(8) << std::right << std::fixed
-             << data_extractor.lastLinearSolveNumIters();
+             << stats->linearSolve.lastLinearSolve_NumIterations;
     _ostream << "   " << std::setw(8) << std::left << std::setprecision(2)
-             << std::scientific << data_extractor.lastLinearSolveAchievedTol();
+             << std::scientific
+             << stats->linearSolve.lastLinearSolve_AchievedTolerance;
     _ostream << "   \n";
 }
 

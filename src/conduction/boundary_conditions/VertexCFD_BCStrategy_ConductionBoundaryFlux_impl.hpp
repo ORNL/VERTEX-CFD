@@ -65,7 +65,8 @@ void ConductionBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluators(
 
     // Get model id from boundary conditions or physics block
     std::string model_id = "";
-    this->getModelID(bc_params, side_pb, model_id);
+    Teuchos::ParameterList side_pb_list;
+    this->getModelID(bc_params, side_pb, model_id, side_pb_list);
 
     // Map to store residuals for each equation listed in `_equ_dof_cond_pair`
     std::unordered_map<std::string, std::vector<std::string>> eq_vct_map;
@@ -106,12 +107,8 @@ void ConductionBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvaluators(
     }
 
     // Create boundary fluxes to be used with the penalty method
-    for (auto& pair : this->bnd_prefix)
+    for (const auto& [flux_prefix, gradient_prefix] : this->bnd_prefix)
     {
-        // Prefix names
-        const std::string flux_prefix = pair.first;
-        const std::string gradient_prefix = pair.second;
-
         auto viscous_flux_op = Teuchos::rcp(
             new ClosureModel::ConductionFlux<EvalType, panzer::Traits>(
                 *ir, flux_prefix, gradient_prefix));
@@ -144,32 +141,6 @@ void ConductionBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterScatterEvalu
     {
         this->registerScatterOperator(pair, fm, side_pb, lof);
     }
-}
-
-//---------------------------------------------------------------------------//
-template<class EvalType, int NumSpaceDim>
-void ConductionBoundaryFlux<EvalType, NumSpaceDim>::
-    buildAndRegisterGatherAndOrientationEvaluators(
-        PHX::FieldManager<panzer::Traits>& fm,
-        const panzer::PhysicsBlock& side_pb,
-        const panzer::LinearObjFactory<panzer::Traits>& lof,
-        const Teuchos::ParameterList& user_data) const
-{
-    side_pb.buildAndRegisterGatherAndOrientationEvaluators(fm, lof, user_data);
-}
-
-//---------------------------------------------------------------------------//
-template<class EvalType, int NumSpaceDim>
-void ConductionBoundaryFlux<EvalType, NumSpaceDim>::postRegistrationSetup(
-    typename panzer::Traits::SetupData, PHX::FieldManager<panzer::Traits>&)
-{
-}
-
-//---------------------------------------------------------------------------//
-template<class EvalType, int NumSpaceDim>
-void ConductionBoundaryFlux<EvalType, NumSpaceDim>::evaluateFields(
-    typename panzer::Traits::EvalData)
-{
 }
 
 //---------------------------------------------------------------------------//

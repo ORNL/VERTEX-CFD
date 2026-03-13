@@ -147,17 +147,13 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Temperature Equation", true);
     test_fixture.type_name = "IncompressibleSUPGExactSolution";
     test_fixture.model_params.set("Uniform advection velocity", -2.0)
         .set("Thermal diffusivity", 1.0);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0)
-        .set("Thermal conductivity", 3.0)
-        .set("Specific heat capacity", 4.0)
-        .set("Heat Capacity Ratio", 1.6);
+        .set("Artificial compressibility", 2.0);
     test_fixture.eval_name = "Incompressible SUPG Exact Solution";
     test_fixture.template buildAndTest<
         ClosureModel::IncompressibleSUPGExactSolution<EvalType,

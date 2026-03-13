@@ -18,7 +18,7 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleTauSUPG<EvalType, Traits, NumSpaceDim>::IncompressibleTauSUPG(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
+    const Teuchos::ParameterList& fluid_params,
     const Teuchos::ParameterList& closure_params)
     : _tau_supg_cont("tau_supg_continuity", ir.dl_scalar)
     , _tau_supg_mom("tau_supg_momentum", ir.dl_scalar)
@@ -31,7 +31,7 @@ IncompressibleTauSUPG<EvalType, Traits, NumSpaceDim>::IncompressibleTauSUPG(
     , _alpha_cont(0.5)
     , _alpha_mom(0.5)
     , _alpha_ene(0.5)
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
     , _ir_degree(ir.cubature_degree)
     , _tau_model_temp(TauModelTemp::TempOneDXNodal)
 {

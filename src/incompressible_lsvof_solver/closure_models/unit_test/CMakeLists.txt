@@ -5,14 +5,23 @@ VertexCFD_add_tests(
   LIBS VertexCFD
   NAMES
   IncompressibleCLSEpsilon
+  IncompressibleCLSLambda
+  IncompressibleCLSNonReconstructedNormal
+  IncompressibleCLSRegularization
+  IncompressibleCLSSign
+  IncompressibleCLSTimeDerivative
   IncompressibleLSVOFArtificialCompression
   IncompressibleLSVOFBubbleExact
   IncompressibleLSVOFBuoyancySource
   IncompressibleLSVOFConvectiveFlux
+  IncompressibleLSVOFEntropyFunction
+  IncompressibleLSVOFEntropyFluctuation
+  IncompressibleLSVOFEntropyViscosity
   IncompressibleLSVOFErrorNorms
   IncompressibleLSVOFNthPhaseFraction
   IncompressibleLSVOFScalarConvectiveFlux
   IncompressibleLSVOFScalarTimeDerivative
+  IncompressibleLSVOFScalarViscousFlux
   IncompressibleLSVOFSurfaceTensionForce
   IncompressibleLSVOFTimeDerivative
   IncompressibleLSVOFVariableProperties

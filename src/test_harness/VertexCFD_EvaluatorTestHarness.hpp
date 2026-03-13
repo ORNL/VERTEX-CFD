@@ -49,6 +49,8 @@ struct EvaluatorTestFixture
     Teuchos::RCP<panzer::IntegrationValues2<double>> int_values;
     Teuchos::RCP<panzer::BasisIRLayout> basis_ir_layout;
     Teuchos::RCP<panzer::BasisValues2<double>> basis_values;
+    Teuchos::RCP<std::vector<panzer::Workset>> worksets;
+    Teuchos::RCP<panzer::Traits::SD> setup_data;
 
     using host_coords_view = Kokkos::View<double***,
                                           typename PHX::DevLayout<double>::type,
@@ -183,25 +185,39 @@ struct EvaluatorTestFixture
     // Set time.
     void setTime(const double& time) { workset->time = time; }
 
+    // Set stage number
+    void setStageNumber(const int& stage) { workset->stage_number = stage; }
+
     // Set time step size.
     void setStepSize(const double& step_size)
     {
         workset->step_size = step_size;
     }
 
-    // Evaluate.
-    template<class EvalType>
-    void evaluate()
+    // Set alpha
+    void setAlpha(const double& alpha) { workset->alpha = alpha; }
+
+    void postRegSetup()
     {
-        panzer::Traits::SD setup_data;
-        auto worksets = Teuchos::rcp(new std::vector<panzer::Workset>);
+        // Moved from evaluate()
+        setup_data = Teuchos::rcp(new panzer::Traits::SD);
+        worksets = Teuchos::rcp(new std::vector<panzer::Workset>);
         worksets->push_back(*workset);
-        setup_data.worksets_ = worksets;
+        setup_data->worksets_ = worksets;
         std::vector<PHX::index_size_type> derivative_dimensions;
         derivative_dimensions.push_back(4);
         fm->setKokkosExtendedDataTypeDimensions<panzer::Traits::Jacobian>(
             derivative_dimensions);
-        fm->postRegistrationSetup(setup_data);
+        fm->postRegistrationSetup(*setup_data);
+    }
+
+    // Evaluate.
+    template<class EvalType>
+    void evaluate(const bool& doPostRegSetup = true)
+    {
+        if (doPostRegSetup)
+            this->postRegSetup();
+
         const panzer::Traits::PED ped;
         fm->preEvaluate<EvalType>(ped);
         fm->evaluateFields<EvalType>(*workset);

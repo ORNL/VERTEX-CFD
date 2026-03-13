@@ -6,7 +6,9 @@ VertexCFD_add_tests(
   NAMES
   VariableExtrapolate
   VariableFixed
+  VariableFlux
   ViscousGradient
   ViscousPenaltyParameter
+  ViscousPenaltyParameterMetricTensor
   MethodManufacturedSolutionBC
   )

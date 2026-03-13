@@ -68,12 +68,6 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
     std::vector<Teuchos::RCP<const panzer::PureBasis>> bases;
     fl.uniqueBases(bases);
 
-    // Fluid properties.
-    const bool build_temp_equ
-        = user_params.isType<bool>("Build Temperature Equation")
-              ? user_params.get<bool>("Build Temperature Equation")
-              : false;
-
 #ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
     // Full induction solver factory objects
     FullInductionICFactory<EvalType, NumSpaceDim> full_induction_factory;
@@ -236,8 +230,7 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
                     auto eval = Teuchos::rcp(
                         new IncompressibleLaminarFlow<EvalType,
                                                       panzer::Traits,
-                                                      num_dim_space>(
-                            p, build_temp_equ, *b));
+                                                      num_dim_space>(p, *b));
                     evaluators->push_back(eval);
                     found_model = true;
                 }
@@ -250,8 +243,8 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
                     auto eval = Teuchos::rcp(
                         new IncompressibleTurbulentChannel<EvalType,
                                                            panzer::Traits,
-                                                           num_dim_space>(
-                            p, build_temp_equ, *b));
+                                                           num_dim_space>(p,
+                                                                          *b));
                     evaluators->push_back(eval);
                     found_model = true;
                 }

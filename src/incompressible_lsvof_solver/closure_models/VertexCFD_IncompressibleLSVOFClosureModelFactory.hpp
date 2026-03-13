@@ -1,6 +1,7 @@
 #ifndef VERTEXCFD_INCOMPRESSIBLELSVOFCLOSUREMODELFACTORY_HPP
 #define VERTEXCFD_INCOMPRESSIBLELSVOFCLOSUREMODELFACTORY_HPP
 
+#include <Panzer_GlobalData.hpp>
 #include <Panzer_Traits.hpp>
 
 #include <Phalanx_Evaluator.hpp>
@@ -24,6 +25,7 @@ class IncompressibleLSVOFFactory
         const Teuchos::RCP<panzer::IntegrationRule>& ir,
         const Teuchos::ParameterList& user_params,
         const Teuchos::ParameterList& closure_params,
+        const Teuchos::RCP<panzer::GlobalData>& global_data,
         bool& found_model,
         std::string& error_msg,
         Teuchos::RCP<std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>>>
@@ -33,6 +35,7 @@ class IncompressibleLSVOFFactory
         const Teuchos::RCP<panzer::IntegrationRule>& ir,
         const Teuchos::ParameterList& closure_model_list,
         const Teuchos::ParameterList& user_params,
+        const Teuchos::RCP<panzer::GlobalData>& global_data,
         Teuchos::RCP<std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>>>
             evaluators);
 
@@ -44,6 +47,11 @@ class IncompressibleLSVOFFactory
         None,
         CLS,
         VOF
+    };
+
+    enum LSNormalReconstructionType
+    {
+        NonReconstructed
     };
 };
 

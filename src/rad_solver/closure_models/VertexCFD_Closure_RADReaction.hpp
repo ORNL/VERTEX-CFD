@@ -32,8 +32,7 @@ class RADReaction : public panzer::EvaluatorWithBaseImpl<Traits>,
 
     RADReaction(const panzer::IntegrationRule& ir,
                 const SpeciesProperties::ConstantSpeciesProperties& species_prop,
-                const std::string& flux_prefix = "",
-                const std::string& field_prefix = "");
+                const std::string& neutron_flux_name);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -53,7 +52,12 @@ class RADReaction : public panzer::EvaluatorWithBaseImpl<Traits>,
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   VertexCFD::Constants::MAX_NUM_VIEW>
         _species;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _neutron_flux;
     Kokkos::View<double**, Kokkos::LayoutLeft, PHX::mem_space> _bateman_matrix;
+    Kokkos::View<double**, Kokkos::LayoutLeft, PHX::mem_space> _mic_cross_section;
+
+    bool _build_bateman;
+    bool _build_transmutation;
 };
 
 //---------------------------------------------------------------------------//

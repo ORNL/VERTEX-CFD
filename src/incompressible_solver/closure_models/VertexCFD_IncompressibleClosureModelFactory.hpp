@@ -22,9 +22,11 @@ class IncompressibleFactory
         const std::string& closure_type,
         const Teuchos::RCP<panzer::IntegrationRule>& ir,
         const Teuchos::RCP<panzer::GlobalData>& global_data,
+        const Teuchos::ParameterList& fluid_params,
         const Teuchos::ParameterList& user_params,
         const Teuchos::ParameterList& closure_params,
-        const bool use_turbulence_model,
+        const Teuchos::ParameterList& stability_params,
+        const Teuchos::ParameterList& turb_params,
         bool& found_model,
         std::string& error_msg,
         Teuchos::RCP<std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>>>

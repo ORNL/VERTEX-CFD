@@ -76,15 +76,14 @@ void testEval(const bool non_unit_area)
     pl.addEntry<EvalType>("Friction Velocity - friction_velocity", entry);
 
     // User parameters
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters")
-        .set<double>("Boundary Surface Area", surface_area);
+    Teuchos::ParameterList turb_params;
+    turb_params.set<double>("Boundary Surface Area", surface_area);
 
     // Initialize and register
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleChienKEpsilonEddyViscosity<EvalType,
                                                                    panzer::Traits>(
-            ir, global_data, user_params));
+            ir, global_data, turb_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_nu_t);
     test_fixture.evaluate<EvalType>();

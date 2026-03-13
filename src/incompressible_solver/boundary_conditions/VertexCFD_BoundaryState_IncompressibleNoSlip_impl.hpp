@@ -15,7 +15,7 @@ namespace BoundaryCondition
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleNoSlip<EvalType, Traits, NumSpaceDim>::IncompressibleNoSlip(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
+    const Teuchos::ParameterList& fluid_params,
     const Teuchos::ParameterList& bc_params,
     const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
@@ -29,7 +29,7 @@ IncompressibleNoSlip<EvalType, Traits, NumSpaceDim>::IncompressibleNoSlip(
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
     , _normals("Side Normal", ir.dl_vector)
     , _kappa("thermal_conductivity", ir.dl_scalar)
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
     , _set_lagrange_pressure(bc_params.isType<double>("Lagrange Pressure"))
     , _lp_wall(std::numeric_limits<double>::quiet_NaN())
     , _is_edac(is_edac)

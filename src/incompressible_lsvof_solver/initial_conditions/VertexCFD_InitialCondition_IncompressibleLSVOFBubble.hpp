@@ -43,8 +43,15 @@ class IncompressibleLSVOFBubble
 
   public:
     PHX::MDField<scalar_type, panzer::Cell, panzer::BASIS> _alpha;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::BASIS> _phi;
 
   private:
+    enum LSVOFModelType
+    {
+        VOF,
+        CLS
+    };
+
     enum PhaseType
     {
         Dispersed,
@@ -56,6 +63,7 @@ class IncompressibleLSVOFBubble
     PHX::MDField<double, panzer::Cell, panzer::BASIS, panzer::Dim> _basis_coords;
 
     double _radius;
+    LSVOFModelType _lsvof_model_type;
     PhaseType _phase_type;
     Kokkos::Array<double, num_space_dim> _location;
 };

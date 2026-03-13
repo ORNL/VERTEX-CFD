@@ -141,18 +141,16 @@ void testEval(const ContinuityModel continuity_model)
     // Initialize class object to test
     const double betam = 2.0;
 
-    Teuchos::ParameterList closure_params;
-    closure_params.set("Mixture Artificial Compressibility", betam);
-
-    Teuchos::ParameterList user_params;
+    Teuchos::ParameterList lsvof_params;
+    lsvof_params.set("Mixture Artificial Compressibility", betam);
     if (continuity_model == ContinuityModel::EDAC)
-        user_params.set("Continuity Model", "EDAC");
+        lsvof_params.set("Continuity Model", "EDAC");
 
     const auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleLSVOFViscousFlux<EvalType,
                                                          panzer::Traits,
                                                          num_space_dim>(
-            ir, closure_params, user_params));
+            ir, lsvof_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_continuity_flux);
     for (int dim = 0; dim < num_space_dim; ++dim)

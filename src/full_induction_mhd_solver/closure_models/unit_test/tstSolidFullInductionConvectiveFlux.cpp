@@ -200,8 +200,9 @@ void testFactory()
     test_fixture.type_name = "MagneticCorrectionDampingSource";
     test_fixture.eval_name = "Solid Full Induction Convective Flux "
                              + std::to_string(num_space_dim) + "D";
-    test_fixture.user_params.set("External Magnetic Field Value",
-                                 Teuchos::Array<double>({0, 0, 0}));
+    test_fixture.user_params.sublist("External Magnetic Field Parameters")
+        .set("External Magnetic Field Value",
+             Teuchos::Array<double>({0, 0, 0}));
     test_fixture.num_evaluators = 10;
     test_fixture.eval_index = 8;
     test_fixture.template buildAndTest<

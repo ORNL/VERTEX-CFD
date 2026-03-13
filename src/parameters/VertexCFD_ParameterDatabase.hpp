@@ -43,6 +43,7 @@ class ParameterDatabase
     Teuchos::RCP<Teuchos::ParameterList> scalarParameters() const;
     Teuchos::RCP<Teuchos::ParameterList> generalScalarParameters() const;
     Teuchos::RCP<Teuchos::ParameterList> boundaryConditionParameters() const;
+    Teuchos::RCP<Teuchos::ParameterList> sortedBoundaryConditions() const;
     Teuchos::RCP<Teuchos::ParameterList> initialConditionParameters() const;
     Teuchos::RCP<Teuchos::ParameterList> closureModelParameters() const;
     Teuchos::RCP<Teuchos::ParameterList> responseOutputParameters() const;

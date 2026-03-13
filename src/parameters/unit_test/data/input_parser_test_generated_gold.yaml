@@ -14,7 +14,15 @@ ANONYMOUS:
   User Data: 
     value: 1.50000000000000000e+00
   Boundary Conditions: 
-    value: 1.60000000000000009e+00
+    child0: 
+      Sideset ID: 'left, bottom'
+      Element Block ID: eblock-0_0
+      Strategy: Multiphysics
+      Data: 
+        Strategy1: 
+          value: 1.60000000000000009e+00
+        Strategy2: 
+          value: 3.20000000000000018e+00
   Initial Conditions: 
     value: 1.69999999999999996e+00
   Closure Models: 

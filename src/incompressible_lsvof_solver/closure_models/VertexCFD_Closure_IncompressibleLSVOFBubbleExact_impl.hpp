@@ -6,6 +6,8 @@
 #include <Panzer_PureBasis.hpp>
 #include <Panzer_Workset_Utilities.hpp>
 
+#include <Teuchos_StandardParameterEntryValidators.hpp>
+
 #include <string>
 
 namespace VertexCFD
@@ -17,11 +19,23 @@ template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleLSVOFBubbleExact<EvalType, Traits, NumSpaceDim>::
     IncompressibleLSVOFBubbleExact(const panzer::IntegrationRule& ir,
                                    const Teuchos::ParameterList& closure_params)
-    : _dof_name(closure_params.get<std::string>("DOF Name"))
+    : _lsvof_model_type(LSVOFModelType::VOF)
+    , _dof_name(closure_params.get<std::string>("DOF Name"))
     , _radius(closure_params.get<double>("Bubble Radius"))
     , _ir_degree(ir.cubature_degree)
     , _exact_dof("Exact_" + _dof_name, ir.dl_scalar)
 {
+    // Check LSVOFModelType
+    if (closure_params.isType<std::string>("LSVOF Model Type"))
+    {
+        const auto type_validator = Teuchos::rcp(
+            new Teuchos::StringToIntegralParameterEntryValidator<LSVOFModelType>(
+                Teuchos::tuple<std::string>("VOF", "CLS"), "VOF"));
+
+        _lsvof_model_type = type_validator->getIntegralValue(
+            closure_params.get<std::string>("LSVOF Model Type"));
+    }
+
     // Get location from closure params
     const auto location
         = closure_params.get<Teuchos::Array<double>>("Bubble Location");
@@ -79,13 +93,20 @@ IncompressibleLSVOFBubbleExact<EvalType, Traits, NumSpaceDim>::operator()(
 
             r = pow(r, 0.5);
 
-            if (r <= _radius)
+            if (_lsvof_model_type == LSVOFModelType::VOF)
             {
-                _exact_dof(cell, point) = 1.0;
+                if (r <= _radius)
+                {
+                    _exact_dof(cell, point) = 1.0;
+                }
+                else
+                {
+                    _exact_dof(cell, point) = 0.0;
+                }
             }
-            else
+            else if (_lsvof_model_type == LSVOFModelType::CLS)
             {
-                _exact_dof(cell, point) = 0.0;
+                _exact_dof(cell, point) = _radius - r;
             }
         });
 }

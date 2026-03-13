@@ -13,7 +13,7 @@ namespace BoundaryCondition
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleWallFunction<EvalType, Traits, NumSpaceDim>::IncompressibleWallFunction(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
+    const Teuchos::ParameterList& fluid_params,
     const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
     , _boundary_grad_lagrange_pressure("BOUNDARY_GRAD_lagrange_pressure",
@@ -25,7 +25,7 @@ IncompressibleWallFunction<EvalType, Traits, NumSpaceDim>::IncompressibleWallFun
     , _temperature("temperature", ir.dl_scalar)
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
     , _normals("Side Normal", ir.dl_vector)
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
     , _is_edac(is_edac)
 {
     this->addEvaluatedField(_boundary_lagrange_pressure);

@@ -6,14 +6,16 @@
 #include "closure_models/VertexCFD_Closure_ExternalInterpolation.hpp"
 
 #include "rad_solver/closure_models/VertexCFD_Closure_RADAdvectionFlux.hpp"
+#include "rad_solver/closure_models/VertexCFD_Closure_RADBADExactSolution.hpp"
 #include "rad_solver/closure_models/VertexCFD_Closure_RADDiffusionFlux.hpp"
 #include "rad_solver/closure_models/VertexCFD_Closure_RADErrorNorms.hpp"
-#include "rad_solver/closure_models/VertexCFD_Closure_RADExactSolution.hpp"
 #include "rad_solver/closure_models/VertexCFD_Closure_RADFissionSource.hpp"
 #include "rad_solver/closure_models/VertexCFD_Closure_RADFissionSourceExactSolution.hpp"
 #include "rad_solver/closure_models/VertexCFD_Closure_RADLocalTimeStepSize.hpp"
 #include "rad_solver/closure_models/VertexCFD_Closure_RADReaction.hpp"
 #include "rad_solver/closure_models/VertexCFD_Closure_RADTimeDerivative.hpp"
+#include "rad_solver/closure_models/VertexCFD_Closure_RADTransmutationSourceExactSolution.hpp"
+#include "rad_solver/closure_models/VertexCFD_Closure_RADVaporRemovalSource.hpp"
 
 #include "rad_solver/closure_models/VertexCFD_RADClosureModelFactory.hpp"
 
@@ -82,23 +84,41 @@ RADFactory<EvalType, NumSpaceDim>::buildClosureModels(
     valid_parameters.set("Number of Species", 1, "Number of species");
     valid_parameters.set("Build Advection", false, "Advection term boolean");
     valid_parameters.set("Build Diffusion", false, "Diffusion term boolean");
-    valid_parameters.set("Build Reaction", false, "Reaction term boolean");
+    valid_parameters.set("Build Reaction Bateman Source",
+                         false,
+                         "Reaction boolean with Bateman term");
     valid_parameters.set(
         "Build Fission Source", false, "Fission source boolean");
+    valid_parameters.set("Build Reaction Transmutation Source",
+                         false,
+                         "Reaction boolean with Transmutation term");
+    valid_parameters.set("Build Vapor Removal Source",
+                         false,
+                         "Vapor removal source term boolean");
     valid_parameters.set("Diffusion Coefficient",
                          std::numeric_limits<double>::quiet_NaN(),
                          "Constant diffusion coefficient");
     valid_parameters.set("Neutron Flux Variable Name",
                          "neutron_flux",
                          "External neutron flux name string");
+    valid_parameters.set("Vapor Removal Ratio Variable Name",
+                         "vapor_removal_ratio",
+                         "External vapor removal ratio name string");
 
     rad_params.validateParametersAndSetDefaults(valid_parameters);
 
     const bool build_advection = rad_params.get<bool>("Build Advection");
     const bool build_diffusion = rad_params.get<bool>("Build Diffusion");
-    const bool build_reaction = rad_params.get<bool>("Build Reaction");
+    const bool build_bateman
+        = rad_params.get<bool>("Build Reaction Bateman Source");
     const bool build_fission_source
         = rad_params.get<bool>("Build Fission Source");
+    const bool build_transmutation
+        = rad_params.get<bool>("Build Reaction Transmutation Source");
+    const bool build_vapor_removal
+        = rad_params.get<bool>("Build Vapor Removal Source");
+    const std::string neutron_flux_name
+        = rad_params.get<std::string>("Neutron Flux Variable Name");
 
     // Species properties
     const SpeciesProperties::ConstantSpeciesProperties rad_species_prop_params
@@ -109,13 +129,22 @@ RADFactory<EvalType, NumSpaceDim>::buildClosureModels(
     const std::string default_closure_models
         = "RADAdvectionFlux,\nRADDiffusionFlux,\nRADReaction,"
           "\nRADErrorNorms,\nRADFissionSource,\nRADTimeDerivative,"
-          "\nElementLength.\n";
+          "\nRADVaporRemovalSource,\nElementLength.\n";
 
     // Reaction term
-    if (build_reaction)
+    if (build_bateman || build_transmutation)
     {
         auto eval_rad = Teuchos::rcp(new RADReaction<EvalType, panzer::Traits>(
-            *ir, rad_species_prop_params));
+            *ir, rad_species_prop_params, neutron_flux_name));
+        evaluators->push_back(eval_rad);
+    }
+
+    // Fission source
+    if (build_fission_source)
+    {
+        auto eval_rad
+            = Teuchos::rcp(new RADFissionSource<EvalType, panzer::Traits>(
+                *ir, rad_species_prop_params, neutron_flux_name));
         evaluators->push_back(eval_rad);
     }
 
@@ -128,7 +157,7 @@ RADFactory<EvalType, NumSpaceDim>::buildClosureModels(
         evaluators->push_back(eval_rad);
     }
 
-    // Advection flux
+    // Diffusion flux
     if (build_diffusion)
     {
         auto eval_rad
@@ -137,14 +166,14 @@ RADFactory<EvalType, NumSpaceDim>::buildClosureModels(
         evaluators->push_back(eval_rad);
     }
 
-    // Fission source
-    if (build_fission_source)
+    // Vapor removal source
+    if (build_vapor_removal)
     {
-        const std::string neutron_flux_name
-            = rad_params.get<std::string>("Neutron Flux Variable Name");
+        const std::string vapor_removal_ratio_name
+            = rad_params.get<std::string>("Vapor Removal Ratio Variable Name");
         auto eval_rad
-            = Teuchos::rcp(new RADFissionSource<EvalType, panzer::Traits>(
-                *ir, rad_species_prop_params, neutron_flux_name));
+            = Teuchos::rcp(new RADVaporRemovalSource<EvalType, panzer::Traits>(
+                *ir, rad_species_prop_params, vapor_removal_ratio_name));
         evaluators->push_back(eval_rad);
     }
 
@@ -228,16 +257,16 @@ RADFactory<EvalType, NumSpaceDim>::buildClosureModels(
             {
                 auto eval_rad = Teuchos::rcp(
                     new RADLocalTimeStepSize<EvalType, panzer::Traits, num_space_dim>(
-                        *ir, rad_species_prop_params));
+                        *ir, rad_species_prop_params, neutron_flux_name));
                 evaluators->push_back(eval_rad);
                 found_model = true;
             }
 
             // RAD exact solution
-            if (closure_type == "RADExactSolution")
+            if (closure_type == "RADBADExactSolution")
             {
                 auto eval_rad = Teuchos::rcp(
-                    new RADExactSolution<EvalType, panzer::Traits, num_space_dim>(
+                    new RADBADExactSolution<EvalType, panzer::Traits, num_space_dim>(
                         *ir, rad_species_prop_params, closure_params));
                 evaluators->push_back(eval_rad);
                 found_model = true;
@@ -253,6 +282,17 @@ RADFactory<EvalType, NumSpaceDim>::buildClosureModels(
                 found_model = true;
             }
 
+            // RAD fission source exact solution
+            if (closure_type == "RADTransmutationSourceExactSolution")
+            {
+                auto eval_rad = Teuchos::rcp(
+                    new RADTransmutationSourceExactSolution<EvalType,
+                                                            panzer::Traits>(
+                        *ir, rad_species_prop_params, closure_params));
+                evaluators->push_back(eval_rad);
+                found_model = true;
+            }
+
             // Error message if closure model not found
             if (!found_model)
             {
@@ -263,9 +303,10 @@ RADFactory<EvalType, NumSpaceDim>::buildClosureModels(
                 msg += "The rad closure models available in Vertex-CFD are:\n";
                 msg += "\nConstantVectorField,";
                 msg += "\nExternalInterpolation,";
-                msg += "\nRADExactSolution";
-                msg += "\nRADFissionSourceExactSolution";
+                msg += "\nRADBADExactSolution,";
+                msg += "\nRADFissionSourceExactSolution,";
                 msg += "\nRADLocalTimeStepSize,";
+                msg += "\nRADTransmutationSourceExactSolution,";
                 msg += "\n";
 
                 throw std::runtime_error(msg);

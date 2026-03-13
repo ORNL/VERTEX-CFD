@@ -14,13 +14,14 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleBuoyancySource<EvalType, Traits, NumSpaceDim>::
-    IncompressibleBuoyancySource(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& user_params)
+    IncompressibleBuoyancySource(const panzer::IntegrationRule& ir,
+                                 const Teuchos::ParameterList& closure_params,
+                                 const Teuchos::ParameterList& user_params)
     : _buoyancy_continuity_source("BUOYANCY_SOURCE_continuity", ir.dl_scalar)
     , _buoyancy_energy_source("BUOYANCY_SOURCE_energy", ir.dl_scalar)
     , _temperature("temperature", ir.dl_scalar)
+    , _beta_T(closure_params.get<double>("Expansion coefficient"))
+    , _T_ref(closure_params.get<double>("Reference temperature"))
 {
     const auto gravity = user_params.get<Teuchos::Array<double>>("Gravity");
     for (int dim = 0; dim < num_space_dim; ++dim)
@@ -37,9 +38,6 @@ IncompressibleBuoyancySource<EvalType, Traits, NumSpaceDim>::
                                    _buoyancy_momentum_source,
                                    "BUOYANCY_SOURCE_"
                                    "momentum_");
-
-    _beta_T = fluid_prop.expansionCoefficient();
-    _T_ref = fluid_prop.referenceTemperature();
 
     // Dependent fields
     this->addDependentField(_temperature);

@@ -2,7 +2,6 @@
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLECONVECTIVEFLUX_MACHINELEARNING_HPP
 
 #ifdef VERTEXCFD_HAVE_TENSORFLOW
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
@@ -38,7 +37,7 @@ class IncompressibleConvectiveFluxMachineLearning
 
     IncompressibleConvectiveFluxMachineLearning(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
+        const Teuchos::ParameterList& fluid_params,
         const Teuchos::ParameterList& closure_params,
         const std::string& flux_prefix = "",
         const std::string& field_prefix = "");

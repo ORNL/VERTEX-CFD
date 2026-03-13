@@ -55,14 +55,12 @@
         <Parameter name="Basis Order" type="int" value="1"/>
         <Parameter name="Integration Order" type="int" value="2"/>
         <Parameter name="Model ID" type="string" value="fluids"/>
-        <Parameter name="Build Viscous Flux" type="bool" value="true"/>
-        <Parameter name="Turbulence Model" type="string" value="WALE"/>
+        <Parameter name="Turbulence Model Name" type="string" value="WALE"/>
       </ParameterList> <!-- -->
     </ParameterList> <!-- FluidPhysicsBlock -->
   </ParameterList> <!-- Physics Blocks -->
 
   <ParameterList name="User Data">
-    <Parameter name="Linear Algebra Type" type="string" value="Epetra"/>
     <Parameter name="Output Graph" type="bool" value="false"/>
     <Parameter name="Workset Size" type="int" value="256"/>
     <Parameter name="CFL" type="double" value="1.0"/>
@@ -70,12 +68,6 @@
     <Parameter name="CFL_transition_type" type="string" value="steps"/>
     <Parameter name="CFL_transition_init" type="double" value="0.0"/>
     <Parameter name="CFL_transition" type="double" value="100.0"/>
-    <Parameter name="Build Viscous Flux" type="bool" value="true"/>
-    <Parameter name="Turbulence Model" type="string" value="WALE"/>
-    <ParameterList name="Turbulence Parameters">
-      <Parameter name="C_w" type="double" value="0.275"/>
-      <Parameter name="LES Element Length" type="string" value="ElementLength"/>
-    </ParameterList> <!-- Turbulence Parameters -->
   </ParameterList> <!-- User Data -->
 
   <ParameterList name="Boundary Conditions">
@@ -176,6 +168,11 @@
         <Parameter name="Kinematic viscosity" type="double" value="8.33e-5"/>
         <Parameter name="Artificial compressibility" type="double" value="100.0"/>
       </ParameterList> <!-- Fluid Properties -->
+      <ParameterList name="Turbulence Parameters">
+        <Parameter name="Turbulence Model Name" type="string" value="WALE"/>
+        <Parameter name="C_w" type="double" value="0.275"/>
+        <Parameter name="LES Element Length" type="string" value="ElementLength"/>
+      </ParameterList> <!-- Turbulence Parameters -->
       <ParameterList name="DQDT">
         <Parameter name="Type" type="string" value="IncompressibleTimeDerivative"/>
       </ParameterList> <!-- DQDT -->
@@ -196,7 +193,7 @@
 
   <ParameterList name="Linear Solver">
     <Parameter name="Linear Solver Type" type="string" value="Belos"/>
-    <Parameter name="Preconditioner Type" type="string" value="Ifpack"/>
+    <Parameter name="Preconditioner Type" type="string" value="Ifpack2"/>
     <ParameterList name="Linear Solver Types">
       <ParameterList name="Belos">
         <Parameter name="Solver Type" type="string" value="Pseudo Block GMRES"/>
@@ -212,16 +209,21 @@
       </ParameterList> <!-- Belos -->
     </ParameterList> <!-- Linear Solver Types -->
     <ParameterList name="Preconditioner Types">
-      <ParameterList name="Ifpack">
-        <Parameter name="Prec Type" type="string" value="Amesos"/>
-        <Parameter name="Overlap" type="int" value="2"/>
-        <ParameterList name="Ifpack Settings">
-          <Parameter name="amesos: solver type" type="string" value="Pardiso"/>
-        </ParameterList> <!-- Ifpack Settings -->
-        <ParameterList name="VerboseObject">
-          <Parameter name="Verbosity Level" type="string" value="none"/>
-        </ParameterList> <!-- VerboseObject -->
-      </ParameterList> <!-- Ifpack -->
+      <ParameterList name="Ifpack2">
+        <Parameter name="Prec Type" type="string" value="SCHWARZ"/>
+        <ParameterList name="Ifpack2 Settings">
+          <Parameter name="schwarz: overlap level" type="int" value="1"/>
+          <Parameter name="subdomain solver name" type="string" value="Amesos2"/>
+          <ParameterList name="subdomain solver parameters">
+            <Parameter name="Amesos2 solver name" type="string" value="pardisomkl"/>
+            <ParameterList name="Amesos2">
+              <ParameterList name="PARDISOMKL">
+                <Parameter name="IPARM(13)" type="int" value="0"/>
+              </ParameterList> <!-- PARDISOMKL -->
+            </ParameterList> <!-- Amesos2 -->
+          </ParameterList> <!-- subdomain solver parameters -->
+        </ParameterList> <!-- Ifpack2 Settings -->
+      </ParameterList> <!-- Ifpack2 -->
     </ParameterList> <!-- Preconditioner Types -->
   </ParameterList> <!-- Linear Solver -->
 

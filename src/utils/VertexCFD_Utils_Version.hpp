@@ -1,7 +1,7 @@
 #ifndef VERTEXCFD_VERSION_HPP
 #define VERTEXCFD_VERSION_HPP
 
-#include <VertexCFD_Utils_config.hpp>
+#include "VertexCFD_Utils_config.hpp"
 
 #include <string>
 

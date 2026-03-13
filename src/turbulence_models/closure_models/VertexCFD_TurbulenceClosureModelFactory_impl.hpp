@@ -33,7 +33,6 @@
 #include "turbulence_models/closure_models/VertexCFD_TurbulenceClosureModelFactory.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleVariableTimeDerivative.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 namespace VertexCFD
 {
@@ -44,19 +43,16 @@ template<class EvalType, int NumSpaceDim>
 void TurbulenceFactory<EvalType, NumSpaceDim>::buildClosureModel(
     const Teuchos::RCP<panzer::IntegrationRule>& ir,
     const Teuchos::RCP<panzer::GlobalData>& global_data,
-    const Teuchos::ParameterList& user_params,
-    const std::string& turbulence_model_name,
+    const Teuchos::ParameterList& turb_params,
     Teuchos::RCP<std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>>>
         evaluators)
 {
-    // Turbulence parameters
-    const auto turb_params = user_params.isSublist("Turbulence Parameters")
-                                 ? user_params.sublist("Turbulence Parameters")
-                                 : Teuchos::ParameterList();
-
     // Field name and variable name for each turbulence model
     std::vector<Teuchos::ParameterList> turb_names_list_vct;
 
+    // Get turbulence name and initialize dofs
+    const std::string turbulence_model_name
+        = turb_params.get<std::string>("Turbulence Model Name");
     if (std::string::npos != turbulence_model_name.find("Spalart-Allmaras"))
     {
         Teuchos::ParameterList sa_names_list;
@@ -210,14 +206,14 @@ void TurbulenceFactory<EvalType, NumSpaceDim>::buildClosureModel(
             auto eval_eddy = Teuchos::rcp(
                 new IncompressibleChienKEpsilonEddyViscosity<EvalType,
                                                              panzer::Traits>(
-                    *ir, global_data, user_params));
+                    *ir, global_data, turb_params));
             evaluators->push_back(eval_eddy);
 
             auto eval_source = Teuchos::rcp(
                 new IncompressibleChienKEpsilonSource<EvalType,
                                                       panzer::Traits,
                                                       num_space_dim>(
-                    *ir, global_data, user_params));
+                    *ir, global_data, turb_params));
             evaluators->push_back(eval_source);
         }
         // Standard K-Epsilon closure models
@@ -247,38 +243,38 @@ void TurbulenceFactory<EvalType, NumSpaceDim>::buildClosureModel(
         auto eval_coeff = Teuchos::rcp(
             new IncompressibleKOmegaDiffusivityCoefficient<EvalType,
                                                            panzer::Traits>(
-                *ir, user_params));
+                *ir, turb_params));
         evaluators->push_back(eval_coeff);
 
         auto eval_source = Teuchos::rcp(
             new IncompressibleKOmegaSource<EvalType, panzer::Traits, num_space_dim>(
-                *ir, user_params));
+                *ir, turb_params));
         evaluators->push_back(eval_source);
 
         auto eval_eddy = Teuchos::rcp(
             new IncompressibleKOmegaEddyViscosity<EvalType,
                                                   panzer::Traits,
                                                   num_space_dim>(*ir,
-                                                                 user_params));
+                                                                 turb_params));
         evaluators->push_back(eval_eddy);
     }
     else if (std::string::npos != turbulence_model_name.find("SST"))
     {
         auto eval_coeff = Teuchos::rcp(
             new IncompressibleSSTDiffusivityCoefficient<EvalType, panzer::Traits>(
-                *ir, user_params));
+                *ir, turb_params));
         evaluators->push_back(eval_coeff);
 
         auto eval_source = Teuchos::rcp(
             new IncompressibleSSTSource<EvalType, panzer::Traits, num_space_dim>(
-                *ir, user_params));
+                *ir, turb_params));
         evaluators->push_back(eval_source);
 
         auto eval_eddy
             = Teuchos::rcp(new IncompressibleSSTEddyViscosity<EvalType,
                                                               panzer::Traits,
                                                               num_space_dim>(
-                *ir, user_params));
+                *ir, turb_params));
         evaluators->push_back(eval_eddy);
     }
     // K-Tau model family closure models
@@ -286,12 +282,12 @@ void TurbulenceFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval_coeff = Teuchos::rcp(
             new IncompressibleKTauDiffusivityCoefficient<EvalType, panzer::Traits>(
-                *ir, user_params));
+                *ir, turb_params));
         evaluators->push_back(eval_coeff);
 
         auto eval_source = Teuchos::rcp(
             new IncompressibleKTauSource<EvalType, panzer::Traits, num_space_dim>(
-                *ir, user_params));
+                *ir, turb_params));
         evaluators->push_back(eval_source);
 
         auto eval_eddy = Teuchos::rcp(
@@ -308,7 +304,7 @@ void TurbulenceFactory<EvalType, NumSpaceDim>::buildClosureModel(
             = Teuchos::rcp(new IncompressibleWALEEddyViscosity<EvalType,
                                                                panzer::Traits,
                                                                num_space_dim>(
-                *ir, user_params));
+                *ir, turb_params));
         evaluators->push_back(eval_eddy);
 
         // Delta (mesh length scale) evaluator

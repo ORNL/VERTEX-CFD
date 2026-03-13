@@ -1,10 +1,10 @@
-#include <VertexCFD_DriverUnitTestConfig.hpp>
+#include "VertexCFD_DriverUnitTestConfig.hpp"
 
-#include <drivers/VertexCFD_InitialConditionManager.hpp>
-#include <drivers/VertexCFD_MeshManager.hpp>
-#include <drivers/VertexCFD_PhysicsManager.hpp>
+#include "drivers/VertexCFD_InitialConditionManager.hpp"
+#include "drivers/VertexCFD_MeshManager.hpp"
+#include "drivers/VertexCFD_PhysicsManager.hpp"
 
-#include <parameters/VertexCFD_ParameterDatabase.hpp>
+#include "parameters/VertexCFD_ParameterDatabase.hpp"
 
 #include <Teuchos_DefaultComm.hpp>
 #include <Teuchos_ParameterList.hpp>
@@ -89,18 +89,14 @@ void InitialConditionManagerND()
         Teuchos::DefaultComm<int>::getComm());
 
     // Parse input.
-    const int argc = 2;
-    const std::string option = "--i=";
-    const std::string location = VERTEXCFD_DRIVER_TEST_INPUT_DIR;
-    const std::string file = "simple_box_" + std::to_string(num_space_dim)
-                             + "d.xml";
-    std::string argv_str = option + location + file;
-    char* argv[2];
-    argv[1] = &argv_str[0];
+    const std::string input_dir = VERTEXCFD_DRIVER_TEST_INPUT_DIR;
+    const std::string input_file = "simple_box_"
+                                   + std::to_string(num_space_dim) + "d.xml";
+    const std::string input_file_path = input_dir + input_file;
 
     // Setup database.
-    auto parameter_db
-        = Teuchos::rcp(new Parameter::ParameterDatabase(comm, argc, argv));
+    auto parameter_db = Teuchos::rcp(
+        new Parameter::ParameterDatabase(comm, input_file_path));
 
     // Test.
     testInitialConditionManager<num_space_dim>(comm, parameter_db);
@@ -131,18 +127,14 @@ void testRestartMultiD()
         Teuchos::DefaultComm<int>::getComm());
 
     // Parse input.
-    const int argc = 2;
-    const std::string option = "--i=";
     const std::string input_location = VERTEXCFD_DRIVER_TEST_DATA_DIR;
-    const std::string input_file = "simple_box_" + num_space_dim_string
-                                   + "d_restart.xml";
-    std::string argv_str = option + input_location + input_file;
-    char* argv[2];
-    argv[1] = &argv_str[0];
+    const std::string input_dir = "simple_box_" + num_space_dim_string
+                                  + "d_restart.xml";
+    const std::string input_file_path = input_location + input_dir;
 
     // Setup database.
-    auto parameter_db
-        = Teuchos::rcp(new Parameter::ParameterDatabase(comm, argc, argv));
+    auto parameter_db = Teuchos::rcp(
+        new Parameter::ParameterDatabase(comm, input_file_path));
 
     // Update restart data parameters. In this test the initial conditions
     // from the previous test were written to the restart file and thus the

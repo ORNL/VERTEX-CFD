@@ -192,9 +192,7 @@ ExternalInterpolation<EvalType, Traits, NumSpaceDim>::ExternalInterpolation(
     // Copy unique source coordinates and values to the device in a format
     // compatible with ArborX. We can't use lambdas in constructors with Cuda
     // so we have to explicitly define a functor.
-    _source_points = Kokkos::View<
-        ArborX::ExperimentalHyperGeometry::Point<NumSpaceDim, double>*,
-        MemorySpace>(
+    _source_points = Kokkos::View<ArborXPoint*, MemorySpace>(
         Kokkos::view_alloc(Kokkos::WithoutInitializing, "source_points"),
         num_unique_nodes);
     const auto coords = Kokkos::create_mirror_view_and_copy(
@@ -292,12 +290,10 @@ void ExternalInterpolation<EvalType, Traits, NumSpaceDim>::evaluateFields(
 
     ExecutionSpace exec_space;
 
-    const Kokkos::View<
-        ArborX::ExperimentalHyperGeometry::Point<NumSpaceDim, double>*,
-        MemorySpace>
-        target_points(Kokkos::view_alloc(Kokkos::WithoutInitializing,
-                                         "ExternalInterpolation::targets"),
-                      n_cells * n_points);
+    const Kokkos::View<ArborXPoint*, MemorySpace> target_points(
+        Kokkos::view_alloc(Kokkos::WithoutInitializing,
+                           "ExternalInterpolation::targets"),
+        n_cells * n_points);
     Kokkos::parallel_for(
         Kokkos::MDRangePolicy<ExecutionSpace, Kokkos::Rank<2>>(
             exec_space, {0, 0}, {n_cells, n_points}),

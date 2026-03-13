@@ -65,7 +65,8 @@ IncompressibleShearVariables<EvalType, Traits, NumSpaceDim>::operator()(
             _tau_w(cell, point) = 0.0;
             for (int i = 0; i < num_space_dim; ++i)
             {
-                scalar_type sum = 0.0;
+                auto&& sum = _u_tau(cell, point);
+                sum = 0.0;
                 for (int dim = 0; dim < num_grad_dim; ++dim)
                 {
                     sum += _normals(cell, point, dim)

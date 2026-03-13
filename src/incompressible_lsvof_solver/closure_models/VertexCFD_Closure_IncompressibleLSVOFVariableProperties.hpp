@@ -54,6 +54,13 @@ class IncompressibleLSVOFVariableProperties
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _dxdt_rho;
 
   private:
+    enum LSVOFModelType
+    {
+        VOF,
+        CLS
+    };
+
+    LSVOFModelType _lsvof_model_type;
     bool _build_dxdts;
     Teuchos::RCP<PHX::DataLayout> _phase_layout;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, PhaseIndex>
@@ -61,6 +68,7 @@ class IncompressibleLSVOFVariableProperties
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, PhaseIndex>
         _dxdt_alphas;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _alpha_n;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _heaviside;
     Kokkos::View<double*, view_layout, PHX::mem_space> _phase_rho;
     Kokkos::View<double*, view_layout, PHX::mem_space> _phase_mu;
 };

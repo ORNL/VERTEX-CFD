@@ -22,17 +22,12 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    const Kokkos::Array<double, 3> _f_rhov;
     const Kokkos::Array<double, 3> _v;
     const Kokkos::Array<double, 3> _b;
     const double _psi;
     const double _p_mag;
     const bool _build_magn_corr;
 
-    Kokkos::Array<
-        PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim>,
-        num_space_dim>
-        mtm_flux;
     Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         vel;
@@ -41,16 +36,13 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> magn_pres;
 
     Dependencies(const panzer::IntegrationRule& ir,
-                 const Kokkos::Array<double, 3>& f_rhov,
                  const Kokkos::Array<double, 3>& v,
                  const Kokkos::Array<double, 3>& b,
                  const double psi,
                  const double p_mag,
                  const bool build_magn_corr,
-                 const std::string& flux_pre,
                  const std::string& field_pre)
-        : _f_rhov(f_rhov)
-        , _v(v)
+        : _v(v)
         , _b(b)
         , _psi(psi)
         , _p_mag(p_mag)
@@ -60,10 +52,6 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
         , magn_pot(field_pre + "scalar_magnetic_potential", ir.dl_scalar)
         , magn_pres("magnetic_pressure", ir.dl_scalar)
     {
-        Utils::addEvaluatedVectorField(*this,
-                                       ir.dl_vector,
-                                       mtm_flux,
-                                       flux_pre + "CONVECTIVE_FLUX_momentum_");
         Utils::addEvaluatedVectorField(
             *this, ir.dl_scalar, vel, field_pre + "velocity_");
         this->addEvaluatedField(mag);
@@ -78,6 +66,11 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
 
     void evaluateFields(typename panzer::Traits::EvalData d) override
     {
+        magn_pres.deep_copy(_p_mag);
+        for (int d = 0; d < num_space_dim; ++d)
+            vel[d].deep_copy(_v[d]);
+        if (_build_magn_corr)
+            magn_pot.deep_copy(_psi);
         Kokkos::parallel_for(
             "induction convective flux test dependencies",
             Kokkos::RangePolicy<PHX::exec_space>(0, d.num_cells),
@@ -93,18 +86,6 @@ struct Dependencies : public panzer::EvaluatorWithBaseImpl<panzer::Traits>,
             {
                 mag(c, qp, field_dim) = _b[field_dim];
             }
-            for (int vel_dim = 0; vel_dim < num_space_dim; ++vel_dim)
-            {
-                vel[vel_dim](c, qp) = _v[vel_dim];
-                for (int flux_dim = 0; flux_dim < num_space_dim; ++flux_dim)
-                {
-                    mtm_flux[vel_dim](c, qp, flux_dim) = _f_rhov[flux_dim]
-                                                         * (vel_dim + 1);
-                }
-            }
-            magn_pres(c, qp) = _p_mag;
-            if (_build_magn_corr)
-                magn_pot(c, qp) = _psi;
         }
     }
 };
@@ -123,14 +104,13 @@ void testEval(const bool build_magn_corr,
     const auto& ir = *test_fixture.ir;
 
     // Initialize velocity components and dependents
-    const Kokkos::Array<double, 3> f_rhov = {0.125, -0.26, 0.377};
     const Kokkos::Array<double, 3> v = {1.25, 1.5, 1.125};
     const Kokkos::Array<double, 3> b = {1.1, 2.1, 3.1};
     const double psi = 0.4;
     const double p_mag = 0.8;
 
     auto deps = Teuchos::rcp(new Dependencies<EvalType, num_space_dim>(
-        ir, f_rhov, v, b, psi, p_mag, build_magn_corr, flux_pre, field_pre));
+        ir, v, b, psi, p_mag, build_magn_corr, field_pre));
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Initialize class object to test
@@ -153,7 +133,6 @@ void testEval(const bool build_magn_corr,
     test_fixture.registerEvaluator<EvalType>(eval);
     for (int dim = 0; dim < num_space_dim; ++dim)
     {
-        test_fixture.registerTestField<EvalType>(eval->_momentum_flux[dim]);
         test_fixture.registerTestField<EvalType>(eval->_induction_flux[dim]);
     }
     if (build_magn_corr)
@@ -165,10 +144,6 @@ void testEval(const bool build_magn_corr,
     test_fixture.evaluate<EvalType>();
 
     // Expected values
-    const double exp_mom_0_flux[3] = {-23.275, -46.46, -67.823};
-    const double exp_mom_1_flux[3] = {-45.95, -87.92, -129.446};
-    const double exp_mom_2_flux[3] = {-67.825, -130.98, -190.269};
-
     const double psi_cont = build_magn_corr ? 2. : 0.;
 
     const double exp_ind_0_flux[3] = {psi_cont, -0.9749999999999999, -2.6375};
@@ -176,11 +151,6 @@ void testEval(const bool build_magn_corr,
     const double exp_ind_2_flux[3] = {2.6375, 2.2875, psi_cont};
 
     const double exp_psi_flux[3] = {5.5, 10.5, 15.5};
-
-    const auto fc_mom_0
-        = test_fixture.getTestFieldData<EvalType>(eval->_momentum_flux[0]);
-    const auto fc_mom_1
-        = test_fixture.getTestFieldData<EvalType>(eval->_momentum_flux[1]);
 
     const auto fc_ind_0
         = test_fixture.getTestFieldData<EvalType>(eval->_induction_flux[0]);
@@ -193,20 +163,12 @@ void testEval(const bool build_magn_corr,
     {
         for (int dim = 0; dim < num_space_dim; dim++)
         {
-            EXPECT_DOUBLE_EQ(exp_mom_0_flux[dim],
-                             fieldValue(fc_mom_0, 0, qp, dim));
-            EXPECT_DOUBLE_EQ(exp_mom_1_flux[dim],
-                             fieldValue(fc_mom_1, 0, qp, dim));
             EXPECT_DOUBLE_EQ(exp_ind_0_flux[dim],
                              fieldValue(fc_ind_0, 0, qp, dim));
             EXPECT_DOUBLE_EQ(exp_ind_1_flux[dim],
                              fieldValue(fc_ind_1, 0, qp, dim));
             if (num_space_dim > 2)
             {
-                const auto fc_mom_2 = test_fixture.getTestFieldData<EvalType>(
-                    eval->_momentum_flux[2]);
-                EXPECT_DOUBLE_EQ(exp_mom_2_flux[dim],
-                                 fieldValue(fc_mom_2, 0, qp, dim));
                 const auto fc_ind_2 = test_fixture.getTestFieldData<EvalType>(
                     eval->_induction_flux[2]);
                 EXPECT_DOUBLE_EQ(exp_ind_2_flux[dim],
@@ -225,49 +187,49 @@ void testEval(const bool build_magn_corr,
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionConvectiveFluxNoCleaning2D, residual_test)
+TEST(InductionConvectiveFluxNoCleaning2D, Residual)
 {
     testEval<panzer::Traits::Residual, 2>(false, "", "");
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionConvectiveFluxNoCleaning2D, jacobian_test)
+TEST(InductionConvectiveFluxNoCleaning2D, Jacobian)
 {
     testEval<panzer::Traits::Jacobian, 2>(false, "", "");
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionConvectiveFluxNoCleaning3D, residual_test)
+TEST(InductionConvectiveFluxNoCleaning3D, Residual)
 {
     testEval<panzer::Traits::Residual, 3>(false, "Foo_", "Bar_");
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionConvectiveFluxNoCleaning3D, jacobian_test)
+TEST(InductionConvectiveFluxNoCleaning3D, Jacobian)
 {
     testEval<panzer::Traits::Jacobian, 3>(false, "Foo_", "Bar_");
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionConvectiveFluxDivCleaning2D, residual_test)
+TEST(InductionConvectiveFluxDivCleaning2D, Residual)
 {
     testEval<panzer::Traits::Residual, 2>(true, "Foo_", "Bar_");
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionConvectiveFluxNoDivCleaning2D, jacobian_test)
+TEST(InductionConvectiveFluxNoDivCleaning2D, Jacobian)
 {
     testEval<panzer::Traits::Jacobian, 2>(true, "Foo_", "Bar_");
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionConvectiveFluxDivCleaning3D, residual_test)
+TEST(InductionConvectiveFluxDivCleaning3D, Residual)
 {
     testEval<panzer::Traits::Residual, 3>(true, "", "");
 }
 
 //-----------------------------------------------------------------//
-TEST(InductionConvectiveFluxDivCleaning3D, jacobian_test)
+TEST(InductionConvectiveFluxDivCleaning3D, Jacobian)
 {
     testEval<panzer::Traits::Jacobian, 3>(true, "", "");
 }
@@ -285,27 +247,29 @@ void testFactory()
     test_fixture.type_name = "InductionConvectiveFlux";
     test_fixture.eval_name = "Induction Convective Flux "
                              + std::to_string(num_space_dim) + "D";
+    test_fixture.num_evaluators = 2;
+    test_fixture.eval_index = 0;
     test_fixture.template buildAndTest<
         ClosureModel::InductionConvectiveFlux<EvalType, panzer::Traits, num_space_dim>,
         num_space_dim>();
 }
 
-TEST(InductionConvectiveFlux_Factory2D, residual_test)
+TEST(InductionConvectiveFlux_Factory2D, Residual)
 {
     testFactory<panzer::Traits::Residual, 2>();
 }
 
-TEST(InductionConvectiveFlux_Factory2D, jacobian_test)
+TEST(InductionConvectiveFlux_Factory2D, Jacobian)
 {
     testFactory<panzer::Traits::Jacobian, 2>();
 }
 
-TEST(InductionConvectiveFlux_Factory3D, residual_test)
+TEST(InductionConvectiveFlux_Factory3D, Residual)
 {
     testFactory<panzer::Traits::Residual, 3>();
 }
 
-TEST(InductionConvectiveFlux_Factory3D, jacobian_test)
+TEST(InductionConvectiveFlux_Factory3D, Jacobian)
 {
     testFactory<panzer::Traits::Jacobian, 3>();
 }

@@ -18,7 +18,7 @@ IncompressibleChienKEpsilonSource<EvalType, Traits, NumSpaceDim>::
     IncompressibleChienKEpsilonSource(
         const panzer::IntegrationRule& ir,
         const Teuchos::RCP<panzer::GlobalData>& global_data,
-        const Teuchos::ParameterList& user_params)
+        const Teuchos::ParameterList& turb_params)
     : _nu("kinematic_viscosity", ir.dl_scalar)
     , _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
     , _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
@@ -36,11 +36,8 @@ IncompressibleChienKEpsilonSource<EvalType, Traits, NumSpaceDim>::
     , _e_prod("PRODUCTION_turb_dissipation_rate_equation", ir.dl_scalar)
     , _e_dest("DESTRUCTION_turb_dissipation_rate_equation", ir.dl_scalar)
 {
-    const Teuchos::ParameterList turb_list
-        = user_params.sublist("Turbulence Parameters");
-
     // Get boundary surface area for wall shear stress
-    _area = turb_list.get<double>("Boundary Surface Area");
+    _area = turb_params.get<double>("Boundary Surface Area");
 
     // Add dependent fields
     this->addDependentField(_nu);

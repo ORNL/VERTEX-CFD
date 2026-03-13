@@ -1,8 +1,8 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConstantSource.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <Panzer_GlobalData.hpp>
 #include <Panzer_ParameterLibrary.hpp>
@@ -73,14 +73,9 @@ void testEval(const bool build_temp_equ,
     if (num_space_dim == 3)
         mom_input_source[2] = 0.3;
 
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.375);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", build_temp_equ);
-    fluid_prop_list.set("Build Inductionless MHD Equation", build_ind_less_mhd);
-
-    if (build_ind_less_mhd)
-        fluid_prop_list.set("Electrical conductivity", 3.0);
+    Teuchos::ParameterList fluid_params;
+    fluid_params.set("Build Temperature Equation", build_temp_equ);
+    fluid_params.set("Build Inductionless MHD Equation", build_ind_less_mhd);
 
     Teuchos::ParameterList closure_params;
     if (const_vol_flow)
@@ -102,16 +97,13 @@ void testEval(const bool build_temp_equ,
     if (build_temp_equ)
     {
         closure_params.set("Energy Source", energy_input_source);
-        fluid_prop_list.set("Thermal conductivity", 0.5);
-        fluid_prop_list.set("Specific heat capacity", 5.0);
     }
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
 
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleConstantSource<EvalType,
                                                        panzer::Traits,
                                                        num_space_dim>(
-            ir, fluid_prop, global_data, closure_params));
+            ir, fluid_params, global_data, closure_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     for (int dim = 0; dim < num_space_dim; ++dim)
         test_fixture.registerTestField<EvalType>(eval->_momentum_source[dim]);
@@ -242,7 +234,6 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     const Teuchos::Array<double> mom_input_source(num_space_dim);
     test_fixture.model_params.set("Momentum Source", mom_input_source);
-    test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)

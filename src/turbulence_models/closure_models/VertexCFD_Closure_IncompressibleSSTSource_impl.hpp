@@ -18,7 +18,7 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleSSTSource<EvalType, Traits, NumSpaceDim>::IncompressibleSSTSource(
     const panzer::IntegrationRule& ir,
-    const Teuchos::ParameterList& user_params)
+    const Teuchos::ParameterList& turb_params)
     : _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
     , _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
     , _turb_specific_dissipation_rate("turb_specific_dissipation_rate",
@@ -46,58 +46,31 @@ IncompressibleSSTSource<EvalType, Traits, NumSpaceDim>::IncompressibleSSTSource(
                ir.dl_scalar)
 {
     // Check for user-defined coefficients or parameters
-    if (user_params.isSublist("Turbulence Parameters"))
-    {
-        Teuchos::ParameterList turb_list
-            = user_params.sublist("Turbulence Parameters");
+    if (turb_params.isType<double>("beta_star"))
+        _beta_star = turb_params.get<double>("beta_star");
 
-        if (turb_list.isSublist("SST K-Omega Parameters"))
-        {
-            Teuchos::ParameterList sst_list
-                = turb_list.sublist("SST K-Omega Parameters");
+    if (turb_params.isType<double>("kappa"))
+        _kappa = turb_params.get<double>("kappa");
 
-            if (sst_list.isType<double>("beta_star"))
-            {
-                _beta_star = sst_list.get<double>("beta_star");
-            }
+    if (turb_params.isType<double>("beta_1"))
+        _beta_1 = turb_params.get<double>("beta_1");
 
-            if (sst_list.isType<double>("kappa"))
-            {
-                _kappa = sst_list.get<double>("kappa");
-            }
+    if (turb_params.isType<double>("beta_2"))
+        _beta_2 = turb_params.get<double>("beta_2");
 
-            if (sst_list.isType<double>("beta_1"))
-            {
-                _beta_1 = sst_list.get<double>("beta_1");
-            }
+    if (turb_params.isType<double>("sigma_w1"))
+        _sigma_w1 = turb_params.get<double>("sigma_w1");
 
-            if (sst_list.isType<double>("beta_2"))
-            {
-                _beta_2 = sst_list.get<double>("beta_2");
-            }
+    if (turb_params.isType<double>("sigma_w2"))
+        _sigma_w2 = turb_params.get<double>("sigma_w2");
 
-            if (sst_list.isType<double>("sigma_w1"))
-            {
-                _sigma_w1 = sst_list.get<double>("sigma_w1");
-            }
+    if (turb_params.isType<bool>("Limit Production Term"))
+        _limit_production = turb_params.get<bool>("Limit Production Term");
 
-            if (sst_list.isType<double>("sigma_w2"))
-            {
-                _sigma_w2 = sst_list.get<double>("sigma_w2");
-            }
-
-            if (sst_list.isType<bool>("Limit Production Term"))
-            {
-                _limit_production
-                    = sst_list.get<bool>("Limit Production Term");
-            }
-        }
-
-        _gamma_1 = _beta_1 / _beta_star
-                   - _sigma_w1 * _kappa * _kappa / std::sqrt(_beta_star);
-        _gamma_2 = _beta_2 / _beta_star
-                   - _sigma_w2 * _kappa * _kappa / std::sqrt(_beta_star);
-    }
+    _gamma_1 = _beta_1 / _beta_star
+               - _sigma_w1 * _kappa * _kappa / std::sqrt(_beta_star);
+    _gamma_2 = _beta_2 / _beta_star
+               - _sigma_w2 * _kappa * _kappa / std::sqrt(_beta_star);
     // Add dependent fields
     this->addDependentField(_nu_t);
     this->addDependentField(_turb_kinetic_energy);

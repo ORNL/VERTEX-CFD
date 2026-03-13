@@ -13,7 +13,8 @@ namespace Test
 enum ExtMagnType
 {
     constant,
-    toroidal
+    toroidal,
+    x_tanh
 };
 
 template<class EvalType>
@@ -27,7 +28,7 @@ void testEval(const int num_space_dim,
         num_space_dim, integration_order, basis_order);
 
     // Set non-trivial quadrature points to avoid x = y
-    if (ext_magn_type == ExtMagnType::toroidal)
+    if (ext_magn_type != ExtMagnType::constant)
     {
         auto ip_coord_view
             = test_fixture.int_values->ip_coordinates.get_static_view();
@@ -42,13 +43,14 @@ void testEval(const int num_space_dim,
     const auto& ir = *test_fixture.ir;
 
     // Initialize class object to test and expected values
-    Teuchos::ParameterList user_params;
+    Teuchos::ParameterList ext_mag_field_param_list;
     double exp_bx = 0.0;
     double exp_by = 0.0;
     double exp_bz = 0.0;
     if (ext_magn_type == ExtMagnType::constant)
     {
-        user_params.set("External Magnetic Field Type", "constant");
+        ext_mag_field_param_list.set("External Magnetic Field Type",
+                                     "constant");
         Teuchos::Array<double> ext_magn_vct(3);
         exp_bx = 1.3;
         exp_by = 3.5;
@@ -56,7 +58,8 @@ void testEval(const int num_space_dim,
         ext_magn_vct[0] = exp_bx;
         ext_magn_vct[1] = exp_by;
         ext_magn_vct[2] = exp_bz;
-        user_params.set("External Magnetic Field Value", ext_magn_vct);
+        ext_mag_field_param_list.set("External Magnetic Field Value",
+                                     ext_magn_vct);
 
         // Add a test for time dependent external magnetic field
         if (num_space_dim == 3)
@@ -69,8 +72,8 @@ void testEval(const int num_space_dim,
                 dB0_dt[d] = pow(-1.1, d) * (d + 0.2);
                 ext_magn_vct[d] += dB0_dt[d] * time;
             }
-            user_params.set("External Magnetic Field Time Rate of Change",
-                            dB0_dt);
+            ext_mag_field_param_list.set(
+                "External Magnetic Field Time Rate of Change", dB0_dt);
             exp_bx += dB0_dt[0] * time;
             exp_by += dB0_dt[1] * time;
             exp_bz += dB0_dt[2] * time;
@@ -78,15 +81,33 @@ void testEval(const int num_space_dim,
     }
     else if (ext_magn_type == ExtMagnType::toroidal)
     {
-        user_params.set("External Magnetic Field Type", "toroidal");
+        ext_mag_field_param_list.set("External Magnetic Field Type",
+                                     "toroidal");
         exp_bx = -3.0;
         exp_by = 2.0;
-        user_params.set("Toroidal Field Magnitude", 1.3);
+        ext_mag_field_param_list.set("Toroidal Field Magnitude", 1.3);
+    }
+    else if (ext_magn_type == ExtMagnType::x_tanh)
+    {
+        ext_mag_field_param_list.set("External Magnetic Field Type", "x_tanh");
+        exp_bx = 0.35434369377420455;
+        exp_by = 0.7086873875484091;
+        exp_bz = 1.0630310813226136;
+        Teuchos::Array<double> ext_magn_vct(3);
+        ext_magn_vct[0] = 1.0;
+        ext_magn_vct[1] = 2.0;
+        ext_magn_vct[2] = 3.0;
+        ext_mag_field_param_list.set("External Magnetic Field Value",
+                                     ext_magn_vct);
+        ext_mag_field_param_list.set(
+            "External Magnetic Field Distribution Offset", 0.5);
+        ext_mag_field_param_list.set(
+            "External Magnetic Field Distribution Curvature Coefficient", 1.0);
     }
 
     const auto eval = Teuchos::rcp(
         new ClosureModel::ExternalMagneticField<EvalType, panzer::Traits>(
-            ir, user_params));
+            ir, ext_mag_field_param_list));
 
     // Register
     test_fixture.registerEvaluator<EvalType>(eval);
@@ -150,21 +171,30 @@ TEST(TimeDependentExternalMagneticField3D, Jacobian)
 }
 
 //-----------------------------------------------------------------//
+TEST(XDependentExternalMagneticField3D, Residual)
+{
+    testEval<panzer::Traits::Residual>(3, ExtMagnType::x_tanh);
+}
+
+//-----------------------------------------------------------------//
+TEST(XDependentExternalMagneticField3D, Jacobian)
+{
+    testEval<panzer::Traits::Jacobian>(3, ExtMagnType::x_tanh);
+}
+
+//-----------------------------------------------------------------//
 template<class EvalType, int NumSpaceDim>
 void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     const Teuchos::Array<double> ext_magn_vct(3);
-    const Teuchos::ParameterList user_params;
-    test_fixture.user_params.set("Build Inductionless MHD Equation", true);
-    test_fixture.user_params.set("External Magnetic Field Value", ext_magn_vct);
-    test_fixture.user_params.set("Build Temperature Equation", false);
+    test_fixture.user_params.sublist("External Magnetic Field Parameters")
+        .set("External Magnetic Field Value", ext_magn_vct);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0)
-        .set("Electrical conductivity", 3.0);
+        .set("Artificial compressibility", 2.0);
     test_fixture.type_name = "ExternalMagneticField";
     test_fixture.eval_name = "External Magnetic Field";
     test_fixture.template buildAndTest<

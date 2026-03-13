@@ -45,6 +45,10 @@ FullInductionMHD<EvalType>::FullInductionMHD(
         throw std::runtime_error("Number of space dimensions not supported");
     }
 
+    // Check for fluid or solid domain to restrict input parameters accordingly
+    const bool fluid_mhd = params->get<std::string>("Type")
+                           == "FullInductionMHD";
+
     // Set default parameter values and validate the inputs.
     Teuchos::ParameterList valid_parameters;
     this->setDefaultValidParameters(valid_parameters);
@@ -61,11 +65,15 @@ FullInductionMHD<EvalType>::FullInductionMHD(
                          false,
                          "Solve full induction equation with divergence "
                          "cleaning");
-    valid_parameters.set("Build Divergence Cleaning Source",
-                         false,
-                         "Divergence cleaning source boolean");
-    valid_parameters.set(
-        "Build Godunov-Powell Source", false, "Godunov-Powell source boolean");
+    if (fluid_mhd)
+    {
+        valid_parameters.set("Build Divergence Cleaning Source",
+                             false,
+                             "Divergence cleaning source boolean");
+        valid_parameters.set("Build Godunov-Powell Source",
+                             false,
+                             "Godunov-Powell source boolean");
+    }
     valid_parameters.set("Build Magnetic Correction Damping Source",
                          false,
                          "Magnetic Correction damping source boolean");
@@ -82,11 +90,16 @@ FullInductionMHD<EvalType>::FullInductionMHD(
         = params->get<bool>("Build Magnetic Correction Potential Equation");
     _build_resistive_flux = params->get<bool>("Build Resistive Flux");
     const bool build_div_cleaning_src
-        = params->get<bool>("Build Divergence Cleaning Source");
+        = fluid_mhd ? params->get<bool>("Build Divergence Cleaning Source")
+                    : false;
     const bool build_godunov_powell_source
-        = params->get<bool>("Build Godunov-Powell Source");
+        = fluid_mhd ? params->get<bool>("Build Godunov-Powell Source") : false;
     const bool build_magn_corr_damping_src
         = params->get<bool>("Build Magnetic Correction Damping Source");
+
+    // convective flux is not evaluated for solid domains when there is no
+    // divergence cleaning
+    _build_convective_flux = fluid_mhd || build_magn_corr;
 
     // Initialize equation names and variables names for full induction model
     for (int d = 0; d < _num_space_dim; ++d)
@@ -210,11 +223,16 @@ void FullInductionMHD<EvalType>::buildAndRegisterEquationSetEvaluators(
         const auto dof_name = it.second;
         std::vector<std::string> residual_operator_names;
 
-        // Add time and convective residuals
+        // Add time residuals
         add_basis_time_scalar_residual(
             eq_name, "DQDT", 1.0, residual_operator_names);
-        add_grad_basis_time_residual(
-            eq_name, "CONVECTIVE_FLUX", -1.0, residual_operator_names);
+
+        // Add convective fluxes
+        if (_build_convective_flux)
+        {
+            add_grad_basis_time_residual(
+                eq_name, "CONVECTIVE_FLUX", -1.0, residual_operator_names);
+        }
 
         // Add resistive fluxes
         if (_build_resistive_flux)

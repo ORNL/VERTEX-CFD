@@ -33,7 +33,8 @@ class RADLocalTimeStepSize : public panzer::EvaluatorWithBaseImpl<Traits>,
 
     RADLocalTimeStepSize(
         const panzer::IntegrationRule& ir,
-        const SpeciesProperties::ConstantSpeciesProperties& species_prop);
+        const SpeciesProperties::ConstantSpeciesProperties& species_prop,
+        const std::string& neutron_flux_name);
 
     void evaluateFields(typename Traits::EvalData d) override;
 
@@ -50,19 +51,23 @@ class RADLocalTimeStepSize : public panzer::EvaluatorWithBaseImpl<Traits>,
   private:
     PHX::MDField<const double, panzer::Cell, panzer::Point, panzer::Dim>
         _element_length;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _neutron_flux;
     Kokkos::View<double**, Kokkos::LayoutLeft, PHX::mem_space> _bateman_matrix;
+    Kokkos::View<double**, Kokkos::LayoutLeft, PHX::mem_space> _mic_cross_section;
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   num_space_dim>
         _velocity;
 
-    bool _build_reaction;
+    bool _build_bateman;
+    bool _build_transmutation;
     bool _build_advection;
     bool _build_diffusion;
     double _nu;
 
     enum TmpVars
     {
-        LOCAL_DT_REACT,
+        LOCAL_DT_BATEMAN,
+        LOCAL_DT_TRANSMUT,
         LOCAL_DT_ADV,
         LOCAL_DT_DIF,
         NUM_TMPS

@@ -2,8 +2,9 @@
 #define VERTEXCFD_BOUNDARYCONDITION_BOUNDARYFLUXBASE_HPP
 
 #include <Panzer_BCStrategy.hpp>
-#include <Panzer_Evaluator_WithBaseImpl.hpp>
 #include <Panzer_GlobalDataAcceptor_DefaultImpl.hpp>
+#include <Panzer_IntegrationRule.hpp>
+#include <Panzer_LinearObjFactory.hpp>
 #include <Panzer_PhysicsBlock.hpp>
 #include <Panzer_Traits.hpp>
 
@@ -13,6 +14,12 @@
 
 #include <Teuchos_RCP.hpp>
 
+#include <array>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 namespace VertexCFD
 {
 namespace BoundaryCondition
@@ -20,8 +27,7 @@ namespace BoundaryCondition
 //---------------------------------------------------------------------------//
 template<class EvalType, int NumSpaceDim>
 class BoundaryFluxBase : public panzer::BCStrategy<EvalType>,
-                         public panzer::GlobalDataAcceptorDefaultImpl,
-                         public panzer::EvaluatorWithBaseImpl<panzer::Traits>
+                         public panzer::GlobalDataAcceptorDefaultImpl
 {
   public:
     // Space dimension
@@ -34,33 +40,11 @@ class BoundaryFluxBase : public panzer::BCStrategy<EvalType>,
                        const Teuchos::ParameterList& user_data)
         = 0;
 
-    virtual void buildAndRegisterEvaluators(
-        PHX::FieldManager<panzer::Traits>& fm,
-        const panzer::PhysicsBlock& side_pb,
-        const panzer::ClosureModelFactory_TemplateManager<panzer::Traits>& factory,
-        const Teuchos::ParameterList& models,
-        const Teuchos::ParameterList& user_data) const
-        = 0;
-
-    virtual void buildAndRegisterScatterEvaluators(
+    void buildAndRegisterGatherAndOrientationEvaluators(
         PHX::FieldManager<panzer::Traits>& fm,
         const panzer::PhysicsBlock& side_pb,
         const panzer::LinearObjFactory<panzer::Traits>& lof,
-        const Teuchos::ParameterList& user_data) const
-        = 0;
-
-    virtual void buildAndRegisterGatherAndOrientationEvaluators(
-        PHX::FieldManager<panzer::Traits>& fm,
-        const panzer::PhysicsBlock& side_pb,
-        const panzer::LinearObjFactory<panzer::Traits>& lof,
-        const Teuchos::ParameterList& user_data) const
-        = 0;
-
-    virtual void postRegistrationSetup(typename panzer::Traits::SetupData d,
-                                       PHX::FieldManager<panzer::Traits>& vm)
-        = 0;
-
-    virtual void evaluateFields(typename panzer::Traits::EvalData d) = 0;
+        const Teuchos::ParameterList& user_data) const final;
 
     // Local members
     void initialize(const panzer::PhysicsBlock& side_pb,
@@ -68,10 +52,12 @@ class BoundaryFluxBase : public panzer::BCStrategy<EvalType>,
 
     void getModelID(const Teuchos::ParameterList& bc_params,
                     const panzer::PhysicsBlock& side_pb,
-                    std::string& model_id) const;
+                    std::string& model_id,
+                    Teuchos::ParameterList& side_pb_list) const;
 
-    auto getBasisIRLayout(const panzer::PhysicsBlock& side_pb,
-                          const std::string& dof_name) const;
+    Teuchos::RCP<panzer::BasisIRLayout>
+    getBasisIRLayout(const panzer::PhysicsBlock& side_pb,
+                     const std::string& dof_name) const;
 
     void registerDOFsGradient(PHX::FieldManager<panzer::Traits>& fm,
                               const panzer::PhysicsBlock& side_pb,
@@ -81,23 +67,23 @@ class BoundaryFluxBase : public panzer::BCStrategy<EvalType>,
                              const panzer::PhysicsBlock& side_pb) const;
 
     void registerConvectionTypeFluxOperator(
-        std::pair<const std::string, std::string> dof_eq_pair,
-        std::unordered_map<std::string, std::vector<std::string>>& eq_vct_map,
+        const std::pair<const std::string, std::string>& dof_eq_pair,
+        std::unordered_map<std::string, std::vector<std::string>>& eq_res_map,
         const std::string& closure_name,
         PHX::FieldManager<panzer::Traits>& fm,
         const panzer::PhysicsBlock& side_pb,
         const double& multiplier) const;
 
     void registerPenaltyAndViscousGradientOperator(
-        std::pair<const std::string, std::string> dof_eq_pair,
+        const std::pair<const std::string, std::string>& dof_eq_pair,
         PHX::FieldManager<panzer::Traits>& fm,
         const panzer::PhysicsBlock& side_pb,
         const Teuchos::ParameterList& bc_params) const;
 
     void registerViscousTypeFluxOperator(
-        std::pair<const std::string, std::string> dof_eq_pair,
-        std::unordered_map<std::string, std::vector<std::string>>& eq_vct_map,
-        const std::string closure_name,
+        const std::pair<const std::string, std::string>& dof_eq_pair,
+        std::unordered_map<std::string, std::vector<std::string>>& eq_res_map,
+        const std::string& closure_name,
         PHX::FieldManager<panzer::Traits>& fm,
         const panzer::PhysicsBlock& side_pb,
         const double& multiplier) const;
@@ -117,11 +103,19 @@ class BoundaryFluxBase : public panzer::BCStrategy<EvalType>,
     auto integrationRule() const { return _ir; }
 
   protected:
-    std::unordered_map<std::string, std::string> bnd_prefix;
+    std::string _model_id;
+    Teuchos::ParameterList _side_pb_list;
+    Teuchos::ParameterList _bc_params;
     std::unordered_map<std::string, Teuchos::RCP<panzer::PureBasis>>
         _dof_basis_pair;
+    const std::array<std::array<std::string, 2>, 3> bnd_prefix{{
+        {"BOUNDARY_", "BOUNDARY_"},
+        {"PENALTY_BOUNDARY_", "PENALTY_"},
+        {"SYMMETRY_BOUNDARY_", "SYMMETRY_"},
+    }};
 
   private:
+    mutable bool _penalty_added = false;
     Teuchos::RCP<panzer::IntegrationRule> _ir;
 };
 

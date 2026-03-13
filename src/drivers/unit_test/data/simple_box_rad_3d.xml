@@ -42,7 +42,7 @@
         <Parameter name="Model ID" type="string" value="species"/>
         <Parameter name="Number of Species" type="int" value="3"/>
         <Parameter name="Build Advection" type="bool" value="true"/>
-        <Parameter name="Build Reaction" type="bool" value="true"/>
+        <Parameter name="Build Reaction Bateman Source" type="bool" value="true"/>
       </ParameterList> <!-- -->
     </ParameterList> <!-- SpeciesPhysicsBlock -->
   </ParameterList> <!-- Physics Blocks -->
@@ -86,7 +86,7 @@
       <Parameter name="Closure Factory Type" type="string" value="RAD"/>
       <ParameterList name="Model Parameters">
         <Parameter name="Number of Species" type="int" value="3"/>
-        <Parameter name="Build Reaction" type="bool" value="true"/>
+        <Parameter name="Build Reaction Bateman Source" type="bool" value="true"/>
         <Parameter name="Build Advection" type="bool" value="true"/>
         <Parameter name="Build Diffusion" type="bool" value="true"/>
         <Parameter name="Diffusion Coefficient" type="double" value="0.5"/>

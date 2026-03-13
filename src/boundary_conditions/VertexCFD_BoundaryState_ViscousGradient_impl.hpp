@@ -1,8 +1,8 @@
 #ifndef VERTEXCFD_BOUNDARYSTATE_VISCOUSGRADIENT_IMPL_HPP
 #define VERTEXCFD_BOUNDARYSTATE_VISCOUSGRADIENT_IMPL_HPP
 
-#include "Panzer_Workset_Utilities.hpp"
 #include <Panzer_HierarchicParallelism.hpp>
+#include <Panzer_Workset_Utilities.hpp>
 
 namespace VertexCFD
 {
@@ -11,13 +11,16 @@ namespace BoundaryCondition
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits>
 ViscousGradient<EvalType, Traits>::ViscousGradient(
-    const panzer::IntegrationRule& ir, const std::string& dof_name)
+    const panzer::IntegrationRule& ir,
+    const std::string& dof_name,
+    const double penalty_factor)
     : _grad("PENALTY_GRAD_" + dof_name, ir.dl_vector)
     , _scaled_grad("SYMMETRY_GRAD_" + dof_name, ir.dl_vector)
     , _num_space_dim(ir.spatial_dimension)
+    , _penalty_factor(penalty_factor)
     , _dof(dof_name, ir.dl_scalar)
     , _bnd_dof("BOUNDARY_" + dof_name, ir.dl_scalar)
-    , _penalty_param("viscous_penalty_parameter_" + dof_name, ir.dl_scalar)
+    , _penalty_param("viscous_penalty_parameter", ir.dl_scalar)
     , _normals("Side Normal", ir.dl_vector)
 {
     // Add evaluated fields
@@ -54,16 +57,14 @@ KOKKOS_INLINE_FUNCTION void ViscousGradient<EvalType, Traits>::operator()(
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
-            const auto u = _dof(cell, point);
-            const auto u_bnd = _bnd_dof(cell, point);
-            const auto delta = _penalty_param(cell, point);
-
             for (int dim = 0; dim < _num_space_dim; ++dim)
             {
-                _grad(cell, point, dim) = _normals(cell, point, dim)
-                                          * (u - u_bnd);
+                _grad(cell, point, dim)
+                    = _normals(cell, point, dim)
+                      * (_dof(cell, point) - _bnd_dof(cell, point));
 
-                _scaled_grad(cell, point, dim) = delta
+                _scaled_grad(cell, point, dim) = _penalty_factor
+                                                 * _penalty_param(cell, point)
                                                  * _grad(cell, point, dim);
             }
         });

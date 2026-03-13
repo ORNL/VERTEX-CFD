@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLETIMEDERIVATIVE_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLETIMEDERIVATIVE_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -27,9 +25,8 @@ class IncompressibleTimeDerivative
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleTimeDerivative(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop);
+    IncompressibleTimeDerivative(const panzer::IntegrationRule& ir,
+                                 const Teuchos::ParameterList& fluid_params);
 
     void evaluateFields(typename Traits::EvalData d) override;
 
@@ -55,7 +52,6 @@ class IncompressibleTimeDerivative
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _dxdt_temperature;
 
     bool _solve_temp;
-    double _rhoCp;
     double _beta;
 };
 

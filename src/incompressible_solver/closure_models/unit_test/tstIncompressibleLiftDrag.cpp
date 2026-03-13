@@ -145,12 +145,12 @@ void testEval(const bool unscaled_density,
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Initialize class object to test
-    Teuchos::ParameterList user_params;
-    user_params.set("Compressible Formula", use_compressible_formula);
+    Teuchos::ParameterList closure_params;
+    closure_params.set("Compressible Formula", use_compressible_formula);
     auto eval = Teuchos::rcp(
         new ClosureModel::
             IncompressibleLiftDrag<EvalType, panzer::Traits, num_space_dim>(
-                ir, user_params, build_turbulence_model));
+                ir, closure_params, build_turbulence_model));
     test_fixture.registerEvaluator<EvalType>(eval);
 
     for (int dim = 0; dim < num_space_dim; ++dim)
@@ -421,7 +421,7 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Compressible Formula", true);
+    test_fixture.model_params.set("Compressible Formula", true);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.375)

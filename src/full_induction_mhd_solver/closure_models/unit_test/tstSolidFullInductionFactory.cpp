@@ -40,8 +40,9 @@ void testFactory(const std::string& cm_name,
     // solid full induction factory adds evaluators by default, including
     // external (and total) magnetic field, so user_params must contain
     // external magnetic field entry.
-    test_fixture.user_params.set("External Magnetic Field Value",
-                                 Teuchos::Array<double>({0, 0, 0}));
+    test_fixture.user_params.sublist("External Magnetic Field Parameters")
+        .set("External Magnetic Field Value",
+             Teuchos::Array<double>({0, 0, 0}));
 
     // num_evaluators and index depend on the count of default evaluators
     test_fixture.num_evaluators = 5 + num_space_dim;

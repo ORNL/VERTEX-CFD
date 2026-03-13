@@ -39,8 +39,10 @@ ErrorNorms<Scalar>::ErrorNorms(
     // equations to be included in the error norm output be explicitly
     // listed in the "User Data -> Compute Error Norms" input.
     bool build_ns_error_norms = true;
+    bool build_temp_error_norms = false;
+    bool build_inductionless_error_norms = false;
     bool build_rad_error_norms = false;
-    bool build_induction_error_norms = false;
+    bool build_fim_error_norms = false;
     bool build_lsvof_error_norms = false;
     for (auto it = closure_params.begin(); it != closure_params.end(); ++it)
     {
@@ -48,12 +50,18 @@ ErrorNorms<Scalar>::ErrorNorms(
         if (closure_params.isSublist(name))
         {
             const auto p = closure_params.sublist(name);
+            // All cases but NS equations
             if (p.isType<std::string>("Closure Factory Type"))
             {
                 if (p.get<std::string>("Closure Factory Type")
                     == "Full Induction MHD")
                 {
-                    build_induction_error_norms = true;
+                    build_fim_error_norms = true;
+                }
+                else if (p.get<std::string>("Closure Factory Type")
+                         == "SolidElectricPotential")
+                {
+                    build_inductionless_error_norms = true;
                 }
                 else if (p.get<std::string>("Closure Factory Type") == "LSVOF")
                 {
@@ -63,11 +71,35 @@ ErrorNorms<Scalar>::ErrorNorms(
                 {
                     build_rad_error_norms = true;
                 }
+                else if (p.get<std::string>("Closure Factory Type")
+                         == "Conduction")
+                {
+                    build_temp_error_norms = true;
+                }
+            }
+
+            // NS equations ('Closure Factory Type' is defaulted to
+            // 'Navier-Stokes'). This logic will be simplified once all physics
+            // are implemented in independent equation set class.
+            if (p.isSublist("Fluid Properties"))
+            {
+                if (p.sublist("Fluid Properties")
+                        .isType<bool>("Build Temperature Equation"))
+                {
+                    build_temp_error_norms
+                        = p.sublist("Fluid Properties")
+                              .get<bool>("Build Temperature Equation");
+                }
+
+                if (p.sublist("Fluid Properties")
+                        .isType<bool>("Build Inductionless MHD Equation"))
+                {
+                    build_inductionless_error_norms
+                        = p.sublist("Fluid Properties")
+                              .get<bool>("Build Inductionless MHD Equation");
+                }
             }
         }
-        if (build_induction_error_norms || build_lsvof_error_norms
-            || build_rad_error_norms)
-            break;
     }
 
     // If solving RAD equation, disable NS equations
@@ -137,21 +169,19 @@ ErrorNorms<Scalar>::ErrorNorms(
     }
 
     // Temperature equation
-    if (_user_params.isType<bool>("Build Temperature Equation"))
+    if (build_temp_error_norms)
     {
-        if (_user_params.get<bool>("Build Temperature Equation"))
-            eq_name.push_back("energy");
+        eq_name.push_back("energy");
     }
 
     // Induction less equation
-    if (_user_params.isType<bool>("Build Inductionless MHD Equation"))
+    if (build_inductionless_error_norms)
     {
-        if (_user_params.get<bool>("Build Inductionless MHD Equation"))
-            eq_name.push_back("electric_potential_equation");
+        eq_name.push_back("electric_potential_equation");
     }
 
     // Full induction equation
-    if (build_induction_error_norms)
+    if (build_fim_error_norms)
     {
         for (int i = 0; i < _num_space_dim; ++i)
         {
@@ -200,6 +230,10 @@ ErrorNorms<Scalar>::ErrorNorms(
 
                             eq_name.push_back("alpha_" + phase_name);
                         }
+                    }
+                    else if (lsvof_model == "CLS")
+                    {
+                        eq_name.push_back("level_set");
                     }
                 }
             }

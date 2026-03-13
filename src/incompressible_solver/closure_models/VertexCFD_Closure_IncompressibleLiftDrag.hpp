@@ -29,7 +29,7 @@ class IncompressibleLiftDrag : public panzer::EvaluatorWithBaseImpl<Traits>,
     static constexpr int num_space_dim = NumSpaceDim;
 
     IncompressibleLiftDrag(const panzer::IntegrationRule& ir,
-                           const Teuchos::ParameterList& user_params,
+                           const Teuchos::ParameterList& closure_params,
                            const bool use_turbulence_model);
 
     void evaluateFields(typename Traits::EvalData workset) override;

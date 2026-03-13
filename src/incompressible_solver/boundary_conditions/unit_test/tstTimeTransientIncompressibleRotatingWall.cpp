@@ -175,17 +175,8 @@ void testEval(const Kokkos::Array<double, 3> time_values,
     test_fixture.registerEvaluator<EvalType>(dep_eval);
 
     // Thermophysical properties
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.375);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", build_temp_equ);
-    if (build_temp_equ)
-    {
-        fluid_prop_list.set("Thermal conductivity", 0.5);
-        fluid_prop_list.set("Specific heat capacity", 0.6);
-    }
-
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    Teuchos::ParameterList fluid_param_list;
+    fluid_param_list.set("Build Temperature Equation", build_temp_equ);
 
     // Create the param list to initialize the evaluator
     Teuchos::ParameterList bc_params;
@@ -203,7 +194,7 @@ void testEval(const Kokkos::Array<double, 3> time_values,
     auto isotherm_eval = Teuchos::rcp(
         new BoundaryCondition::
             IncompressibleRotatingWall<EvalType, panzer::Traits, num_space_dim>(
-                *test_fixture.ir, fluid_prop, bc_params, is_edac));
+                *test_fixture.ir, fluid_param_list, bc_params, is_edac));
     test_fixture.registerEvaluator<EvalType>(isotherm_eval);
 
     // Add required test fields.

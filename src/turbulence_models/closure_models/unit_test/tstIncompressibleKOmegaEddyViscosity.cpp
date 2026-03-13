@@ -1,7 +1,6 @@
 #include "VertexCFD_EvaluatorTestHarness.hpp"
 #include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKOmegaEddyViscosity.hpp"
 
 #include <gtest/gtest.h>
@@ -87,11 +86,8 @@ void testEval(const bool limited)
         num_space_dim, integration_order, basis_order);
 
     // Create parameter list for user-defined constants
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters")
-        .sublist("K-Omega Parameters")
-        .set<double>("C_lim", 0.88)
-        .set<double>("beta_star", 0.1);
+    Teuchos::ParameterList turb_params;
+    turb_params.set<double>("C_lim", 0.88).set<double>("beta_star", 0.1);
 
     const auto& ir = *test_fixture.ir;
 
@@ -104,7 +100,7 @@ void testEval(const bool limited)
         new ClosureModel::IncompressibleKOmegaEddyViscosity<EvalType,
                                                             panzer::Traits,
                                                             NumSpaceDim>(
-            ir, user_params));
+            ir, turb_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_nu_t);
     test_fixture.evaluate<EvalType>();

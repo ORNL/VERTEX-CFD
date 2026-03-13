@@ -2,7 +2,6 @@
 #include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleSUPGFlux.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <gtest/gtest.h>
 
@@ -163,18 +162,14 @@ void testEval()
     // Initialize class object to test
     Teuchos::ParameterList closure_params;
     closure_params.set("Prefix for source terms", "CONSTANT");
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.1);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", true);
-    fluid_prop_list.set("Thermal conductivity", 0.2);
-    fluid_prop_list.set("Specific heat capacity", 10.0);
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    Teuchos::ParameterList fluid_params;
+    fluid_params.set("Artificial compressibility", 2.0);
+    fluid_params.set("Build Temperature Equation", true);
 
     auto eval = Teuchos::rcp(
         new ClosureModel::
             IncompressibleSUPGFlux<EvalType, panzer::Traits, num_space_dim>(
-                ir, fluid_prop, closure_params));
+                ir, fluid_params, closure_params));
 
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_continuity_flux);
@@ -270,14 +265,10 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Temperature Equation", true);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0)
-        .set("Thermal conductivity", 3.0)
-        .set("Specific heat capacity", 4.0)
-        .set("Heat Capacity Ratio", 1.6);
+        .set("Artificial compressibility", 2.0);
     test_fixture.type_name = "IncompressibleSUPGFlux";
     test_fixture.eval_name = "Incompressible SUPG Flux "
                              + std::to_string(num_space_dim) + "D";

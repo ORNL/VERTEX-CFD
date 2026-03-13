@@ -79,6 +79,8 @@ IncompressibleLSVOFArtificialCompression<EvalType, Traits, NumSpaceDim>::operato
     const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const
 {
     using Kokkos::sqrt;
+    using SmoothMath::max;
+    using SmoothMath::min;
     const int cell = team.league_rank();
     const int num_point = _scalar_flux.extent(1);
     const double max_tol = 1e-10;
@@ -114,10 +116,12 @@ IncompressibleLSVOFArtificialCompression<EvalType, Traits, NumSpaceDim>::operato
                 _scalar_flux(cell, point, dim)
                     = _scalar(cell, point) * (1.0 - _scalar(cell, point));
 
+                _scalar_flux(cell, point, dim) = min(
+                    max(_scalar_flux(cell, point, dim), 0.0, 0.0), 1.0, 0.0);
+
                 _interface_velocity(cell, point, dim)
                     = _C_alpha
-                      * sqrt(mag_u
-                             / SmoothMath::max(mag_grad_scalar, max_tol, 0))
+                      * sqrt(mag_u / max(mag_grad_scalar, max_tol, 0.0))
                       * _grad_scalar(cell, point, dim);
 
                 _scalar_flux(cell, point, dim)

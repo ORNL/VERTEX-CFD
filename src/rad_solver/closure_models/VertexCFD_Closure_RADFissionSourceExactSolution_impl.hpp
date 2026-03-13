@@ -24,7 +24,7 @@ RADFissionSourceExactSolution<EvalType, Traits>::RADFissionSourceExactSolution(
     const SpeciesProperties::ConstantSpeciesProperties& species_prop,
     const Teuchos::ParameterList& closure_params)
     : _num_species(species_prop.numSpecies())
-    , _flux("neutron_flux", ir.dl_scalar)
+    , _neutron_flux("neutron_flux", ir.dl_scalar)
     , _xs(species_prop.fissionCrossSection())
     , _avagadro(6.02214076e23)
     , _gamma(Kokkos::ViewAllocateWithoutInitializing("atoms_per_species"),
@@ -52,7 +52,7 @@ RADFissionSourceExactSolution<EvalType, Traits>::RADFissionSourceExactSolution(
         *this, ir.dl_scalar, _num_species, _exact_species, "Exact_species_");
 
     if (_calc_flux)
-        this->addEvaluatedField(_flux);
+        this->addEvaluatedField(_neutron_flux);
 
     this->setName("RAD Fission Source Exact Solution");
 }
@@ -114,9 +114,10 @@ RADFissionSourceExactSolution<EvalType, Traits>::operator()(
             auto&& const_s = tmp_field(point, CONSTS);
             auto&& const_c = tmp_field(point, CONSTC);
             if (_calc_flux)
-                _flux(cell, point) = _flux_amp / 2.0
-                                     * ((tanh(_a * _time - _b) + 1.0)
-                                        - (tanh(_kappa * _time - _beta) + 1.0));
+                _neutron_flux(cell, point)
+                    = _flux_amp / 2.0
+                      * ((tanh(_a * _time - _b) + 1.0)
+                         - (tanh(_kappa * _time - _beta) + 1.0));
             for (int num = 0; num < _num_species; ++num)
             {
                 const_s = _flux_amp * _gamma[num] * _xs / _avagadro;

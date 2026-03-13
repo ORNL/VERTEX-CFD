@@ -79,9 +79,8 @@ void testEval()
     const auto& ir = *test_fixture.ir;
 
     // Create parameter list for user-defined constants
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters").set<double>("C_w", 0.500);
-    user_params.sublist("Turbulence Parameters").set<double>("C_k", 0.094);
+    Teuchos::ParameterList turb_params;
+    turb_params.set<double>("C_w", 0.500).set<double>("C_k", 0.094);
 
     // Eval dependencies
     const auto deps = Teuchos::rcp(new Dependencies<EvalType>(ir));
@@ -92,7 +91,7 @@ void testEval()
         new ClosureModel::IncompressibleWALEEddyViscosity<EvalType,
                                                           panzer::Traits,
                                                           NumSpaceDim>(
-            ir, user_params));
+            ir, turb_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_nu_t);
     test_fixture.registerTestField<EvalType>(eval->_k_sgs);

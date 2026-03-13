@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_CLOSURE_INCOMPRESSIBLEVISCOUSFLUX_HPP
 #define VERTEXCFD_CLOSURE_INCOMPRESSIBLEVISCOUSFLUX_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -31,13 +29,11 @@ class IncompressibleViscousFlux
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleViscousFlux(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& user_params,
-        const bool use_turbulence_model,
-        const std::string& flux_prefix = "",
-        const std::string& gradient_prefix = "");
+    IncompressibleViscousFlux(const panzer::IntegrationRule& ir,
+                              const Teuchos::ParameterList& fluid_params,
+                              const Teuchos::ParameterList& turb_params,
+                              const std::string& flux_prefix = "",
+                              const std::string& gradient_prefix = "");
 
     void evaluateFields(typename Traits::EvalData workset) override;
 

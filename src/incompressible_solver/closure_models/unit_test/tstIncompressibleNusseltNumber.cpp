@@ -2,7 +2,6 @@
 #include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleNusseltNumber.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <gtest/gtest.h>
 
@@ -128,7 +127,6 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.type_name = "IncompressibleNusseltNumber";
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")

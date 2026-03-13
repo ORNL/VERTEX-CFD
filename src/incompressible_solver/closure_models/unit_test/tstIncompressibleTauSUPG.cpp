@@ -2,7 +2,6 @@
 #include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleTauSUPG.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <gtest/gtest.h>
 
@@ -127,13 +126,8 @@ void testEval(const TempTauModel temp_tau_model,
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Initialize class object to test
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.1);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", solve_temp);
-    fluid_prop_list.set("Thermal conductivity", 2.0);
-    fluid_prop_list.set("Specific heat capacity", 10.0);
-    fluid_prop_list.set("Heat Capacity Ratio", 1.4);
+    Teuchos::ParameterList fluid_params;
+    fluid_params.set("Build Temperature Equation", solve_temp);
 
     double cont_tau_supg_exp;
     double mom_tau_supg_exp;
@@ -185,7 +179,6 @@ void testEval(const TempTauModel temp_tau_model,
         {
             closure_params.set("Tau model for temperature equation",
                                "TempMultiDSUPGSteady");
-            fluid_prop_list.set("Density", 3.0);
             temp_tau_supg_exp = 0.6109414239741788;
         }
         else if (temp_tau_model == TempTauModel::TempMultiDSUPGTransient)
@@ -203,12 +196,10 @@ void testEval(const TempTauModel temp_tau_model,
         }
     }
 
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
-
     auto eval = Teuchos::rcp(
         new ClosureModel::
             IncompressibleTauSUPG<EvalType, panzer::Traits, num_space_dim>(
-                ir, fluid_prop, closure_params));
+                ir, fluid_params, closure_params));
 
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_tau_supg_cont);
@@ -329,16 +320,12 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.model_params.set("Tau model for Navier-Stokes equations",
                                   "Transient");
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0)
-        .set("Thermal conductivity", 3.0)
-        .set("Specific heat capacity", 4.0)
-        .set("Heat Capacity Ratio", 1.6);
+        .set("Artificial compressibility", 2.0);
     test_fixture.type_name = "IncompressibleTauSUPG";
     test_fixture.eval_name = "Incompressible Tau SUPG "
                              + std::to_string(num_space_dim) + "D";

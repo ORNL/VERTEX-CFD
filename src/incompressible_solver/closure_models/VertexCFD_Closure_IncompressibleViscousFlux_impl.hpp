@@ -13,9 +13,8 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleViscousFlux<EvalType, Traits, NumSpaceDim>::IncompressibleViscousFlux(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
-    const Teuchos::ParameterList& user_params,
-    const bool use_turbulence_model,
+    const Teuchos::ParameterList& fluid_params,
+    const Teuchos::ParameterList& turb_params,
     const std::string& flux_prefix,
     const std::string& gradient_prefix)
     : _continuity_flux(flux_prefix + "VISCOUS_FLUX_continuity", ir.dl_vector)
@@ -28,18 +27,18 @@ IncompressibleViscousFlux<EvalType, Traits, NumSpaceDim>::IncompressibleViscousF
     , _grad_temp(gradient_prefix + "GRAD_temperature", ir.dl_vector)
     , _nu_t(flux_prefix + "turbulent_eddy_viscosity", ir.dl_scalar)
     , _gamma(std::numeric_limits<double>::quiet_NaN())
-    , _beta(fluid_prop.artificialCompressibility())
-    , _solve_temp(fluid_prop.solveTemperature())
-    , _use_turbulence_model(use_turbulence_model)
-    , _continuity_model_name(user_params.isType<std::string>("Continuity "
-                                                             "Model")
-                                 ? user_params.get<std::string>("Continuity "
-                                                                "Model")
+    , _beta(fluid_params.get<double>("Artificial compressibility"))
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
+    , _use_turbulence_model(turb_params.get<bool>("Use Turbulence Model"))
+    , _continuity_model_name(fluid_params.isType<std::string>("Continuity "
+                                                              "Model")
+                                 ? fluid_params.get<std::string>("Continuity "
+                                                                 "Model")
                                  : "AC")
     , _is_edac(_continuity_model_name == "EDAC" ? true : false)
     , _Pr_t(_solve_temp
-                ? (user_params.isType<double>("Turbulent Prandtl Number")
-                       ? user_params.get<double>("Turbulent Prandtl Number")
+                ? (turb_params.isType<double>("Turbulent Prandtl Number")
+                       ? turb_params.get<double>("Turbulent Prandtl Number")
                        : 0.85)
                 : std::numeric_limits<double>::quiet_NaN())
 {
@@ -62,7 +61,7 @@ IncompressibleViscousFlux<EvalType, Traits, NumSpaceDim>::IncompressibleViscousF
     {
         this->addDependentField(_grad_press);
         if (_solve_temp)
-            _gamma = fluid_prop.constantHeatCapacityRatio();
+            _gamma = fluid_params.get<double>("Heat capacity ratio");
     }
 
     if (_solve_temp)

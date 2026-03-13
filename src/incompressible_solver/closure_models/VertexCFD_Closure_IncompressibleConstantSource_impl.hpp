@@ -18,13 +18,14 @@ template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleConstantSource<EvalType, Traits, NumSpaceDim>::
     IncompressibleConstantSource(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
+        const Teuchos::ParameterList& fluid_params,
         const Teuchos::RCP<panzer::GlobalData>& global_data,
         const Teuchos::ParameterList& closure_params)
     : _energy_source("CONSTANT_SOURCE_energy", ir.dl_scalar)
     , _global_data(global_data)
-    , _solve_temp(fluid_prop.solveTemperature())
-    , _solve_ind_less_mhd(fluid_prop.buildInductionlessMHD())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
+    , _solve_ind_less_mhd(fluid_params.get<bool>("Build Inductionless MHD "
+                                                 "Equation"))
     , _flow_direction(FlowDirection::x)
     , _const_vol_flow(false)
 {

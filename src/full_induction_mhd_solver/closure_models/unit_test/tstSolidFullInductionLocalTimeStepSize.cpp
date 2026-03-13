@@ -34,7 +34,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     Kokkos::Array<double, 3> _h;
 
     PHX::MDField<double, panzer::Cell, panzer::Point, panzer::Dim> _element_length;
-    PHX::MDField<double, panzer::Cell, panzer::Point> _solid_density;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _solid_density;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, MagneticDim>
         _tot_magn_field;
 
@@ -172,8 +172,9 @@ void testFactory(const bool build_magn_corr)
         .set("Vacuum Magnetic Permeability", 0.1)
         .set("Build Magnetic Correction Potential Equation", build_magn_corr)
         .set("Hyperbolic Divergence Cleaning Speed", 1.0);
-    test_fixture.user_params.set("External Magnetic Field Value",
-                                 Teuchos::Array<double>({0, 0, 0}));
+    test_fixture.user_params.sublist("External Magnetic Field Parameters")
+        .set("External Magnetic Field Value",
+             Teuchos::Array<double>({0, 0, 0}));
     test_fixture.factory_type = "Solid Full Induction";
     test_fixture.num_evaluators = build_magn_corr ? 10 : 8;
     test_fixture.eval_index = 1;

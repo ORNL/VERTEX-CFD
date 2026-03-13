@@ -50,9 +50,7 @@ void testEval(const bool build_temp_equ)
     auto eval = Teuchos::rcp(
         new InitialCondition::
             IncompressibleLaminarFlow<EvalType, panzer::Traits, num_space_dim>(
-                ic_params,
-                build_temp_equ,
-                *test_fixture.basis_ir_layout->getBasis()));
+                ic_params, *test_fixture.basis_ir_layout->getBasis()));
     test_fixture.registerEvaluator<EvalType>(eval);
 
     test_fixture.registerTestField<EvalType>(eval->_lagrange_pressure);

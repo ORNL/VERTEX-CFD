@@ -14,7 +14,7 @@ template<class EvalType, class Traits>
 IncompressibleSSTDiffusivityCoefficient<EvalType, Traits>::
     IncompressibleSSTDiffusivityCoefficient(
         const panzer::IntegrationRule& ir,
-        const Teuchos::ParameterList& user_params)
+        const Teuchos::ParameterList& turb_params)
     : _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
     , _sst_blending_function("sst_blending_function", ir.dl_scalar)
     , _nu("kinematic_viscosity", ir.dl_scalar)
@@ -27,37 +27,17 @@ IncompressibleSSTDiffusivityCoefficient<EvalType, Traits>::
                          ir.dl_scalar)
 {
     // Check for user-defined coefficients or parameters
-    if (user_params.isSublist("Turbulence Parameters"))
-    {
-        Teuchos::ParameterList turb_list
-            = user_params.sublist("Turbulence Parameters");
+    if (turb_params.isType<double>("sigma_k1"))
+        _sigma_k1 = turb_params.get<double>("sigma_k1");
 
-        if (turb_list.isSublist("SST K-Omega Parameters"))
-        {
-            Teuchos::ParameterList sst_list
-                = turb_list.sublist("SST K-Omega Parameters");
+    if (turb_params.isType<double>("sigma_k2"))
+        _sigma_k2 = turb_params.get<double>("sigma_k2");
 
-            if (sst_list.isType<double>("sigma_k1"))
-            {
-                _sigma_k1 = sst_list.get<double>("sigma_k1");
-            }
+    if (turb_params.isType<double>("sigma_w1"))
+        _sigma_w1 = turb_params.get<double>("sigma_w1");
 
-            if (sst_list.isType<double>("sigma_k2"))
-            {
-                _sigma_k2 = sst_list.get<double>("sigma_k2");
-            }
-
-            if (sst_list.isType<double>("sigma_w1"))
-            {
-                _sigma_w1 = sst_list.get<double>("sigma_w1");
-            }
-
-            if (sst_list.isType<double>("sigma_w2"))
-            {
-                _sigma_w2 = sst_list.get<double>("sigma_w2");
-            }
-        }
-    }
+    if (turb_params.isType<double>("sigma_w2"))
+        _sigma_w2 = turb_params.get<double>("sigma_w2");
 
     // Add dependent fields
     this->addDependentField(_nu_t);

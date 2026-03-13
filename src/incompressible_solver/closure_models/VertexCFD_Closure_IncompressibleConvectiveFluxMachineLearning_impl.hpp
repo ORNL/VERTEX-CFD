@@ -22,7 +22,7 @@ template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleConvectiveFluxMachineLearning<EvalType, Traits, NumSpaceDim>::
     IncompressibleConvectiveFluxMachineLearning(
         const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
+        const Teuchos::ParameterList& fluid_params,
         const Teuchos::ParameterList& closure_params,
         const std::string& flux_prefix,
         const std::string& field_prefix)
@@ -31,11 +31,11 @@ IncompressibleConvectiveFluxMachineLearning<EvalType, Traits, NumSpaceDim>::
     , _ml_velocity("ML_velocity", ir.dl_scalar)
     , _lagrange_pressure(field_prefix + "lagrange_pressure", ir.dl_scalar)
     , _temperature(field_prefix + "temperature", ir.dl_scalar)
-    , _rho(closure_params.get<double>("Density"))
-    , _rhoCp(_rho * closure_params.get<double>("Specific heat capacity"))
+    , _rho(fluid_params.get<double>("Density"))
+    , _rhoCp(_rho * fluid_params.get<double>("Specific heat capacity"))
     , _ir_degree(ir.cubature_degree)
 {
-    if (!fluid_prop.solveTemperature())
+    if (!fluid_params.get<bool>("Build Temperature Equation"))
         Kokkos::abort(
             "The IncompressibleConvectiveFluxMachineLearning model requires "
             "solving for the temperature!");
@@ -97,7 +97,7 @@ IncompressibleConvectiveFluxMachineLearning<EvalType, Traits, NumSpaceDim>::
     _h_max = closure_params.get<double>("H max");
 
     const double h = .5 * (_h_max - _h_min);
-    const double nu = closure_params.get<double>("Kinematic viscosity");
+    const double nu = fluid_params.get<double>("Kinematic viscosity");
     const double S_u = closure_params.get<double>("Momentum source");
     _U_max = 1.5 * S_u * h * h / 3.0 / nu;
 
@@ -244,6 +244,8 @@ KOKKOS_INLINE_FUNCTION void
 IncompressibleConvectiveFluxMachineLearning<EvalType, Traits, NumSpaceDim>::
 operator()(OutputStep, int cell, int point) const
 {
+    // The logic is not optimized for GPUs as it is a 2D verification test
+    // case.
     const int n_quadrature_points = _continuity_flux.extent(1);
     Kokkos::Array<scalar_type, NumSpaceDim> velocity{};
     velocity[0] = (_device_view_output_tensor_velocity(

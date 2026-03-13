@@ -34,8 +34,8 @@ void testEval()
     ext_magn_vct[0] = 1.5;
     ext_magn_vct[1] = 2.0;
     ext_magn_vct[2] = 3.0;
-    Teuchos::ParameterList user_params;
-    user_params.set("External Magnetic Field", ext_magn_vct);
+    Teuchos::ParameterList ext_mag_field_param_list;
+    ext_mag_field_param_list.set("External Magnetic Field Value", ext_magn_vct);
 
     Teuchos::ParameterList closure_params;
     closure_params.set("Hartmann Solution Half-Width Channel", 2.5);
@@ -46,7 +46,7 @@ void testEval()
     const auto eval = Teuchos::rcp(
         new ClosureModel::
             HartmannProblemExact<EvalType, panzer::Traits, num_space_dim>(
-                ir, closure_params, user_params));
+                ir, closure_params, ext_mag_field_param_list));
 
     // Register
     test_fixture.registerEvaluator<EvalType>(eval);
@@ -109,10 +109,9 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Inductionless MHD Equation", true);
-    test_fixture.user_params.set("Build Temperature Equation", false);
     const Teuchos::Array<double> ext_magn_vct(3);
-    test_fixture.user_params.set("External Magnetic Field", ext_magn_vct);
+    test_fixture.user_params.sublist("External Magnetic Field Parameters")
+        .set("External Magnetic Field Value", ext_magn_vct);
     test_fixture.model_params.set("Hartmann Solution Half-Width Channel", 2.5)
         .set("Kinematic Viscosity", 0.1)
         .set("Electrical Conductivity", 3.5)
@@ -120,8 +119,8 @@ void testFactory()
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0)
-        .set("Electrical conductivity", 3.5);
+        .set("Electrical conductivity", 3.5)
+        .set("Build Inductionless MHD Equation", true);
     test_fixture.type_name = "HartmannProblemExact";
     test_fixture.eval_name = "Exact Solution Hartmann Problem";
     test_fixture.template buildAndTest<

@@ -17,33 +17,36 @@ namespace ClosureModel
 template<class EvalType, class Traits>
 ExternalMagneticField<EvalType, Traits>::ExternalMagneticField(
     const panzer::IntegrationRule& ir,
-    const Teuchos::ParameterList& user_params)
+    const Teuchos::ParameterList& ext_mag_field_param_list)
     : _ir_degree(ir.cubature_degree)
     , _ext_magn_type(ExtMagnType::constant)
 {
     // Get external magnetic vector type
-    if (user_params.isType<std::string>("External Magnetic Field Type"))
+    if (ext_mag_field_param_list.isType<std::string>("External Magnetic Field "
+                                                     "Type"))
     {
         const auto type_validator = Teuchos::rcp(
             new Teuchos::StringToIntegralParameterEntryValidator<ExtMagnType>(
-                Teuchos::tuple<std::string>("constant", "toroidal"),
+                Teuchos::tuple<std::string>("constant", "toroidal", "x_tanh"),
                 "constant"));
         _ext_magn_type = type_validator->getIntegralValue(
-            user_params.get<std::string>("External Magnetic Field Type"));
+            ext_mag_field_param_list.get<std::string>("External Magnetic "
+                                                      "Field Type"));
     }
 
     // Get external magnetic vector value
     if (_ext_magn_type == ExtMagnType::constant)
     {
-        const auto ext_magn_vct = user_params.get<Teuchos::Array<double>>(
-            "External Magnetic Field Value");
+        const auto ext_magn_vct
+            = ext_mag_field_param_list.get<Teuchos::Array<double>>(
+                "External Magnetic Field Value");
 
         const auto zero_array = Teuchos::Array<double>(field_size, 0.0);
         const auto d_ext_magn_vct_dt
-            = user_params.isType<Teuchos::Array<double>>(
+            = ext_mag_field_param_list.isType<Teuchos::Array<double>>(
                   "External Magnetic Field Time Rate of "
                   "Change")
-                  ? user_params.get<Teuchos::Array<double>>(
+                  ? ext_mag_field_param_list.get<Teuchos::Array<double>>(
                         "External Magnetic Field Time Rate "
                         "of Change")
                   : zero_array;
@@ -57,7 +60,21 @@ ExternalMagneticField<EvalType, Traits>::ExternalMagneticField(
     else if (_ext_magn_type == ExtMagnType::toroidal)
     {
         _toroidal_field_magn
-            = user_params.get<double>("Toroidal Field Magnitude");
+            = ext_mag_field_param_list.get<double>("Toroidal Field Magnitude");
+    }
+    else if (_ext_magn_type == ExtMagnType::x_tanh)
+    {
+        _offset = ext_mag_field_param_list.get<double>(
+            "External Magnetic Field Distribution Offset");
+        _curve_coef = ext_mag_field_param_list.get<double>(
+            "External Magnetic Field Distribution Curvature Coefficient");
+
+        const auto ext_magn_vct
+            = ext_mag_field_param_list.get<Teuchos::Array<double>>(
+                "External Magnetic Field Value");
+
+        for (int dim = 0; dim < field_size; ++dim)
+            _ext_magn_vct[dim] = ext_magn_vct[dim];
     }
 
     // Evaluated fields
@@ -95,7 +112,8 @@ KOKKOS_INLINE_FUNCTION void ExternalMagneticField<EvalType, Traits>::operator()(
 {
     const int cell = team.league_rank();
     const int num_point = _ext_magn_field[0].extent(1);
-    using std::sqrt;
+    using Kokkos::sqrt;
+    using Kokkos::tanh;
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
@@ -122,6 +140,16 @@ KOKKOS_INLINE_FUNCTION void ExternalMagneticField<EvalType, Traits>::operator()(
                                * _ip_coords(cell, point, 1));
 
                 _ext_magn_field[2](cell, point) = 0.0;
+            }
+            else if (_ext_magn_type == ExtMagnType::x_tanh)
+            {
+                for (int dim = 0; dim < field_size; ++dim)
+                    _ext_magn_field[dim](cell, point)
+                        = _ext_magn_vct[dim]
+                          * (1
+                             - tanh(_offset
+                                    - _ip_coords(cell, point, 0) / _curve_coef))
+                          / 2;
             }
         });
 }

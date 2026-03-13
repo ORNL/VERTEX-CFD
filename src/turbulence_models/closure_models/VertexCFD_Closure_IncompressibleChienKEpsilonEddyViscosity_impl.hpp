@@ -15,7 +15,7 @@ IncompressibleChienKEpsilonEddyViscosity<EvalType, Traits>::
     IncompressibleChienKEpsilonEddyViscosity(
         const panzer::IntegrationRule& ir,
         const Teuchos::RCP<panzer::GlobalData>& global_data,
-        const Teuchos::ParameterList& user_params)
+        const Teuchos::ParameterList& turb_params)
     : _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
     , _turb_dissipation_rate("turb_dissipation_rate", ir.dl_scalar)
     , _nu("kinematic_viscosity", ir.dl_scalar)
@@ -26,8 +26,7 @@ IncompressibleChienKEpsilonEddyViscosity<EvalType, Traits>::
     , _num_grad_dim(ir.spatial_dimension)
     , _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
 {
-    _area = user_params.sublist("Turbulence Parameters")
-                .get<double>("Boundary Surface Area");
+    _area = turb_params.get<double>("Boundary Surface Area");
 
     // Add dependent fields
     this->addDependentField(_turb_kinetic_energy);

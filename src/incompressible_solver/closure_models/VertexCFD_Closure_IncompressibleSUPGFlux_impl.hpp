@@ -13,7 +13,7 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleSUPGFlux<EvalType, Traits, NumSpaceDim>::IncompressibleSUPGFlux(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
+    const Teuchos::ParameterList& fluid_params,
     const Teuchos::ParameterList& closure_params)
     : _continuity_flux("VISCOUS_FLUX_continuity", ir.dl_vector)
     , _energy_flux("VISCOUS_FLUX_energy", ir.dl_vector)
@@ -33,7 +33,7 @@ IncompressibleSUPGFlux<EvalType, Traits, NumSpaceDim>::IncompressibleSUPGFlux(
     , _temperature("temperature", ir.dl_scalar)
     , _energy_source(_source_prefix + "_SOURCE_energy", ir.dl_scalar)
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
 {
     // Add contributed fields
     this->addContributedField(_continuity_flux);

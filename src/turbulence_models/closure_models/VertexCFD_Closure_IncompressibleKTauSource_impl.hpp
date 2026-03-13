@@ -16,7 +16,7 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleKTauSource<EvalType, Traits, NumSpaceDim>::IncompressibleKTauSource(
     const panzer::IntegrationRule& ir,
-    const Teuchos::ParameterList& user_params)
+    const Teuchos::ParameterList& turb_params)
     : _nu("kinematic_viscosity", ir.dl_scalar)
     , _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
     , _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
@@ -48,46 +48,26 @@ IncompressibleKTauSource<EvalType, Traits, NumSpaceDim>::IncompressibleKTauSourc
                ir.dl_scalar)
 {
     // Check for user-defined coefficients or parameters
-    if (user_params.isSublist("Turbulence Parameters"))
-    {
-        Teuchos::ParameterList turb_list
-            = user_params.sublist("Turbulence Parameters");
+    if (turb_params.isType<double>("beta_star"))
+        _beta_star = turb_params.get<double>("beta_star");
 
-        if (turb_list.isType<double>("beta_star"))
-        {
-            _beta_star = turb_list.get<double>("beta_star");
-        }
+    if (turb_params.isType<double>("gamma"))
+        _gamma = turb_params.get<double>("gamma");
 
-        if (turb_list.isType<double>("gamma"))
-        {
-            _gamma = turb_list.get<double>("gamma");
-        }
+    if (turb_params.isType<double>("beta_0"))
+        _beta_0 = turb_params.get<double>("beta_0");
 
-        if (turb_list.isType<double>("beta_0"))
-        {
-            _beta_0 = turb_list.get<double>("beta_0");
-        }
+    if (turb_params.isType<double>("sigma_d"))
+        _sigma_d = turb_params.get<double>("sigma_d");
 
-        if (turb_list.isType<double>("sigma_d"))
-        {
-            _sigma_d = turb_list.get<double>("sigma_d");
-        }
+    if (turb_params.isType<double>("sigma_t"))
+        _sigma_t = turb_params.get<double>("sigma_t");
 
-        if (turb_list.isType<double>("sigma_t"))
-        {
-            _sigma_t = turb_list.get<double>("sigma_t");
-        }
+    if (turb_params.isType<bool>("Limit Production Term"))
+        _limit_production = turb_params.get<bool>("Limit Production Term");
 
-        if (turb_list.isType<bool>("Limit Production Term"))
-        {
-            _limit_production = turb_list.get<bool>("Limit Production Term");
-        }
-
-        if (turb_list.isType<bool>("Limit Destruction Term"))
-        {
-            _limit_destruction = turb_list.get<bool>("Limit Destruction Term");
-        }
-    }
+    if (turb_params.isType<bool>("Limit Destruction Term"))
+        _limit_destruction = turb_params.get<bool>("Limit Destruction Term");
 
     // Add dependent fields
     this->addDependentField(_nu);

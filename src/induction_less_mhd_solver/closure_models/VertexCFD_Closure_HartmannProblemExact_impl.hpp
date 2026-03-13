@@ -19,7 +19,7 @@ template<class EvalType, class Traits, int NumSpaceDim>
 HartmannProblemExact<EvalType, Traits, NumSpaceDim>::HartmannProblemExact(
     const panzer::IntegrationRule& ir,
     const Teuchos::ParameterList& closure_params,
-    const Teuchos::ParameterList& user_params)
+    const Teuchos::ParameterList& ext_mag_field_param_list)
     : _exact_lagrange_pressure("Exact_lagrange_pressure", ir.dl_scalar)
     , _exact_elec_pot("Exact_electric_potential", ir.dl_scalar)
     , _nu(closure_params.get<double>("Kinematic Viscosity"))
@@ -37,7 +37,8 @@ HartmannProblemExact<EvalType, Traits, NumSpaceDim>::HartmannProblemExact(
 
     // Get external magnetic vector
     const auto ext_magn_vct
-        = user_params.get<Teuchos::Array<double>>("External Magnetic Field");
+        = ext_mag_field_param_list.get<Teuchos::Array<double>>(
+            "External Magnetic Field Value");
     for (int dim = 0; dim < 3; ++dim)
     {
         _B += ext_magn_vct[dim] * ext_magn_vct[dim];

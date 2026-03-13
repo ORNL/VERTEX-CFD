@@ -99,10 +99,8 @@ void testEval(const bool limited)
     const auto& ir = *test_fixture.ir;
 
     // Create parameter list for user-defined constants
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters")
-        .sublist("K-Omega Parameters")
-        .set<bool>("Limit Production Term", limited)
+    Teuchos::ParameterList turb_params;
+    turb_params.set<bool>("Limit Production Term", limited)
         .set<double>("beta_star", 0.1)
         .set<double>("gamma", 0.5)
         .set<double>("beta_0", 0.071)
@@ -116,7 +114,7 @@ void testEval(const bool limited)
     auto eval = Teuchos::rcp(
         new ClosureModel::
             IncompressibleKOmegaSource<EvalType, panzer::Traits, NumSpaceDim>(
-                ir, user_params));
+                ir, turb_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_k_source);
     test_fixture.registerTestField<EvalType>(eval->_w_source);

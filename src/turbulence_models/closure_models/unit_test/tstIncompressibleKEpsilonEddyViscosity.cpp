@@ -1,7 +1,7 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
+
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKEpsilonEddyViscosity.hpp"
 
 #include <gtest/gtest.h>

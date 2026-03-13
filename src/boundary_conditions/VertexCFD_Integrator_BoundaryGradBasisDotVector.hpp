@@ -66,6 +66,13 @@ class BoundaryGradBasisDotVector
   private:
     Teuchos::RCP<Teuchos::ParameterList> getValidParameters() const;
 
+    enum TmpVars
+    {
+        REUSE,
+        TMP_VAL,
+        NUM_TMPS
+    };
+
     using ScalarT = typename EvalType::ScalarT;
     using scratch_view
         = Kokkos::View<ScalarT*,

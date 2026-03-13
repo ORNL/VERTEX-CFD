@@ -25,7 +25,8 @@ class ViscousGradient : public panzer::EvaluatorWithBaseImpl<Traits>,
     using scalar_type = typename EvalType::ScalarT;
 
     ViscousGradient(const panzer::IntegrationRule& ir,
-                    const std::string& dof_name);
+                    const std::string& dof_name,
+                    const double penalty_factor);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
@@ -39,6 +40,7 @@ class ViscousGradient : public panzer::EvaluatorWithBaseImpl<Traits>,
 
   private:
     int _num_space_dim;
+    double _penalty_factor;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _dof;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _bnd_dof;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _penalty_param;

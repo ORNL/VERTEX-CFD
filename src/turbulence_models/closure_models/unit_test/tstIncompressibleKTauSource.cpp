@@ -1,6 +1,5 @@
 #include "VertexCFD_EvaluatorTestHarness.hpp"
 #include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKTauSource.hpp"
 
 #include <gtest/gtest.h>
@@ -103,9 +102,8 @@ void testEval(const bool limited)
     const auto& ir = *test_fixture.ir;
 
     // Create parameter list for user-defined constants
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters")
-        .set<bool>("Limit Production Term", limited)
+    Teuchos::ParameterList turb_params;
+    turb_params.set<bool>("Limit Production Term", limited)
         .set<bool>("Limit Destruction Term", limited);
 
     // Eval dependencies
@@ -116,7 +114,7 @@ void testEval(const bool limited)
     auto eval = Teuchos::rcp(
         new ClosureModel::
             IncompressibleKTauSource<EvalType, panzer::Traits, NumSpaceDim>(
-                ir, user_params));
+                ir, turb_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_k_source);
     test_fixture.registerTestField<EvalType>(eval->_t_source);

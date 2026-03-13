@@ -35,6 +35,7 @@ class FullInductionMHDFactory : public panzer::EquationSetFactory
 
         // Call the macro for each equation set and check that we found it.
         PANZER_BUILD_EQSET_OBJECTS("FullInductionMHD", FullInductionMHD);
+        PANZER_BUILD_EQSET_OBJECTS("SolidFullInductionMHD", FullInductionMHD);
 
         // Return the equation set
         return found ? eq_set : Teuchos::null;

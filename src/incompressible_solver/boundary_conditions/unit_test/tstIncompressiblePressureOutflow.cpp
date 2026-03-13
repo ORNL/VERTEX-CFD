@@ -1,6 +1,6 @@
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+
 #include "incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressiblePressureOutflow.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-#include <VertexCFD_EvaluatorTestHarness.hpp>
 
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
@@ -144,16 +144,8 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
     test_fixture.registerEvaluator<EvalType>(dep_eval);
 
     // Equation of state
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.375);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", build_temp_equ);
-    if (build_temp_equ)
-    {
-        fluid_prop_list.set("Thermal conductivity", 0.5);
-        fluid_prop_list.set("Specific heat capacity", 0.6);
-    }
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    Teuchos::ParameterList fluid_param_list;
+    fluid_param_list.set("Build Temperature Equation", build_temp_equ);
 
     // Create the param list to initialize the evaluator
     Teuchos::ParameterList bc_params;
@@ -164,7 +156,7 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
         new BoundaryCondition::IncompressiblePressureOutflow<EvalType,
                                                              panzer::Traits,
                                                              num_space_dim>(
-            *test_fixture.ir, fluid_prop, bc_params, is_edac));
+            *test_fixture.ir, fluid_param_list, bc_params, is_edac));
     test_fixture.registerEvaluator<EvalType>(press_eval);
 
     // Add required test fields.

@@ -14,7 +14,7 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleLiftDrag<EvalType, Traits, NumSpaceDim>::IncompressibleLiftDrag(
     const panzer::IntegrationRule& ir,
-    const Teuchos::ParameterList& user_params,
+    const Teuchos::ParameterList& closure_params,
     const bool use_turbulence_model)
     : _normals("Side Normal", ir.dl_vector)
     , _lagrange_pressure("lagrange_pressure", ir.dl_scalar)
@@ -22,10 +22,10 @@ IncompressibleLiftDrag<EvalType, Traits, NumSpaceDim>::IncompressibleLiftDrag(
     , _nu("kinematic_viscosity", ir.dl_scalar)
     , _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
     , _use_turbulence_model(use_turbulence_model)
-    , _use_compressible_formula(user_params.isType<bool>("Compressible "
-                                                         "Formula")
-                                    ? user_params.get<bool>("Compressible "
+    , _use_compressible_formula(closure_params.isType<bool>("Compressible "
                                                             "Formula")
+                                    ? closure_params.get<bool>("Compressible "
+                                                               "Formula")
                                     : false)
 {
     // Add evaluated field

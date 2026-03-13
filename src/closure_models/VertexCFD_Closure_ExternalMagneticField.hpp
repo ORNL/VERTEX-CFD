@@ -29,7 +29,7 @@ class ExternalMagneticField : public panzer::EvaluatorWithBaseImpl<Traits>,
     static constexpr int field_size = 3;
 
     ExternalMagneticField(const panzer::IntegrationRule& ir,
-                          const Teuchos::ParameterList& user_params);
+                          const Teuchos::ParameterList& ext_mag_field_param_list);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;
@@ -47,6 +47,8 @@ class ExternalMagneticField : public panzer::EvaluatorWithBaseImpl<Traits>,
     Kokkos::Array<double, field_size> _ext_magn_vct;
     Kokkos::Array<double, field_size> _d_ext_magn_vct_dt;
     double _toroidal_field_magn;
+    double _offset;
+    double _curve_coef;
     int _ir_degree;
     int _ir_index;
     double _time;
@@ -54,7 +56,8 @@ class ExternalMagneticField : public panzer::EvaluatorWithBaseImpl<Traits>,
     enum ExtMagnType
     {
         constant,
-        toroidal
+        toroidal,
+        x_tanh
     };
 
     ExtMagnType _ext_magn_type;

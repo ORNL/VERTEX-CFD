@@ -1,7 +1,6 @@
 #include "VertexCFD_EvaluatorTestHarness.hpp"
 
 #include "incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleWallFunctionStress.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <Phalanx_Evaluator_Derived.hpp>
 #include <Phalanx_Evaluator_WithBaseImpl.hpp>

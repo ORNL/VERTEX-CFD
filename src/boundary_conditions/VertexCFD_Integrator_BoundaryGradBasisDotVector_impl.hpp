@@ -123,7 +123,18 @@ BoundaryGradBasisDotVector<EvalType, Traits>::operator()(
     const int num_qp(_vector.extent(1));
     const int num_dim(_vector.extent(2));
     const int num_bases(_grad_basis.extent(1));
-    ScalarT n_dot_grad;
+    const int fad_size = Kokkos::dimension_scalar(_field.get_view());
+    scratch_view tmp;
+    if (Sacado::IsADType<ScalarT>::value)
+    {
+        tmp = scratch_view(team.team_shmem(), TmpVars::NUM_TMPS, fad_size);
+    }
+    else
+    {
+        tmp = scratch_view(team.team_shmem(), TmpVars::NUM_TMPS);
+    }
+
+    auto&& n_dot_grad = tmp(TmpVars::REUSE);
     for (int qp = 0; qp < num_qp; ++qp)
     {
         for (int basis = 0; basis < num_bases; ++basis)
@@ -152,19 +163,20 @@ BoundaryGradBasisDotVector<EvalType, Traits>::operator()(
     }
 
     // Perform integration with the given number of field multipliers.
-    ScalarT tmp;
+    auto&& tmp_value = tmp(TmpVars::TMP_VAL);
     if (NUM_FIELD_MULT == 0)
     {
         for (int qp = 0; qp < num_qp; ++qp)
         {
             for (int dim = 0; dim < num_dim; ++dim)
             {
-                tmp = _multiplier * _vector(cell, qp, dim);
+                tmp_value = _multiplier * _vector(cell, qp, dim);
                 Kokkos::parallel_for(
                     Kokkos::TeamThreadRange(team, 0, num_bases),
                     [&](const int& basis) {
                         _field(cell, basis)
-                            += _boundary_grad_basis(cell, basis, qp, dim) * tmp;
+                            += _boundary_grad_basis(cell, basis, qp, dim)
+                               * tmp_value;
                     });
             }
         }
@@ -175,13 +187,14 @@ BoundaryGradBasisDotVector<EvalType, Traits>::operator()(
         {
             for (int dim = 0; dim < num_dim; ++dim)
             {
-                tmp = _multiplier * _vector(cell, qp, dim)
-                      * _kokkos_field_mults(0)(cell, qp);
+                tmp_value = _multiplier * _vector(cell, qp, dim)
+                            * _kokkos_field_mults(0)(cell, qp);
                 Kokkos::parallel_for(
                     Kokkos::TeamThreadRange(team, 0, num_bases),
                     [&](const int& basis) {
                         _field(cell, basis)
-                            += _boundary_grad_basis(cell, basis, qp, dim) * tmp;
+                            += _boundary_grad_basis(cell, basis, qp, dim)
+                               * tmp_value;
                     });
             }
         }
@@ -191,17 +204,20 @@ BoundaryGradBasisDotVector<EvalType, Traits>::operator()(
         const int num_field_mults(_kokkos_field_mults.extent(0));
         for (int qp = 0; qp < num_qp; ++qp)
         {
-            ScalarT field_mults_total(1);
+            auto&& field_mults_total = tmp(TmpVars::REUSE);
+            field_mults_total = 1;
             for (int fm = 0; fm < num_field_mults; ++fm)
                 field_mults_total *= _kokkos_field_mults(fm)(cell, qp);
             for (int dim = 0; dim < num_dim; ++dim)
             {
-                tmp = _multiplier * _vector(cell, qp, dim) * field_mults_total;
+                tmp_value = _multiplier * _vector(cell, qp, dim)
+                            * field_mults_total;
                 Kokkos::parallel_for(
                     Kokkos::TeamThreadRange(team, 0, num_bases),
                     [&](const int& basis) {
                         _field(cell, basis)
-                            += _boundary_grad_basis(cell, basis, qp, dim) * tmp;
+                            += _boundary_grad_basis(cell, basis, qp, dim)
+                               * tmp_value;
                     });
             }
         }
@@ -226,17 +242,17 @@ BoundaryGradBasisDotVector<EvalType, Traits>::operator()(
     scratch_view tmp_field;
     if (Sacado::IsADType<ScalarT>::value)
     {
-        tmp = scratch_view(team.team_shmem(), 1, fad_size);
+        tmp = scratch_view(team.team_shmem(), TmpVars::NUM_TMPS, fad_size);
         tmp_field = scratch_view(team.team_shmem(), num_bases, fad_size);
     }
     else
     {
-        tmp = scratch_view(team.team_shmem(), 1);
+        tmp = scratch_view(team.team_shmem(), TmpVars::NUM_TMPS);
         tmp_field = scratch_view(team.team_shmem(), num_bases);
     }
 
     // Create the boundary gradients.
-    ScalarT n_dot_grad;
+    auto&& n_dot_grad = tmp(TmpVars::REUSE);
     for (int qp = 0; qp < num_qp; ++qp)
     {
         for (int basis = 0; basis < num_bases; ++basis)
@@ -261,6 +277,7 @@ BoundaryGradBasisDotVector<EvalType, Traits>::operator()(
                          [&](const int& basis) { tmp_field(basis) = 0.0; });
 
     // Perform integration with the given number of fields.
+    auto&& tmp_value = tmp(TmpVars::TMP_VAL);
     if (NUM_FIELD_MULT == 0)
     {
         for (int qp = 0; qp < num_qp; ++qp)
@@ -268,13 +285,13 @@ BoundaryGradBasisDotVector<EvalType, Traits>::operator()(
             for (int dim = 0; dim < num_dim; ++dim)
             {
                 team.team_barrier();
-                tmp(0) = _multiplier * _vector(cell, qp, dim);
+                tmp_value = _multiplier * _vector(cell, qp, dim);
                 Kokkos::parallel_for(
                     Kokkos::TeamThreadRange(team, 0, num_bases),
                     [&](const int& basis) {
                         tmp_field(basis)
                             += _boundary_grad_basis(cell, basis, qp, dim)
-                               * tmp(0);
+                               * tmp_value;
                     });
             }
         }
@@ -286,14 +303,14 @@ BoundaryGradBasisDotVector<EvalType, Traits>::operator()(
             for (int dim = 0; dim < num_dim; ++dim)
             {
                 team.team_barrier();
-                tmp(0) = _multiplier * _vector(cell, qp, dim)
-                         * _kokkos_field_mults(0)(cell, qp);
+                tmp_value = _multiplier * _vector(cell, qp, dim)
+                            * _kokkos_field_mults(0)(cell, qp);
                 Kokkos::parallel_for(
                     Kokkos::TeamThreadRange(team, 0, num_bases),
                     [&](const int& basis) {
                         tmp_field(basis)
                             += _boundary_grad_basis(cell, basis, qp, dim)
-                               * tmp(0);
+                               * tmp_value;
                     });
             }
         }
@@ -303,20 +320,21 @@ BoundaryGradBasisDotVector<EvalType, Traits>::operator()(
         const int num_field_mults(_kokkos_field_mults.extent(0));
         for (int qp = 0; qp < num_qp; ++qp)
         {
-            ScalarT field_mults_total(1); // need shared mem here
+            auto&& field_mults_total = tmp(TmpVars::REUSE);
+            field_mults_total = 1;
             for (int fm = 0; fm < num_field_mults; ++fm)
                 field_mults_total *= _kokkos_field_mults(fm)(cell, qp);
             for (int dim = 0; dim < num_dim; ++dim)
             {
                 team.team_barrier();
-                tmp(0) = _multiplier * _vector(cell, qp, dim)
-                         * field_mults_total;
+                tmp_value = _multiplier * _vector(cell, qp, dim)
+                            * field_mults_total;
                 Kokkos::parallel_for(
                     Kokkos::TeamThreadRange(team, 0, num_bases),
                     [&](const int& basis) {
                         tmp_field(basis)
                             += _boundary_grad_basis(cell, basis, qp, dim)
-                               * tmp(0);
+                               * tmp_value;
                     });
             }
         }
@@ -353,11 +371,11 @@ void BoundaryGradBasisDotVector<EvalType, Traits>::evaluateFields(
         if (Sacado::IsADType<ScalarT>::value)
         {
             const int fad_size = Kokkos::dimension_scalar(_field.get_view());
-            bytes = scratch_view::shmem_size(1, fad_size)
+            bytes = scratch_view::shmem_size(3, fad_size)
                     + scratch_view::shmem_size(_grad_basis.extent(1), fad_size);
         }
         else
-            bytes = scratch_view::shmem_size(1)
+            bytes = scratch_view::shmem_size(3)
                     + scratch_view::shmem_size(_grad_basis.extent(1));
 
         // The following if-block is for the sake of optimization depending on
@@ -393,6 +411,17 @@ void BoundaryGradBasisDotVector<EvalType, Traits>::evaluateFields(
     }
     else
     {
+        int bytes;
+        if (Sacado::IsADType<ScalarT>::value)
+        {
+            const int fad_size = Kokkos::dimension_scalar(_field.get_view());
+            bytes = scratch_view::shmem_size(3, fad_size);
+        }
+        else
+        {
+            bytes = scratch_view::shmem_size(3);
+        }
+
         // The following if-block is for the sake of optimization depending on
         // the number of field multipliers.  The Kokkos::parallel_fors will
         // loop over the cells in the Workset and execute operator()() above.
@@ -401,7 +430,8 @@ void BoundaryGradBasisDotVector<EvalType, Traits>::evaluateFields(
             auto policy
                 = panzer::HP::inst()
                       .teamPolicy<ScalarT, FieldMultTag<0>, PHX::Device>(
-                          workset.num_cells);
+                          workset.num_cells)
+                      .set_scratch_size(0, Kokkos::PerTeam(bytes));
             Kokkos::parallel_for(this->getName(), policy, *this);
         }
         else if (_field_mults.size() == 1)
@@ -409,7 +439,8 @@ void BoundaryGradBasisDotVector<EvalType, Traits>::evaluateFields(
             auto policy
                 = panzer::HP::inst()
                       .teamPolicy<ScalarT, FieldMultTag<1>, PHX::Device>(
-                          workset.num_cells);
+                          workset.num_cells)
+                      .set_scratch_size(0, Kokkos::PerTeam(bytes));
             Kokkos::parallel_for(this->getName(), policy, *this);
         }
         else
@@ -417,7 +448,8 @@ void BoundaryGradBasisDotVector<EvalType, Traits>::evaluateFields(
             auto policy
                 = panzer::HP::inst()
                       .teamPolicy<ScalarT, FieldMultTag<-1>, PHX::Device>(
-                          workset.num_cells);
+                          workset.num_cells)
+                      .set_scratch_size(0, Kokkos::PerTeam(bytes));
             Kokkos::parallel_for(this->getName(), policy, *this);
         }
     }

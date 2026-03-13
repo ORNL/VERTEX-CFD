@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLELAMINARFLOW_HPP
 #define VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLELAMINARFLOW_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -31,11 +29,10 @@ class IncompressibleLaminarFlow
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleLaminarFlow(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& bc_params,
-        const std::string& continuity_model_name);
+    IncompressibleLaminarFlow(const panzer::IntegrationRule& ir,
+                              const Teuchos::ParameterList& fluid_params,
+                              const Teuchos::ParameterList& bc_params,
+                              const std::string& continuity_model_name);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;

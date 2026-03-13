@@ -11,8 +11,6 @@
 #include "incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleSymmetry.hpp"
 #include "incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleWallFunction.hpp"
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
 #include <Teuchos_ParameterList.hpp>
@@ -30,16 +28,15 @@ class IncompressibleBoundaryStateFactory
     static Teuchos::RCP<PHX::Evaluator<Traits>>
     create(const panzer::IntegrationRule& ir,
            const Teuchos::ParameterList& bc_params,
-           const Teuchos::ParameterList& user_params,
-           const FluidProperties::ConstantFluidProperties& fluid_prop)
+           const Teuchos::ParameterList& fluid_params)
     {
         // Space dimension
         constexpr int num_space_dim = NumSpaceDim;
 
         // EDAC vs AC
         const std::string continuity_model_name
-            = user_params.isType<std::string>("Continuity Model")
-                  ? user_params.get<std::string>("Continuity Model")
+            = fluid_params.isType<std::string>("Continuity Model")
+                  ? fluid_params.get<std::string>("Continuity Model")
                   : "AC";
 
         const bool is_edac
@@ -56,7 +53,7 @@ class IncompressibleBoundaryStateFactory
             {
                 state = Teuchos::rcp(
                     new IncompressibleNoSlip<EvalType, Traits, num_space_dim>(
-                        ir, fluid_prop, bc_params, is_edac));
+                        ir, fluid_params, bc_params, is_edac));
                 found_model = true;
             }
 
@@ -64,7 +61,7 @@ class IncompressibleBoundaryStateFactory
             {
                 state = Teuchos::rcp(
                     new IncompressibleDirichlet<EvalType, Traits, num_space_dim>(
-                        ir, fluid_prop, bc_params, is_edac));
+                        ir, fluid_params, bc_params, is_edac));
                 found_model = true;
             }
 
@@ -72,7 +69,7 @@ class IncompressibleBoundaryStateFactory
             {
                 state = Teuchos::rcp(
                     new IncompressiblePressureOutflow<EvalType, Traits, num_space_dim>(
-                        ir, fluid_prop, bc_params, is_edac));
+                        ir, fluid_params, bc_params, is_edac));
                 found_model = true;
             }
 
@@ -80,7 +77,7 @@ class IncompressibleBoundaryStateFactory
             {
                 state = Teuchos::rcp(
                     new IncompressibleFreeSlip<EvalType, Traits, num_space_dim>(
-                        ir, fluid_prop, is_edac));
+                        ir, fluid_params, is_edac));
                 found_model = true;
             }
 
@@ -88,7 +85,7 @@ class IncompressibleBoundaryStateFactory
             {
                 state = Teuchos::rcp(
                     new IncompressibleSymmetry<EvalType, Traits, num_space_dim>(
-                        ir, fluid_prop, is_edac));
+                        ir, fluid_params, is_edac));
                 found_model = true;
             }
 
@@ -96,7 +93,7 @@ class IncompressibleBoundaryStateFactory
             {
                 state = Teuchos::rcp(
                     new IncompressibleRotatingWall<EvalType, Traits, num_space_dim>(
-                        ir, fluid_prop, bc_params, is_edac));
+                        ir, fluid_params, bc_params, is_edac));
                 found_model = true;
             }
 
@@ -104,7 +101,7 @@ class IncompressibleBoundaryStateFactory
             {
                 state = Teuchos::rcp(
                     new IncompressibleLaminarFlow<EvalType, Traits, num_space_dim>(
-                        ir, fluid_prop, bc_params, continuity_model_name));
+                        ir, fluid_params, bc_params, continuity_model_name));
                 found_model = true;
             }
 
@@ -112,7 +109,7 @@ class IncompressibleBoundaryStateFactory
             {
                 state = Teuchos::rcp(
                     new IncompressibleCavityLid<EvalType, Traits, num_space_dim>(
-                        ir, fluid_prop, bc_params, is_edac));
+                        ir, fluid_params, bc_params, is_edac));
                 found_model = true;
             }
 
@@ -120,7 +117,7 @@ class IncompressibleBoundaryStateFactory
             {
                 state = Teuchos::rcp(
                     new IncompressibleWallFunction<EvalType, Traits, num_space_dim>(
-                        ir, fluid_prop, is_edac));
+                        ir, fluid_params, is_edac));
                 found_model = true;
             }
         }

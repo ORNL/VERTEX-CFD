@@ -34,12 +34,8 @@
         <Parameter name="Basis Order" type="int" value="1"/>
         <Parameter name="Integration Order" type="int" value="2"/>
         <Parameter name="Model ID" type="string" value="fluids"/>
-        <Parameter name="Build Viscous Flux" type="bool" value="true"/>
         <Parameter name="Build Temperature Equation" type="bool" value="true"/>
-        <Parameter name="Turbulence Model" type="string" value="Spalart-Allmaras"/>
-        <Parameter name="Build Constant Source" type="bool" value="true"/>
-        <Parameter name="Build Buoyancy Source" type="bool" value="true"/>
-        <Parameter name="Build Inductionless MHD Equation" type="bool" value="true"/>
+        <Parameter name="Turbulence Model Name" type="string" value="Spalart-Allmaras"/>
       </ParameterList> <!-- -->
     </ParameterList> <!-- FluidPhysicsBlock -->
   </ParameterList> <!-- Physics Blocks -->
@@ -49,14 +45,11 @@
     <Parameter name="Output Graph" type="bool" value="false"/>
     <Parameter name="Workset Size" type="int" value="256"/>
     <Parameter name="CFL" type="double" value="1.0"/>
-    <Parameter name="Build Viscous Flux" type="bool" value="true"/>
-    <Parameter name="Build Temperature Equation" type="bool" value="true"/>
-    <Parameter name="Build Inductionless MHD Equation" type="bool" value="true"/>
-    <Parameter name="Turbulence Model" type="string" value="Spalart-Allmaras"/>
     <Parameter name="Wall Names" type="string" value="top,bottom"/>
-    <Parameter name="Build Buoyancy Source" type="bool" value="true"/>
     <Parameter name="Gravity" type="Array(double)" value="{0.0, 0.0, -10.0}"/>
-    <Parameter name="External Magnetic Field Value" type="Array(double)" value="{0.0, 1.0, 0.0}"/>
+    <ParameterList name="External Magnetic Field Parameters">
+      <Parameter name="External Magnetic Field Value" type="Array(double)" value="{0.0, 1.0, 0.0}"/>
+    </ParameterList> <!-- External Magnetic Field Parameters -->
   </ParameterList> <!-- User Data -->
 
   <ParameterList name="Boundary Conditions">
@@ -224,7 +217,13 @@
         <Parameter name="Expansion coefficient" type="double" value="0.014285715"/>
         <Parameter name="Reference temperature" type="double" value="200.0"/>
         <Parameter name="Electrical conductivity" type="double" value="1.0"/>
+        <Parameter name="Build Temperature Equation" type="bool" value="true"/>
+        <Parameter name="Build Buoyancy Source" type="bool" value="true"/>
+        <Parameter name="Build Inductionless MHD Equation" type="bool" value="true"/>
       </ParameterList> <!-- Fluid Properties -->
+      <ParameterList name="Turbulence Parameters">
+        <Parameter name="Turbulence Model Name" type="string" value="Spalart-Allmaras"/>
+      </ParameterList> <!-- Turbulence Parameters -->
       <ParameterList name="DQDT">
         <Parameter name="Type" type="string" value="IncompressibleTimeDerivative"/>
       </ParameterList> <!-- DQDT -->

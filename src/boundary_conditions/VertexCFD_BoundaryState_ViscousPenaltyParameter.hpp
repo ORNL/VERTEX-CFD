@@ -1,14 +1,14 @@
 #ifndef VERTEXCFD_BOUNDARYSTATE_VISCOUSPENALTYPARAMETER_HPP
 #define VERTEXCFD_BOUNDARYSTATE_VISCOUSPENALTYPARAMETER_HPP
 
-#include "Panzer_PureBasis.hpp"
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
+#include <Panzer_IntegrationRule.hpp>
+#include <Panzer_PureBasis.hpp>
 
 #include <Phalanx_Evaluator_Derived.hpp>
-#include <Phalanx_Evaluator_WithBaseImpl.hpp>
-#include <Phalanx_FieldManager.hpp>
-#include <Phalanx_config.hpp>
+#include <Phalanx_KokkosDeviceTypes.hpp>
+#include <Phalanx_MDField.hpp>
 
 #include <Kokkos_Core.hpp>
 
@@ -27,9 +27,7 @@ class ViscousPenaltyParameter : public panzer::EvaluatorWithBaseImpl<Traits>,
     using scalar_type = typename EvalType::ScalarT;
 
     ViscousPenaltyParameter(const panzer::IntegrationRule& ir,
-                            const panzer::PureBasis& basis,
-                            const std::string& dof_name,
-                            const double& penalty);
+                            const panzer::PureBasis& basis);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
                                PHX::FieldManager<Traits>& fm) override;
@@ -46,10 +44,22 @@ class ViscousPenaltyParameter : public panzer::EvaluatorWithBaseImpl<Traits>,
     std::string _basis_name;
     int _num_space_dim;
     int _basis_index;
-    double _penalty;
 
     PHX::MDField<double, panzer::Cell, panzer::BASIS, panzer::Point, panzer::Dim>
         _ip_gradients;
+
+    enum TmpVars
+    {
+        ONE_OVER_H2,
+        NUM_TMPS
+    };
+
+    /// View type for shared memory
+    using scratch_view
+        = Kokkos::View<scalar_type**,
+                       typename PHX::DevLayout<double>::type,
+                       typename PHX::exec_space::scratch_memory_space,
+                       Kokkos::MemoryUnmanaged>;
 };
 
 //---------------------------------------------------------------------------//

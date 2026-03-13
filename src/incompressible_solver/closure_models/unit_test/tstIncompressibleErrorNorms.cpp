@@ -86,14 +86,14 @@ void testEval(const bool solve_temp)
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Create the param list to initialize the evaluator
-    Teuchos::ParameterList user_params;
-    user_params.set("Build Temperature Equation", solve_temp);
+    Teuchos::ParameterList fluid_params;
+    fluid_params.set("Build Temperature Equation", solve_temp);
 
     // Create evaluator.
     const auto eval = Teuchos::rcp(
         new ClosureModel::
             IncompressibleErrorNorms<EvalType, panzer::Traits, num_space_dim>(
-                ir, user_params));
+                ir, fluid_params));
     test_fixture.registerEvaluator<EvalType>(eval);
 
     // Add required test fields.
@@ -231,7 +231,6 @@ void testFactory()
         test_fixture.eval_name = "Incompressible Error Norms 2D";
     else if (num_space_dim == 3)
         test_fixture.eval_name = "Incompressible Error Norms 3D";
-    test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.template buildAndTest<
         ClosureModel::IncompressibleErrorNorms<EvalType, panzer::Traits, num_space_dim>,
         num_space_dim>();

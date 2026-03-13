@@ -142,9 +142,10 @@ SolidFullInductionFactory<EvalType, NumSpaceDim>::buildClosureModels(
 
     // ExternalMagneticField closure, req'd for total
     {
+        // Get external magnetic field parameters from the user params
         auto eval
             = Teuchos::rcp(new ExternalMagneticField<EvalType, panzer::Traits>(
-                *ir, user_params));
+                *ir, user_params.sublist("External Magnetic Field Parameters")));
         evaluators->push_back(eval);
     }
 
@@ -248,6 +249,7 @@ SolidFullInductionFactory<EvalType, NumSpaceDim>::buildClosureModels(
                         "solid_density",
                         closure_params.get<double>("Density Value")));
                 evaluators->push_back(eval_rho);
+                found_model = true;
             }
 
             if (closure_type == "InductionConstantSource")
@@ -294,11 +296,11 @@ SolidFullInductionFactory<EvalType, NumSpaceDim>::buildClosureModels(
                     + closure_name + "/" + closure_type
                     + " failed to build in model id " + model_id + ".\n"
                     "Solid full induction closure models available in Vertex-CFD are:\n"
+                    "ConstantMaterialProperties\n"
                     "InductionConstantSource,\n"
                     "MagneticCorrectionDampingSource,\n"
-                    "VectorFieldDivergence\n"
-                    "AbsVectorFieldDivergence\n"
-                     "\n";
+                    "(Abs)VectorFieldDivergence\n"
+                    "\n";
                 throw std::runtime_error(msg);
             }
         }

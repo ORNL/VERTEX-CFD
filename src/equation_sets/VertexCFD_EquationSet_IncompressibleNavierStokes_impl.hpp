@@ -88,7 +88,7 @@ IncompressibleNavierStokes<EvalType>::IncompressibleNavierStokes(
                                     "K-Tau",
                                     "WALE")));
 
-    valid_parameters.set("Turbulence Model",
+    valid_parameters.set("Turbulence Model Name",
                          "No Turbulence Model",
                          "Turbulence model choice",
                          turbulence_validator);
@@ -121,7 +121,7 @@ IncompressibleNavierStokes<EvalType>::IncompressibleNavierStokes(
     _build_constant_source = params->get<bool>("Build Constant Source", false);
     _build_buoyancy_source = params->get<bool>("Build Buoyancy Source", false);
     _build_viscous_heat = params->get<bool>("Build Viscous Heat", false);
-    _turbulence_model = params->get<std::string>("Turbulence Model");
+    _turbulence_model = params->get<std::string>("Turbulence Model Name");
     _stabilization_method = params->get<std::string>("Stabilization Method");
     _build_godunov_powell_source
         = params->get<bool>("Build Godunov-Powell Source", false);

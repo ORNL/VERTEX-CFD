@@ -6,6 +6,7 @@
 #include "parameters/VertexCFD_ParameterDatabase.hpp"
 
 #include <Panzer_BCStrategy_Factory.hpp>
+#include <Panzer_BCStrategy_Factory_Composite.hpp>
 #include <Panzer_ClosureModel_Factory.hpp>
 #include <Panzer_EquationSet_Factory.hpp>
 #include <Panzer_EquationSet_Factory_Composite.hpp>
@@ -75,6 +76,7 @@ class PhysicsManager
     Teuchos::RCP<panzer::WorksetContainer> _workset_container;
     std::vector<panzer::BC> _boundary_conditions;
     Teuchos::RCP<panzer::BCStrategyFactory> _bc_factory;
+    Teuchos::RCP<panzer::BCFactoryComposite> _bc_factory_comp;
     Teuchos::RCP<panzer::ClosureModelFactory_TemplateManager<panzer::Traits>>
         _cm_factory;
     Teuchos::RCP<panzer::ModelEvaluator<double>> _model_evaluator;

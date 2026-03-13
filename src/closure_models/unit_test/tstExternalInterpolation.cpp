@@ -50,7 +50,15 @@ void testInterpolation()
         = test_fixture.int_values->ip_coordinates.get_static_view();
     auto coordinates = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{},
                                                            ip_coord_view);
-    const double tolerance = 0.15;
+
+// ArborX improved the interpolation implementation past the 2.0.1 release
+#if ARBORX_VERSION_MAJOR >= 2    \
+    && (ARBORX_VERSION_MINOR > 0 \
+        || (ARBORX_VERSION_MINOR == 0 && ARBORX_VERSION_PATCH > 1))
+    const double tolerance = .015;
+#else
+    const double tolerance = .15;
+#endif
     for (std::size_t i = 0; i < coordinates.extent(1); ++i)
         EXPECT_NEAR(
             sin(4.0 * coordinates(0, i, 0)) + sin(2.0 * coordinates(0, i, 1)),
@@ -58,10 +66,20 @@ void testInterpolation()
             tolerance)
             << " coordinates (" << coordinates(0, i, 0) << ','
             << coordinates(0, i, 1) << ')';
+
+#if ARBORX_VERSION_MAJOR >= 2    \
+    && (ARBORX_VERSION_MINOR > 0 \
+        || (ARBORX_VERSION_MINOR == 0 && ARBORX_VERSION_PATCH > 1))
+    EXPECT_NEAR(fieldValue(fv_scalar_field, 0, 0), 0.9774091503117741, 1.e-12);
+    EXPECT_NEAR(fieldValue(fv_scalar_field, 0, 1), 1.7340436324852422, 1.e-12);
+    EXPECT_NEAR(fieldValue(fv_scalar_field, 0, 2), 0.3986279754566450, 1.e-12);
+    EXPECT_NEAR(fieldValue(fv_scalar_field, 0, 3), 1.1569758030062278, 1.e-12);
+#else
     EXPECT_NEAR(fieldValue(fv_scalar_field, 0, 0), 1.1147379340872794, 1.e-12);
     EXPECT_NEAR(fieldValue(fv_scalar_field, 0, 1), 1.8606353374168845, 1.e-12);
     EXPECT_NEAR(fieldValue(fv_scalar_field, 0, 2), 0.3990041504336132, 1.e-12);
     EXPECT_NEAR(fieldValue(fv_scalar_field, 0, 3), 1.1569638890895977, 1.e-12);
+#endif
 }
 
 // Check timestep selection
@@ -92,6 +110,15 @@ void testTimestep()
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_scalar_field);
 
+// ArborX improved the interpolation implementation past the 2.0.1 release
+#if ARBORX_VERSION_MAJOR >= 2    \
+    && (ARBORX_VERSION_MINOR > 0 \
+        || (ARBORX_VERSION_MINOR == 0 && ARBORX_VERSION_PATCH > 1))
+    const double tolerance = 2.e-8;
+#else
+    const double tolerance = 8.e-3;
+#endif
+
     // The test file has time steps 0., 0.2, 0.5, 0.7 we expect to choose the
     // closest
     std::vector<double> time_steps;
@@ -116,7 +143,7 @@ void testTimestep()
             Kokkos::HostSpace{}, ip_coord_view);
         for (int j = 0; j < 4; ++j)
             EXPECT_NEAR(
-                fieldValue(fv_scalar_field, 0, j), expected_time[i], 8.e-3);
+                fieldValue(fv_scalar_field, 0, j), expected_time[i], tolerance);
     }
 
     // Test with shuffled time
@@ -138,7 +165,7 @@ void testTimestep()
             Kokkos::HostSpace{}, ip_coord_view);
         for (int j = 0; j < 4; ++j)
             EXPECT_NEAR(
-                fieldValue(fv_scalar_field, 0, j), expected_time[i], 8.e-3);
+                fieldValue(fv_scalar_field, 0, j), expected_time[i], tolerance);
     }
 }
 

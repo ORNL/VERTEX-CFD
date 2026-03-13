@@ -78,6 +78,11 @@ class FullInductionConducting : public panzer::EvaluatorWithBaseImpl<Traits>,
 
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _resistivity;
 
+    using scratch_view_eta
+        = Kokkos::View<scalar_type*,
+                       typename PHX::DevLayout<scalar_type>::type,
+                       typename PHX::exec_space::scratch_memory_space,
+                       Kokkos::MemoryUnmanaged>;
     using scratch_view_B
         = Kokkos::View<scalar_type*,
                        typename PHX::DevLayout<scalar_type>::type,

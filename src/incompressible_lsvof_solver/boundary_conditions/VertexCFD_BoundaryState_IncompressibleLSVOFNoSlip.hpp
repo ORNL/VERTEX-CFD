@@ -32,6 +32,7 @@ class IncompressibleLSVOFNoSlip
 
     IncompressibleLSVOFNoSlip(const panzer::IntegrationRule& ir,
                               const int& num_lsvof_dofs,
+                              const std::string& lsvof_model_name,
                               const std::string& continuity_model_name,
                               const bool& build_mom_equ);
 
@@ -63,6 +64,8 @@ class IncompressibleLSVOFNoSlip
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, PhaseIndex>
         _boundary_alphas;
 
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _boundary_phi;
+
   private:
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _lagrange_pressure;
 
@@ -80,6 +83,15 @@ class IncompressibleLSVOFNoSlip
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, PhaseIndex>
         _alphas;
 
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _phi;
+
+    enum LSVOFModelType
+    {
+        VOF,
+        CLS
+    };
+
+    LSVOFModelType _lsvof_model_type;
     bool _is_edac;
     bool _build_mom_equ;
 };

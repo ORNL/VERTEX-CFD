@@ -1,0 +1,309 @@
+<ParameterList>
+
+  <ParameterList name="Mesh">
+    <Parameter name="Mesh Input Type" type="string" value="Inline"/>
+    <ParameterList name="Inline">
+      <Parameter name="Element Type" type="string" value="Hex8"/>
+      <ParameterList name="Mesh">
+        <Parameter name="X Blocks" type="int" value="1"/>
+        <Parameter name="Y Blocks" type="int" value="1"/>
+        <Parameter name="Z Blocks" type="int" value="1"/>
+        <Parameter name="X Elements" type="int" value="45"/>
+        <Parameter name="Y Elements" type="int" value="15"/>
+        <Parameter name="Z Elements" type="int" value="150"/>
+        <Parameter name="X0" type="double" value="0.0"/>
+        <Parameter name="Y0" type="double" value="0.0"/>
+        <Parameter name="Z0" type="double" value="0.0"/>
+        <Parameter name="Xf" type="double" value="3.0"/>
+        <Parameter name="Yf" type="double" value="1.0"/>
+        <Parameter name="Zf" type="double" value="10.0"/>
+        <ParameterList name="Periodic BCs">
+          <Parameter name="Count" type="int" value="3"/>
+          <Parameter name="Periodic Condition 1" type="string" value="yz-all 1e-8: left;right"/>
+          <Parameter name="Periodic Condition 2" type="string" value="xy-all 1e-8: front;back"/>
+          <Parameter name="Periodic Condition 3" type="string" value="xz-all 1e-8: top;bottom"/>
+        </ParameterList> <!-- Periodic BCs -->
+      </ParameterList> <!-- Mesh -->
+    </ParameterList> <!-- Inline -->
+  </ParameterList> <!-- Mesh -->
+
+  <ParameterList name="Solution Output">
+    <Parameter name="Exodus Output File" type="string" value="simple_box_3d_inconsistent_ir_solution.exo"/>
+    <Parameter name="Exodus Write Frequency" type="int" value="20"/>
+  </ParameterList> <!-- Solution Output -->
+
+  <ParameterList name="Write Restart">
+    <Parameter name="Write Restart" type="bool" value="false"/>
+    <Parameter name="Restart File Prefix" type="string" value="simple_box_3d_inconsistent_ir"/>
+    <Parameter name="Restart Write Frequency" type="int" value="500"/>
+  </ParameterList> <!-- Write Restart -->
+
+  <ParameterList name="Read Restart">
+    <Parameter name="Read Restart" type="bool" value="false"/>
+    <Parameter name="Restart Data File Name" type="string" value="simple_box_3d_inconsistent_ir.restart.data"/>
+    <Parameter name="Restart DOF Map File Name" type="string" value="simple_box_3d_inconsistent_ir.restart.dofmap"/>
+  </ParameterList> <!-- Read Restart -->
+
+  <ParameterList name="Block ID to Physics ID Mapping">
+    <Parameter name="eblock-0_0_0" type="string" value="FluidPhysicsBlock"/>
+  </ParameterList> <!-- Block ID to Physics ID Mapping -->
+
+  <ParameterList name="Physics Blocks">
+    <ParameterList name="FluidPhysicsBlock">
+      <ParameterList>
+        <Parameter name="Type" type="string" value="IncompressibleNavierStokes"/>
+        <Parameter name="Basis Order" type="int" value="1"/>
+        <Parameter name="Integration Order" type="int" value="2"/>
+        <Parameter name="Model ID" type="string" value="fluids"/>
+        <Parameter name="Build Constant Source" type="bool" value="true"/>
+      </ParameterList> <!-- -->
+      <ParameterList>
+        <Parameter name="Type" type="string" value="RAD"/>
+        <Parameter name="Basis Order" type="int" value="1"/>
+        <Parameter name="Integration Order" type="int" value="3"/>
+        <Parameter name="Model ID" type="string" value="species"/>
+        <Parameter name="Number of Species" type="int" value="3"/>
+        <Parameter name="Build Advection" type="bool" value="true"/>
+        <Parameter name="Build Reaction Bateman Source" type="bool" value="true"/>
+        <Parameter name="Build Diffusion" type="bool" value="true"/>
+      </ParameterList> <!-- -->
+    </ParameterList> <!-- FluidPhysicsBlock -->
+  </ParameterList> <!-- Physics Blocks -->
+
+  <ParameterList name="User Data">
+    <Parameter name="Output Graph" type="bool" value="false"/>
+    <Parameter name="Workset Size" type="int" value="2048"/>
+    <Parameter name="CFL" type="double" value="1.0"/>
+  </ParameterList> <!-- User Data -->
+
+  <ParameterList name="Boundary Conditions">
+  </ParameterList> <!-- Boundary Conditions -->
+
+  <ParameterList name="Initial Conditions">
+    <ParameterList name="eblock-0_0_0">
+      <ParameterList name="Constant Lagrange Pressure">
+        <Parameter name="Type" type="string" value="Constant"/>
+        <Parameter name="Equation Set Name" type="string" value="lagrange_pressure"/>
+        <Parameter name="Value" type="double" value="0.0"/>
+      </ParameterList> <!-- Constant Lagrange Pressure -->
+      <ParameterList name="Constant Velocity 0">
+        <Parameter name="Type" type="string" value="Constant"/>
+        <Parameter name="Equation Set Name" type="string" value="velocity_0"/>
+        <Parameter name="Value" type="double" value="0.0"/>
+      </ParameterList> <!-- Constant Velocity 0 -->
+      <ParameterList name="Constant Velocity 1">
+        <Parameter name="Type" type="string" value="Constant"/>
+        <Parameter name="Equation Set Name" type="string" value="velocity_1"/>
+        <Parameter name="Value" type="double" value="0.0"/>
+      </ParameterList> <!-- Constant Velocity 1 -->
+      <ParameterList name="Constant Velocity 2">
+        <Parameter name="Type" type="string" value="Constant"/>
+        <Parameter name="Equation Set Name" type="string" value="velocity_2"/>
+        <Parameter name="Value" type="double" value="1.0"/>
+      </ParameterList> <!-- Constant Velocity 2 -->
+      <ParameterList name="Gaussian Species 0">
+        <Parameter name="Type" type="string" value="Gaussian"/>
+        <Parameter name="Scaling" type="string" value="scaled"/>
+        <Parameter name="Equation Set Name" type="string" value="species_0"/>
+        <Parameter name="Center" type="Array(double)" value="{1.5, 0.5, 2.0}"/>
+        <Parameter name="Base" type="double" value="0.0"/>
+        <Parameter name="Sigma" type="Array(double)" value="{1000.00, 1000.00, 0.5}"/>
+        <Parameter name="Scale" type="double" value="1.0"/>
+      </ParameterList> <!-- Gaussian Species 0 -->
+      <ParameterList name="Constant Species 1">
+        <Parameter name="Type" type="string" value="Constant"/>
+        <Parameter name="Equation Set Name" type="string" value="species_1"/>
+        <Parameter name="Value" type="double" value="0.0"/>
+      </ParameterList> <!-- Constant Species 1 -->
+      <ParameterList name="Constant Species 2">
+        <Parameter name="Type" type="string" value="Constant"/>
+        <Parameter name="Equation Set Name" type="string" value="species_2"/>
+        <Parameter name="Value" type="double" value="0.0"/>
+      </ParameterList> <!-- Constant Species 2 -->
+    </ParameterList> <!-- eblock-0_0_0 -->
+  </ParameterList> <!-- Initial Conditions -->
+
+  <ParameterList name="Closure Models">
+    <ParameterList name="fluids">
+      <ParameterList name="Fluid Properties">
+        <Parameter name="Kinematic viscosity" type="double" value="5.56e-3"/>
+        <Parameter name="Artificial compressibility" type="double" value="1000.0"/>
+      </ParameterList> <!-- Fluid Properties -->
+      <ParameterList name="DQDT">
+        <Parameter name="Type" type="string" value="IncompressibleTimeDerivative"/>
+      </ParameterList> <!-- DQDT -->
+      <ParameterList name="CONVECTIVE_FLUX">
+        <Parameter name="Type" type="string" value="IncompressibleConvectiveFlux"/>
+      </ParameterList> <!-- CONVECTIVE_FLUX -->
+      <ParameterList name="VISCOUS_FLUX">
+        <Parameter name="Type" type="string" value="IncompressibleViscousFlux"/>
+      </ParameterList> <!-- VISCOUS_FLUX -->
+      <ParameterList name="CONSTANT_SOURCE">
+        <Parameter name="Type" type="string" value="IncompressibleConstantSource"/>
+        <Parameter name="Momentum Source" type="Array(double)" value="{0.0, 0.0, 1.0}"/>
+      </ParameterList> <!-- CONSTANT_SOURCE -->
+      <ParameterList name="element_length">
+        <Parameter name="Type" type="string" value="ElementLength"/>
+      </ParameterList> <!-- element_length -->
+      <ParameterList name="local_time_step_size">
+        <Parameter name="Type" type="string" value="IncompressibleLocalTimeStepSize"/>
+      </ParameterList> <!-- local_time_step_size -->
+      <ParameterList name="shear_variables">
+        <Parameter name="Type" type="string" value="IncompressibleShearVariables"/>
+      </ParameterList> <!-- shear_variables -->
+    </ParameterList> <!-- fluids -->
+    <ParameterList name="species">
+      <Parameter name="Closure Factory Type" type="string" value="RAD"/>
+      <ParameterList name="Model Parameters">
+        <Parameter name="Number of Species" type="int" value="3"/>
+        <Parameter name="Build Advection" type="bool" value="true"/>
+        <Parameter name="Build Diffusion" type="bool" value="true"/>
+        <Parameter name="Build Reaction Bateman Source" type="bool" value="true"/>
+        <Parameter name="Diffusion Coefficient" type="double" value="0.002"/>
+        <ParameterList name="Reaction Parameters">
+          <Parameter name="Species Decay" type="Array(double)" value="{-1.0e+0, 0.0e+0, 0.0e+0,+1.0e+0,-1.0e+2, 0.0e+0,+0.0e+0,+1.0e+2,-1.0e-2}"/>
+        </ParameterList> <!-- Reaction Parameters -->
+      </ParameterList> <!-- Model Parameters -->
+    </ParameterList> <!-- species -->
+  </ParameterList> <!-- Closure Models -->
+
+  <ParameterList name="Linear Solver">
+    <Parameter name="Linear Solver Type" type="string" value="Belos"/>
+    <Parameter name="Preconditioner Type" type="string" value="Ifpack2"/>
+    <ParameterList name="Linear Solver Types">
+      <ParameterList name="Amesos2">
+        <ParameterList name="VerboseObject">
+          <Parameter name="Verbosity Level" type="string" value="none"/>
+        </ParameterList> <!-- VerboseObject -->
+      </ParameterList> <!-- Amesos2 -->
+      <ParameterList name="Belos">
+        <ParameterList name="VerboseObject">
+          <Parameter name="Verbosity Level" type="string" value="none"/>
+        </ParameterList> <!-- VerboseObject -->
+      </ParameterList> <!-- Belos -->
+    </ParameterList> <!-- Linear Solver Types -->
+    <ParameterList name="Preconditioner Types">
+      <ParameterList name="Ifpack2">
+        <Parameter name="Prec Type" type="string" value="SCHWARZ"/>
+        <ParameterList name="Ifpack2 Settings">
+          <Parameter name="schwarz: overlap level" type="int" value="1"/>
+          <Parameter name="subdomain solver name" type="string" value="Amesos2"/>
+          <ParameterList name="subdomain solver parameters">
+            <Parameter name="Amesos2 solver name" type="string" value="tacho"/>
+            <ParameterList name="Amesos2">
+              <ParameterList name="Tacho">
+                <Parameter name="method" type="string" value="lu"/>
+              </ParameterList> <!-- Tacho -->
+            </ParameterList> <!-- Amesos2 -->
+          </ParameterList> <!-- subdomain solver parameters -->
+        </ParameterList> <!-- Ifpack2 Settings -->
+      </ParameterList> <!-- Ifpack2 -->
+    </ParameterList> <!-- Preconditioner Types -->
+  </ParameterList> <!-- Linear Solver -->
+
+  <ParameterList name="Tempus">
+    <Parameter name="Integrator Name" type="string" value="Default Integrator"/>
+    <ParameterList name="Default Integrator">
+      <Parameter name="Integrator Type" type="string" value="Integrator Basic"/>
+      <Parameter name="Stepper Name" type="string" value="Default Stepper"/>
+      <ParameterList name="Solution History">
+        <Parameter name="Storage Type" type="string" value="Undo"/>
+        <Parameter name="Storage Limit" type="int" value="2"/>
+      </ParameterList> <!-- Solution History -->
+      <ParameterList name="Time Step Control">
+        <Parameter name="Initial Time" type="double" value="0.0"/>
+        <Parameter name="Initial Time Index" type="int" value="0"/>
+        <Parameter name="Final Time" type="double" value="5.0"/>
+        <Parameter name="Final Time Index" type="int" value="2000000"/>
+        <Parameter name="Minimum Time Step" type="double" value="1.0e-2"/>
+        <Parameter name="Initial Time Step" type="double" value="1.0e-2"/>
+        <Parameter name="Maximum Time Step" type="double" value="1.0e-2"/>
+        <Parameter name="Minimum Order" type="int" value="1"/>
+        <Parameter name="Initial Order" type="int" value="1"/>
+        <Parameter name="Maximum Order" type="int" value="2"/>
+        <Parameter name="Maximum Absolute Error" type="double" value="1.0e-8"/>
+        <Parameter name="Maximum Relative Error" type="double" value="1.0e-8"/>
+        <Parameter name="Integrator Step Type" type="string" value="Constant"/>
+        <Parameter name="Maximum Number of Stepper Failures" type="int" value="10"/>
+        <Parameter name="Maximum Number of Consecutive Stepper Failures" type="int" value="5"/>
+      </ParameterList> <!-- Time Step Control -->
+    </ParameterList> <!-- Default Integrator -->
+    <ParameterList name="Default Stepper">
+      <Parameter name="Stepper Type" type="string" value="Backward Euler"/>
+      <Parameter name="Solver Name" type="string" value="Default Solver"/>
+      <Parameter name="Zero Initial Guess" type="bool" value="false"/>
+      <ParameterList name="Default Solver">
+        <ParameterList name="NOX">
+          <ParameterList name="Reuse Preconditioner">
+            <Parameter name="Update prec at start of nonlinear solve" type="bool" value="true"/>
+            <Parameter name="Update prec after this many nonlinear solves" type="int" value="2"/>
+            <!-- Comment: Parameter name="Update prec after this
+            many nonlinear iterations" type="int" value="1"/>
+            <Parameter name="Reset nonlinear solve count on
+            failed solve" type="bool" value="true"/>
+            <Parameter name="Update prec after this many
+            stalled linear solves" type="int" value="0"/>
+            <Parameter name="Max linear iterations for stall"
+            type="int" value="50"/ -->
+          </ParameterList> <!-- Reuse Preconditioner -->
+          <ParameterList name="Direction">
+            <Parameter name="Method" type="string" value="Newton"/>
+            <ParameterList name="Newton">
+              <Parameter name="Forcing Term Method" type="string" value="Constant"/>
+              <Parameter name="Rescue Bad Newton Solve" type="bool" value="1"/>
+              <ParameterList name="Stratimikos Linear Solver">
+                <ParameterList name="NOX Stratimikos Options">
+                </ParameterList>
+              </ParameterList> <!-- Stratimikos Linear Solver -->
+            </ParameterList> <!-- Newton -->
+          </ParameterList> <!-- Direction -->
+          <ParameterList name="Line Search">
+            <Parameter name="Method" type="string" value="Full Step"/>
+            <ParameterList name="Full Step">
+              <Parameter name="Full Step" type="double" value="1"/>
+            </ParameterList> <!-- Full Step -->
+          </ParameterList> <!-- Line Search -->
+          <Parameter name="Nonlinear Solver" type="string" value="Line Search Based"/>
+          <ParameterList name="Printing">
+            <Parameter name="Output Precision" type="int" value="3"/>
+            <Parameter name="Output Processor" type="int" value="0"/>
+            <ParameterList name="Output Information">
+              <Parameter name="Error" type="bool" value="1"/>
+              <Parameter name="Warning" type="bool" value="1"/>
+              <Parameter name="Outer Iteration" type="bool" value="0"/>
+              <Parameter name="Parameters" type="bool" value="0"/>
+              <Parameter name="Details" type="bool" value="0"/>
+              <Parameter name="Linear Solver Details" type="bool" value="0"/>
+              <Parameter name="Stepper Iteration" type="bool" value="0"/>
+              <Parameter name="Stepper Details" type="bool" value="0"/>
+              <Parameter name="Stepper Parameters" type="bool" value="0"/>
+            </ParameterList> <!-- Output Information -->
+          </ParameterList> <!-- Printing -->
+          <ParameterList name="Solver Options">
+            <Parameter name="Status Test Check Type" type="string" value="Minimal"/>
+          </ParameterList> <!-- Solver Options -->
+          <ParameterList name="Status Tests">
+            <Parameter name="Test Type" type="string" value="Combo"/>
+            <Parameter name="Combo Type" type="string" value="OR"/>
+            <Parameter name="Number of Tests" type="int" value="3"/>
+            <ParameterList name="Test 0">
+              <Parameter name="Test Type" type="string" value="NormF"/>
+              <Parameter name="Tolerance" type="double" value="1.0e-8"/>
+            </ParameterList> <!-- Test 0 -->
+            <ParameterList name="Test 1">
+              <Parameter name="Test Type" type="string" value="MaxIters"/>
+              <Parameter name="Maximum Iterations" type="int" value="10"/>
+            </ParameterList> <!-- Test 1 -->
+            <ParameterList name="Test 2">
+              <Parameter name="Test Type" type="string" value="NStep"/>
+              <Parameter name="Number of Nonlinear Iterations" type="int" value="4"/>
+              <Parameter name="Number of Initial Ramping Steps" type="int" value="10"/>
+              <Parameter name="Number of Nonlinear Iterations in Ramping Phase" type="int" value="5"/>
+            </ParameterList> <!-- Test 2 -->
+          </ParameterList> <!-- Status Tests -->
+        </ParameterList> <!-- NOX -->
+      </ParameterList> <!-- Default Solver -->
+    </ParameterList> <!-- Default Stepper -->
+  </ParameterList> <!-- Tempus -->
+
+</ParameterList>

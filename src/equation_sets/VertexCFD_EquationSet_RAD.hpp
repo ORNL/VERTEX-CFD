@@ -42,8 +42,10 @@ class RAD : public panzer::EquationSet_DefaultImpl<EvalType>
     std::unordered_map<std::string, std::string> _equ_dof_rad_pair;
     bool _build_advection;
     bool _build_diffusion;
-    bool _build_reaction;
+    bool _build_bateman;
     bool _build_fission_source;
+    bool _build_transmutation;
+    bool _build_vapor_removal;
 };
 
 //---------------------------------------------------------------------------//

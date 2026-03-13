@@ -21,10 +21,23 @@ template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleLSVOFBubble<EvalType, Traits, NumSpaceDim>::IncompressibleLSVOFBubble(
     const Teuchos::ParameterList& ic_params, const panzer::PureBasis& basis)
     : _alpha(ic_params.get<std::string>("Phase Name"), basis.functional)
+    , _phi("level_set", basis.functional)
     , _basis_name(basis.name())
     , _radius(ic_params.get<double>("Bubble Radius"))
+    , _lsvof_model_type(LSVOFModelType::VOF)
     , _phase_type(PhaseType::Dispersed)
 {
+    // Check LSVOF model type
+    if (ic_params.isType<std::string>("LSVOF Model Type"))
+    {
+        const auto type_validator = Teuchos::rcp(
+            new Teuchos::StringToIntegralParameterEntryValidator<LSVOFModelType>(
+                Teuchos::tuple<std::string>("VOF", "CLS"), "VOF"));
+
+        _lsvof_model_type = type_validator->getIntegralValue(
+            ic_params.get<std::string>("LSVOF Model Type"));
+    }
+
     // Check phase type
     if (ic_params.isType<std::string>("Phase Type"))
     {
@@ -46,8 +59,16 @@ IncompressibleLSVOFBubble<EvalType, Traits, NumSpaceDim>::IncompressibleLSVOFBub
         _location[d] = location[d];
     }
 
-    this->addEvaluatedField(_alpha);
-    this->addUnsharedField(_alpha.fieldTag().clone());
+    if (_lsvof_model_type == LSVOFModelType::VOF)
+    {
+        this->addEvaluatedField(_alpha);
+        this->addUnsharedField(_alpha.fieldTag().clone());
+    }
+    else if (_lsvof_model_type == LSVOFModelType::CLS)
+    {
+        this->addEvaluatedField(_phi);
+        this->addUnsharedField(_phi.fieldTag().clone());
+    }
 
     this->setName("LSVOF " + ic_params.get<std::string>("Phase Name")
                   + " Bubble Initial Condition");
@@ -80,7 +101,9 @@ IncompressibleLSVOFBubble<EvalType, Traits, NumSpaceDim>::operator()(
     const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const
 {
     const int cell = team.league_rank();
-    const int num_basis = _alpha.extent(1);
+    const int num_basis = _lsvof_model_type == LSVOFModelType::VOF
+                              ? _alpha.extent(1)
+                              : _phi.extent(1);
 
     using Kokkos::pow;
 
@@ -95,26 +118,43 @@ IncompressibleLSVOFBubble<EvalType, Traits, NumSpaceDim>::operator()(
 
             r = pow(r, 0.5);
 
-            if (r <= _radius)
+            if (_lsvof_model_type == LSVOFModelType::VOF)
             {
-                if (_phase_type == PhaseType::Dispersed)
+                if (r <= _radius)
                 {
-                    _alpha(cell, basis) = 1.0;
+                    if (_phase_type == PhaseType::Dispersed)
+                    {
+                        _alpha(cell, basis) = 1.0;
+                    }
+                    else
+                    {
+                        _alpha(cell, basis) = 0.0;
+                    }
                 }
                 else
                 {
-                    _alpha(cell, basis) = 0.0;
+                    if (_phase_type == PhaseType::Dispersed)
+                    {
+                        _alpha(cell, basis) = 0.0;
+                    }
+                    else
+                    {
+                        _alpha(cell, basis) = 1.0;
+                    }
                 }
             }
-            else
+            else if (_lsvof_model_type == LSVOFModelType::CLS)
             {
+                // CLS convention:
+                // Positive when |x - c| < r for dispersed
+                // Positive when |X - c| > r for continuous
                 if (_phase_type == PhaseType::Dispersed)
                 {
-                    _alpha(cell, basis) = 0.0;
+                    _phi(cell, basis) = _radius - r;
                 }
-                else
+                else if (_phase_type == PhaseType::Continuous)
                 {
-                    _alpha(cell, basis) = 1.0;
+                    _phi(cell, basis) = r - _radius;
                 }
             }
         });

@@ -1,7 +1,6 @@
 #include "VertexCFD_EvaluatorTestHarness.hpp"
 
 #include "incompressible_solver/boundary_conditions/VertexCFD_BoundaryState_IncompressibleWallFunction.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <Phalanx_Evaluator_Derived.hpp>
 #include <Phalanx_Evaluator_WithBaseImpl.hpp>
@@ -168,22 +167,14 @@ void testEval(const bool build_temp_equ, const ContinuityModel continuity_model)
     test_fixture.registerEvaluator<EvalType>(dep_eval);
 
     // Equation of state
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 2.5);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", build_temp_equ);
-    if (build_temp_equ)
-    {
-        fluid_prop_list.set("Thermal conductivity", 0.5);
-        fluid_prop_list.set("Specific heat capacity", 0.6);
-    }
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    Teuchos::ParameterList fluid_param_list;
+    fluid_param_list.set("Build Temperature Equation", build_temp_equ);
 
     // Create wall function evaluator.
     const auto wf_eval = Teuchos::rcp(
         new BoundaryCondition::
             IncompressibleWallFunction<EvalType, panzer::Traits, num_space_dim>(
-                *test_fixture.ir, fluid_prop, is_edac));
+                *test_fixture.ir, fluid_param_list, is_edac));
     test_fixture.registerEvaluator<EvalType>(wf_eval);
 
     // Add required test fields.

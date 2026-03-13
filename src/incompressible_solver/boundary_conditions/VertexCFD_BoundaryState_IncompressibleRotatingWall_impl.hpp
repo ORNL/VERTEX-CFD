@@ -14,7 +14,7 @@ namespace BoundaryCondition
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleRotatingWall<EvalType, Traits, NumSpaceDim>::IncompressibleRotatingWall(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
+    const Teuchos::ParameterList& fluid_params,
     const Teuchos::ParameterList& bc_params,
     const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
@@ -25,7 +25,7 @@ IncompressibleRotatingWall<EvalType, Traits, NumSpaceDim>::IncompressibleRotatin
     , _ir_degree(ir.cubature_degree)
     , _set_lagrange_pressure(bc_params.isType<double>("Lagrange Pressure"))
     , _lp_wall(std::numeric_limits<double>::quiet_NaN())
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
     , _is_edac(is_edac)
     , _T_wall(std::numeric_limits<double>::quiet_NaN())
     , _lagrange_pressure("lagrange_pressure", ir.dl_scalar)

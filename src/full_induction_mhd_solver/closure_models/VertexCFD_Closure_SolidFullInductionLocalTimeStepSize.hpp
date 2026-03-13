@@ -53,7 +53,7 @@ class SolidFullInductionLocalTimeStepSize
 
     PHX::MDField<const double, panzer::Cell, panzer::Point, panzer::Dim>
         _element_length;
-    PHX::MDField<const double, panzer::Cell, panzer::Point> _solid_density;
+    PHX::MDField<const scalar_type, panzer::Cell, panzer::Point> _solid_density;
     PHX::MDField<const scalar_type, panzer::Cell, panzer::Point, MagneticDim>
         _total_magnetic_field;
 };

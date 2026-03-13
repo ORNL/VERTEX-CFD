@@ -51,15 +51,13 @@ ElectricPotentialInsulatingWall<EvalType, Traits>::operator()(
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             // Compute \grad(\phi) \cdot \vec{n}
-            scalar_type grad_phi_dot_n = 0.0;
+            auto&& grad_phi_dot_n = _boundary_electric_potential(cell, point);
+            grad_phi_dot_n = 0.0;
             for (int dim = 0; dim < num_grad_dim; ++dim)
             {
                 grad_phi_dot_n += _grad_electric_potential(cell, point, dim)
                                   * _normals(cell, point, dim);
             }
-
-            _boundary_electric_potential(cell, point)
-                = _electric_potential(cell, point);
 
             // Set and boundary gradients
             for (int dim = 0; dim < num_grad_dim; ++dim)
@@ -68,6 +66,9 @@ ElectricPotentialInsulatingWall<EvalType, Traits>::operator()(
                     = _grad_electric_potential(cell, point, dim)
                       - grad_phi_dot_n * _normals(cell, point, dim);
             }
+
+            _boundary_electric_potential(cell, point)
+                = _electric_potential(cell, point);
         });
 }
 

@@ -30,7 +30,6 @@ class IncompressibleLaminarFlow
     static constexpr int num_space_dim = NumSpaceDim;
 
     IncompressibleLaminarFlow(const Teuchos::ParameterList& ic_params,
-                              const bool solve_temp,
                               const panzer::PureBasis& basis);
 
     void postRegistrationSetup(typename Traits::SetupData sd,
@@ -54,11 +53,11 @@ class IncompressibleLaminarFlow
     int _basis_index;
     PHX::MDField<double, panzer::Cell, panzer::BASIS, panzer::Dim> _basis_coords;
 
-    bool _solve_temp;
     double _min;
     double _max;
     double _vel_avg;
     double _vel_max;
+    bool _solve_temp;
     double _T_init;
 };
 

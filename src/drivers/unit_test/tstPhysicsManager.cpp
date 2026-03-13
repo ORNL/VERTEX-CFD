@@ -62,7 +62,10 @@ auto createPhysicsManager(const std::string& location,
     // If using a turbulence model, include an empty sideset geometry for the
     // wall distance evaluator
     auto user_params = parameter_db->userParameters();
-    if (user_params->isParameter("Turbulence Model"))
+    const auto physics_params = parameter_db->physicsParameters();
+    if (physics_params->sublist("FluidPhysicsBlock")
+            .sublist("child0")
+            .isType<std::string>("Turbulence Model Name"))
     {
         auto sideset_geometry = Teuchos::rcp(
             new Mesh::Topology::SidesetGeometry(mesh_manager->mesh(), {}));
@@ -263,6 +266,46 @@ TEST(PhysicsManagerSolidInductionless, manager_test)
     EXPECT_TRUE(Teuchos::nonnull(physics_manager->boundaryConditionFactory()));
     EXPECT_TRUE(Teuchos::nonnull(physics_manager->closureModelFactory()));
     EXPECT_TRUE(Teuchos::nonnull(physics_manager->modelEvaluator()));
+}
+
+//---------------------------------------------------------------------------//
+// Test incompressible LSVOF equations.
+TEST(PhysicsManagerIncompressibleLSVOF, manager_test)
+{
+    auto physics_manager = createPhysicsManager<2>(
+        VERTEXCFD_DRIVER_TEST_DATA_DIR, "simple_box_lsvof_2d.xml");
+
+    // Check data.
+    EXPECT_TRUE(Teuchos::nonnull(physics_manager->globalData()));
+    EXPECT_TRUE(Teuchos::nonnull(physics_manager->equationSetFactory()));
+    EXPECT_EQ(1, physics_manager->physicsBlocks().size());
+    EXPECT_EQ(2, physics_manager->integrationOrder());
+    EXPECT_TRUE(Teuchos::nonnull(physics_manager->dofManager()));
+    EXPECT_TRUE(Teuchos::nonnull(physics_manager->linearObjectFactory()));
+    EXPECT_TRUE(Teuchos::nonnull(physics_manager->worksetContainer()));
+    EXPECT_EQ(4, physics_manager->boundaryConditions().size());
+    EXPECT_TRUE(Teuchos::nonnull(physics_manager->boundaryConditionFactory()));
+    EXPECT_TRUE(Teuchos::nonnull(physics_manager->closureModelFactory()));
+    EXPECT_TRUE(Teuchos::nonnull(physics_manager->modelEvaluator()));
+}
+//---------------------------------------------------------------------------//
+// Test inconsistent integration order error message.
+TEST(PhysicsManagerIRErrorMessage, manager_test)
+{
+    const std::string exp_msg
+        = "All of the physics blocks must have the same integration order.";
+
+    // Check error.
+    EXPECT_THROW(
+        try {
+            auto physics_manager
+                = createPhysicsManager<3>(VERTEXCFD_DRIVER_TEST_DATA_DIR,
+                                          "simple_box_3d_inconsistent_ir.xml");
+        } catch (const std::runtime_error& e) {
+            EXPECT_EQ(exp_msg, e.what());
+            throw;
+        },
+        std::runtime_error);
 }
 
 //---------------------------------------------------------------------------//

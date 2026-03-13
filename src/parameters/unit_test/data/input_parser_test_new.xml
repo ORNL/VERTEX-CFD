@@ -25,7 +25,19 @@
   </ParameterList>
 
   <ParameterList name="Boundary Conditions">
-    <Parameter name="value"  type="double" value="1.6"/>
+    <ParameterList>
+      <Parameter name="Sideset ID" type="string" value="left, bottom"/>
+      <Parameter name="Element Block ID" type="string" value="eblock-0_0"/>
+      <Parameter name="Strategy" type="string" value="Multiphysics"/>
+      <ParameterList name="Data">
+        <ParameterList name="Strategy1">
+          <Parameter name="value"  type="double" value="1.6"/>
+        </ParameterList> <!-- Strategy1 -->
+        <ParameterList name="Strategy2">
+          <Parameter name="value"  type="double" value="3.2"/>
+        </ParameterList> <!-- Strategy2 -->
+      </ParameterList> <!-- Data -->
+    </ParameterList>
   </ParameterList>
 
   <ParameterList name="Initial Conditions">

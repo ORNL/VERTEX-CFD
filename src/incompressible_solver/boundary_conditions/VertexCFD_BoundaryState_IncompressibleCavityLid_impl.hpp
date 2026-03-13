@@ -1,7 +1,7 @@
 #ifndef VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLECAVITYLID_IMPL_HPP
 #define VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLECAVITYLID_IMPL_HPP
 
-#include <utils/VertexCFD_Utils_VectorField.hpp>
+#include "utils/VertexCFD_Utils_VectorField.hpp"
 
 #include <Panzer_HierarchicParallelism.hpp>
 #include <Panzer_Workset_Utilities.hpp>
@@ -14,7 +14,7 @@ namespace BoundaryCondition
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleCavityLid<EvalType, Traits, NumSpaceDim>::IncompressibleCavityLid(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
+    const Teuchos::ParameterList& fluid_params,
     const Teuchos::ParameterList& bc_params,
     const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
@@ -26,7 +26,7 @@ IncompressibleCavityLid<EvalType, Traits, NumSpaceDim>::IncompressibleCavityLid(
     , _lagrange_pressure("lagrange_pressure", ir.dl_scalar)
     , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
     , _is_edac(is_edac)
     , _wall_dir(bc_params.get<int>("Wall Normal Direction"))
     , _vel_dir(bc_params.get<int>("Velocity Direction"))

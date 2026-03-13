@@ -36,6 +36,7 @@ void testDefaultDatabase()
     EXPECT_TRUE(Teuchos::nonnull(parameter_db.scalarParameters()));
     EXPECT_TRUE(Teuchos::nonnull(parameter_db.generalScalarParameters()));
     EXPECT_TRUE(Teuchos::nonnull(parameter_db.boundaryConditionParameters()));
+    EXPECT_TRUE(Teuchos::nonnull(parameter_db.sortedBoundaryConditions()));
     EXPECT_TRUE(Teuchos::nonnull(parameter_db.initialConditionParameters()));
     EXPECT_TRUE(Teuchos::nonnull(parameter_db.closureModelParameters()));
     EXPECT_TRUE(Teuchos::nonnull(parameter_db.responseOutputParameters()));
@@ -49,7 +50,7 @@ void testDefaultDatabase()
     EXPECT_TRUE(Teuchos::nonnull(parameter_db.linearSolverParameters()));
 
     // Check that we added the communicator to the user data.
-    auto param_comm
+    const auto param_comm
         = parameter_db.userParameters()
               ->get<Teuchos::RCP<const Teuchos::Comm<int>>>("Comm");
     EXPECT_EQ(comm->getRank(), param_comm->getRank());
@@ -73,8 +74,26 @@ void testInputParser(const Teuchos::RCP<const Teuchos::MpiComm<int>>& comm,
                      parameter_db.physicsParameters()->get<double>("value"));
     EXPECT_DOUBLE_EQ(
         1.3, parameter_db.blockMappingParameters()->get<double>("value"));
-    EXPECT_DOUBLE_EQ(
-        1.6, parameter_db.boundaryConditionParameters()->get<double>("value"));
+    EXPECT_DOUBLE_EQ(1.6,
+                     parameter_db.sortedBoundaryConditions()
+                         ->sublist("child0")
+                         .sublist("Data")
+                         .get<double>("value"));
+    EXPECT_DOUBLE_EQ(3.2,
+                     parameter_db.sortedBoundaryConditions()
+                         ->sublist("child1")
+                         .sublist("Data")
+                         .get<double>("value"));
+    EXPECT_DOUBLE_EQ(1.6,
+                     parameter_db.sortedBoundaryConditions()
+                         ->sublist("child2")
+                         .sublist("Data")
+                         .get<double>("value"));
+    EXPECT_DOUBLE_EQ(3.2,
+                     parameter_db.sortedBoundaryConditions()
+                         ->sublist("child3")
+                         .sublist("Data")
+                         .get<double>("value"));
     EXPECT_DOUBLE_EQ(
         1.7, parameter_db.initialConditionParameters()->get<double>("value"));
     EXPECT_DOUBLE_EQ(
@@ -111,7 +130,7 @@ void testInputParser(const Teuchos::RCP<const Teuchos::MpiComm<int>>& comm,
     EXPECT_EQ(comm->getSize(), parameter_db.comm()->getSize());
 
     // Check that we added the communicator to the user data.
-    auto param_comm
+    const auto param_comm
         = parameter_db.userParameters()
               ->get<Teuchos::RCP<const Teuchos::Comm<int>>>("Comm");
     EXPECT_EQ(comm->getRank(), param_comm->getRank());

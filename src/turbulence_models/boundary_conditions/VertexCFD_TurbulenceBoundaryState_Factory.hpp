@@ -1,6 +1,10 @@
 #ifndef VERTEXCFD_TURBULENCEBOUNDARYSTATE_FACTORY_HPP
 #define VERTEXCFD_TURBULENCEBOUNDARYSTATE_FACTORY_HPP
 
+/**
+ * @file VertexCFD_TurbulenceBoundaryState_Factory.hpp
+ */
+
 #include "closure_models/VertexCFD_Closure_ElementLength.hpp"
 #include "closure_models/VertexCFD_Closure_MeasureElementLength.hpp"
 #include "closure_models/VertexCFD_Closure_MetricTensorElementLength.hpp"
@@ -36,28 +40,67 @@ namespace VertexCFD
 {
 namespace BoundaryCondition
 {
-//---------------------------------------------------------------------------//
+
+/**
+ * @class TurbulenceBoundaryStateFactory
+ * @brief Factory class that creates a collection of Phalanx evaluators
+ * required to impose turbulence‑model specific boundary conditions.
+ *
+ * The factory inspects the supplied turbulence model name and the
+ * boundary‑condition type, then instantiates the appropriate closure
+ * models (diffusivity coefficients, eddy‑viscosity models, element‑length
+ * models, etc.) and boundary‑state evaluators (fixed, extrapolate,
+ * inlet/outlet, wall‑functions, symmetry, …).  The returned vector can be
+ * registered with a Phalanx field manager.
+ *
+ * @tparam EvalType Evaluation type (e.g., Residual, Jacobian).
+ * @tparam Traits   Phalanx traits class.
+ * @tparam NumSpaceDim Number of spatial dimensions \f$NumSpaceDim\f$ (used for
+ * some turbulence models).
+ */
 template<class EvalType, class Traits, int NumSpaceDim>
 class TurbulenceBoundaryStateFactory
 {
   public:
+    /**
+     * @brief Create a vector of evaluators for turbulence boundary conditions.
+     *
+     * The method examines the turbulence model name, the boundary‑condition
+     * type, and the user‑provided parameter lists to construct the necessary
+     * closure models and boundary‑state evaluators.  All created evaluators
+     * are stored in a vector of reference‑counted pointers and returned to
+     * the caller.
+     *
+     * @param ir Integration rule defining quadrature points on the boundary
+     * where the evaluators will be evaluated.
+     * @param bc_params Parameter list describing the boundary condition (e.g.,
+     * type = "Fixed", "Extrapolate", etc.).
+     * @param user_params Global user parameters (e.g., mesh topology, sideset
+     * geometry) required by some closure models.
+     * @param turb_params Parameter list specifying turbulence‑model settings,
+     * including the model name and any model‑specific options.
+     * @return Vector of reference‑counted Phalanx evaluators that implement
+     * the requested turbulence boundary conditions.
+     */
     static std::vector<Teuchos::RCP<PHX::Evaluator<Traits>>>
     create(const panzer::IntegrationRule& ir,
            const Teuchos::ParameterList& bc_params,
            const Teuchos::ParameterList& user_params,
-           const std::string _turbulence_model_name)
+           const Teuchos::ParameterList& turb_params)
     {
         // Evaluator vector to return
         std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>> evaluators;
 
         // Adding diffusivity coefficient closure model and initializing
         // `turb_field_names_vct` for each equation of the turbulence model
+        const std::string turbulence_model_name
+            = turb_params.get<std::string>("Turbulence Model Name");
         std::vector<std::string> turb_field_names_vct;
-        if (_turbulence_model_name != "No Turbulence Model")
+        if (turbulence_model_name != "No Turbulence Model")
         {
             // Spalart-Allmaras model family
             if (std::string::npos
-                != _turbulence_model_name.find("Spalart-Allmaras"))
+                != turbulence_model_name.find("Spalart-Allmaras"))
             {
                 // Variable name
                 turb_field_names_vct.push_back("spalart_allmaras_variable");
@@ -78,7 +121,7 @@ class TurbulenceBoundaryStateFactory
             }
             // K-Epsilon model family
             else if (std::string::npos
-                     != _turbulence_model_name.find("K-Epsilon"))
+                     != turbulence_model_name.find("K-Epsilon"))
             {
                 // K-Epsilon turbulence variable names
                 turb_field_names_vct.push_back("turb_kinetic_energy");
@@ -86,7 +129,7 @@ class TurbulenceBoundaryStateFactory
 
                 // Realizable K-Epsilon closure models
                 if (std::string::npos
-                    != _turbulence_model_name.find("Realizable K-Epsilon"))
+                    != turbulence_model_name.find("Realizable K-Epsilon"))
                 {
                     // Diffusive coefficient with non-standard coefficients
                     const auto diffusive_coeff_op = Teuchos::rcp(
@@ -122,8 +165,7 @@ class TurbulenceBoundaryStateFactory
                 }
             }
             // K-Omega model family
-            else if (std::string::npos
-                     != _turbulence_model_name.find("K-Omega"))
+            else if (std::string::npos != turbulence_model_name.find("K-Omega"))
             {
                 // K-Omega turbulence variable names
                 turb_field_names_vct.push_back("turb_kinetic_energy");
@@ -134,17 +176,17 @@ class TurbulenceBoundaryStateFactory
                 const auto eval_coeff = Teuchos::rcp(
                     new ClosureModel::IncompressibleKOmegaDiffusivityCoefficient<
                         EvalType,
-                        panzer::Traits>(ir, user_params));
+                        panzer::Traits>(ir, turb_params));
                 evaluators.push_back(eval_coeff);
 
                 const auto eval_eddy = Teuchos::rcp(
                     new ClosureModel::IncompressibleKOmegaEddyViscosity<
                         EvalType,
                         panzer::Traits,
-                        NumSpaceDim>(ir, user_params));
+                        NumSpaceDim>(ir, turb_params));
                 evaluators.push_back(eval_eddy);
             }
-            else if (std::string::npos != _turbulence_model_name.find("SST"))
+            else if (std::string::npos != turbulence_model_name.find("SST"))
             {
                 // SST turbulence variable names
                 turb_field_names_vct.push_back("turb_kinetic_energy");
@@ -158,7 +200,7 @@ class TurbulenceBoundaryStateFactory
                         new ClosureModel::IncompressibleSSTEddyViscosity<
                             EvalType,
                             panzer::Traits,
-                            NumSpaceDim>(ir, user_params, true));
+                            NumSpaceDim>(ir, turb_params, true));
                     evaluators.push_back(eval_eddy);
                 }
                 else
@@ -178,7 +220,7 @@ class TurbulenceBoundaryStateFactory
                         new ClosureModel::IncompressibleSSTEddyViscosity<
                             EvalType,
                             panzer::Traits,
-                            NumSpaceDim>(ir, user_params));
+                            NumSpaceDim>(ir, turb_params));
                     evaluators.push_back(eval_eddy);
                 }
 
@@ -186,11 +228,11 @@ class TurbulenceBoundaryStateFactory
                 const auto eval_coeff = Teuchos::rcp(
                     new ClosureModel::IncompressibleSSTDiffusivityCoefficient<
                         EvalType,
-                        panzer::Traits>(ir, user_params));
+                        panzer::Traits>(ir, turb_params));
                 evaluators.push_back(eval_coeff);
             }
             // K-Tau model family
-            else if (std::string::npos != _turbulence_model_name.find("K-Tau"))
+            else if (std::string::npos != turbulence_model_name.find("K-Tau"))
             {
                 // K-Tau turbulence variable names
                 turb_field_names_vct.push_back("turb_kinetic_energy");
@@ -201,7 +243,7 @@ class TurbulenceBoundaryStateFactory
                 const auto eval_coeff = Teuchos::rcp(
                     new ClosureModel::IncompressibleKTauDiffusivityCoefficient<
                         EvalType,
-                        panzer::Traits>(ir, user_params));
+                        panzer::Traits>(ir, turb_params));
                 evaluators.push_back(eval_coeff);
 
                 const auto eval_eddy = Teuchos::rcp(
@@ -212,22 +254,18 @@ class TurbulenceBoundaryStateFactory
                 evaluators.push_back(eval_eddy);
             }
             // WALE algebraic LES model
-            else if (std::string::npos != _turbulence_model_name.find("WALE"))
+            else if (std::string::npos != turbulence_model_name.find("WALE"))
             {
                 // Sub-grid eddy viscosity
                 const auto eddy_visc_op = Teuchos::rcp(
                     new ClosureModel::IncompressibleWALEEddyViscosity<
                         EvalType,
                         panzer::Traits,
-                        NumSpaceDim>(ir, user_params));
+                        NumSpaceDim>(ir, turb_params));
                 evaluators.push_back(eddy_visc_op);
 
                 // Delta (element length) closure model
                 const std::string delta_prefix = "les_";
-                const auto turb_params
-                    = user_params.isSublist("Turbulence Parameters")
-                          ? user_params.sublist("Turbulence Parameters")
-                          : Teuchos::ParameterList();
                 const std::string delta_type
                     = turb_params.isType<std::string>("LES Element Length")
                           ? turb_params.get<std::string>("LES Element Length")
@@ -391,9 +429,9 @@ class TurbulenceBoundaryStateFactory
     }
 };
 
-//---------------------------------------------------------------------------//
+//----------------------------------------------//
 
 } // end namespace BoundaryCondition
 } // end namespace VertexCFD
 
-#endif // end VERTEXCFD_TURBULENCEBOUNDARYSTATE_FACTORY_HPP
+#endif // VERTEXCFD_TURBULENCEBOUNDARYSTATE_FACTORY_HPP

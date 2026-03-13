@@ -1,5 +1,6 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "induction_less_mhd_solver/closure_models/VertexCFD_Closure_ElectricPotentialDiffusionFlux.hpp"
 
@@ -137,12 +138,10 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Inductionless MHD Equation", true);
-    test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0);
+        .set("Build Inductionless MHD Equation", true);
     test_fixture.type_name = "ElectricPotentialDiffusionFlux";
     test_fixture.eval_name = "Electric Potential Diffusion Flux "
                              + std::to_string(num_space_dim) + "D";

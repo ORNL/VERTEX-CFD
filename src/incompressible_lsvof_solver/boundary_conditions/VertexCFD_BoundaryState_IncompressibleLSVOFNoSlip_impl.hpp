@@ -17,6 +17,7 @@ template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleLSVOFNoSlip<EvalType, Traits, NumSpaceDim>::IncompressibleLSVOFNoSlip(
     const panzer::IntegrationRule& ir,
     const int& num_lsvof_dofs,
+    const std::string& lsvof_model_name,
     const std::string& continuity_model_name,
     const bool& build_mom_equ)
     : _phase_layout(Utils::buildPhaseLayout(ir.dl_scalar, num_lsvof_dofs))
@@ -24,13 +25,20 @@ IncompressibleLSVOFNoSlip<EvalType, Traits, NumSpaceDim>::IncompressibleLSVOFNoS
     , _boundary_grad_lagrange_pressure("BOUNDARY_GRAD_lagrange_pressure",
                                        ir.dl_vector)
     , _boundary_alphas("BOUNDARY_volume_fractions", _phase_layout)
+    , _boundary_phi("BOUNDARY_level_set", ir.dl_scalar)
     , _lagrange_pressure("lagrange_pressure", ir.dl_scalar)
     , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
     , _normals("Side Normal", ir.dl_vector)
     , _alphas("volume_fractions", _phase_layout)
+    , _phi("level_set", ir.dl_scalar)
+    , _lsvof_model_type(LSVOFModelType::VOF)
     , _is_edac(continuity_model_name == "EDAC" ? true : false)
     , _build_mom_equ(build_mom_equ)
 {
+    // Check LSVOF model type
+    if (lsvof_model_name == "CLS")
+        _lsvof_model_type = LSVOFModelType::CLS;
+
     // Evaluated fields
     if (_build_mom_equ)
     {
@@ -38,15 +46,23 @@ IncompressibleLSVOFNoSlip<EvalType, Traits, NumSpaceDim>::IncompressibleLSVOFNoS
         if (_is_edac)
             this->addEvaluatedField(_boundary_grad_lagrange_pressure);
 
-        Utils::addEvaluatedVectorField(
-            *this, ir.dl_scalar, _boundary_velocity, "BOUNDARY_velocity_");
         Utils::addEvaluatedVectorField(*this,
                                        ir.dl_vector,
                                        _boundary_grad_velocity,
                                        "BOUNDARY_GRAD_velocity_");
     }
 
-    this->addEvaluatedField(_boundary_alphas);
+    Utils::addEvaluatedVectorField(
+        *this, ir.dl_scalar, _boundary_velocity, "BOUNDARY_velocity_");
+
+    if (_lsvof_model_type == LSVOFModelType::VOF)
+    {
+        this->addEvaluatedField(_boundary_alphas);
+    }
+    else if (_lsvof_model_type == LSVOFModelType::CLS)
+    {
+        this->addEvaluatedField(_boundary_phi);
+    }
 
     // Dependent fields
     if (_build_mom_equ)
@@ -60,7 +76,14 @@ IncompressibleLSVOFNoSlip<EvalType, Traits, NumSpaceDim>::IncompressibleLSVOFNoS
             *this, ir.dl_vector, _grad_velocity, "GRAD_velocity_");
     }
 
-    this->addDependentField(_alphas);
+    if (_lsvof_model_type == LSVOFModelType::VOF)
+    {
+        this->addDependentField(_alphas);
+    }
+    else if (_lsvof_model_type == LSVOFModelType::CLS)
+    {
+        this->addDependentField(_phi);
+    }
 
     this->setName("Boundary State Incompressible LSVOF No-Slip");
 }
@@ -88,13 +111,13 @@ IncompressibleLSVOFNoSlip<EvalType, Traits, NumSpaceDim>::operator()(
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             // Set boundary velocity, pressure, and their gradients
+            for (int vel_dim = 0; vel_dim < num_space_dim; ++vel_dim)
+            {
+                _boundary_velocity[vel_dim](cell, point) = 0.0;
+            }
+
             if (_build_mom_equ)
             {
-                for (int vel_dim = 0; vel_dim < num_space_dim; ++vel_dim)
-                {
-                    _boundary_velocity[vel_dim](cell, point) = 0.0;
-                }
-
                 _boundary_lagrange_pressure(cell, point)
                     = _lagrange_pressure(cell, point);
 
@@ -126,11 +149,18 @@ IncompressibleLSVOFNoSlip<EvalType, Traits, NumSpaceDim>::operator()(
                 }
             }
 
-            // Set boundary phase fraction fields
-            for (size_t phase = 0; phase < _alphas.extent(2); ++phase)
+            // Set boundary LSVOF fields
+            if (_lsvof_model_type == LSVOFModelType::VOF)
             {
-                _boundary_alphas(cell, point, phase)
-                    = _alphas(cell, point, phase);
+                for (size_t phase = 0; phase < _alphas.extent(2); ++phase)
+                {
+                    _boundary_alphas(cell, point, phase)
+                        = _alphas(cell, point, phase);
+                }
+            }
+            else if (_lsvof_model_type == LSVOFModelType::CLS)
+            {
+                _boundary_phi(cell, point) = _phi(cell, point);
             }
         });
 }

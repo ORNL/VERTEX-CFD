@@ -7,6 +7,7 @@ VertexCFD_add_tests(
   MagneticPressure
   FullInductionTimeDerivative
   InductionConvectiveFlux
+  InductionConvectiveMomentumFlux
   InductionResistiveFlux
   TotalMagneticField
   TotalMagneticFieldGradient

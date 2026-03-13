@@ -14,7 +14,7 @@ template<class EvalType, class Traits>
 IncompressibleKOmegaDiffusivityCoefficient<EvalType, Traits>::
     IncompressibleKOmegaDiffusivityCoefficient(
         const panzer::IntegrationRule& ir,
-        const Teuchos::ParameterList& user_params)
+        const Teuchos::ParameterList& turb_params)
     : _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
     , _turb_specific_dissipation_rate("turb_specific_dissipation_rate",
                                       ir.dl_scalar)
@@ -26,26 +26,14 @@ IncompressibleKOmegaDiffusivityCoefficient<EvalType, Traits>::
                          ir.dl_scalar)
 {
     // Check for user-defined coefficients or parameters
-    if (user_params.isSublist("Turbulence Parameters"))
+    if (turb_params.isType<double>("sigma_w"))
     {
-        const Teuchos::ParameterList turb_list
-            = user_params.sublist("Turbulence Parameters");
+        _sigma_w = turb_params.get<double>("sigma_w");
+    }
 
-        if (turb_list.isSublist("K-Omega Parameters"))
-        {
-            const Teuchos::ParameterList k_w_list
-                = turb_list.sublist("K-Omega Parameters");
-
-            if (k_w_list.isType<double>("sigma_w"))
-            {
-                _sigma_w = k_w_list.get<double>("sigma_w");
-            }
-
-            if (k_w_list.isType<double>("sigma_k"))
-            {
-                _sigma_k = k_w_list.get<double>("sigma_k");
-            }
-        }
+    if (turb_params.isType<double>("sigma_k"))
+    {
+        _sigma_k = turb_params.get<double>("sigma_k");
     }
 
     // Add dependent fields

@@ -21,7 +21,7 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleErrorNorms<EvalType, Traits, NumSpaceDim>::IncompressibleErrorNorms(
     const panzer::IntegrationRule& ir,
-    const Teuchos::ParameterList& user_params)
+    const Teuchos::ParameterList& fluid_params)
     : _L1_error_continuity("L1_Error_continuity", ir.dl_scalar)
     , _L1_error_energy("L1_Error_energy", ir.dl_scalar)
     , _L2_error_continuity("L2_Error_continuity", ir.dl_scalar)
@@ -33,8 +33,8 @@ IncompressibleErrorNorms<EvalType, Traits, NumSpaceDim>::IncompressibleErrorNorm
     , _temperature("temperature", ir.dl_scalar)
 {
     // Temperature boolean
-    _use_temp = user_params.isType<bool>("Build Temperature Equation")
-                    ? user_params.get<bool>("Build Temperature Equation")
+    _use_temp = fluid_params.isType<bool>("Build Temperature Equation")
+                    ? fluid_params.get<bool>("Build Temperature Equation")
                     : false;
 
     // exact solution

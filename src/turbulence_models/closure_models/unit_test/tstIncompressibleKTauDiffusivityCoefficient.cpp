@@ -1,6 +1,5 @@
 #include "VertexCFD_EvaluatorTestHarness.hpp"
 #include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleKTauDiffusivityCoefficient.hpp"
 
 #include <gtest/gtest.h>
@@ -68,13 +67,8 @@ void testEval()
     const double sigma_t = 0.65;
 
     // Create parameter list for user-defined constants
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters")
-        .sublist("K-Tau Parameters")
-        .set<double>("sigma_k", sigma_k);
-    user_params.sublist("Turbulence Parameters")
-        .sublist("K-Tau Parameters")
-        .set<double>("sigma_t", sigma_t);
+    Teuchos::ParameterList turb_params;
+    turb_params.set<double>("sigma_k", sigma_k).set<double>("sigma_t", sigma_t);
 
     // Eval dependencies
     const auto deps
@@ -88,7 +82,7 @@ void testEval()
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleKTauDiffusivityCoefficient<EvalType,
                                                                    panzer::Traits>(
-            ir, user_params));
+            ir, turb_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_diffusivity_var_k);
     test_fixture.registerTestField<EvalType>(eval->_diffusivity_var_t);

@@ -1,0 +1,21 @@
+list(APPEND VERTEXCFD_CLOSUREMODEL_HEADERS
+  plasma_solver/closure_models/VertexCFD_Closure_PlasmaSpeciesConvectiveFlux.hpp
+  plasma_solver/closure_models/VertexCFD_Closure_PlasmaSpeciesEOS.hpp
+  plasma_solver/closure_models/VertexCFD_Closure_PlasmaSpeciesTimeDerivative.hpp
+  plasma_solver/closure_models/VertexCFD_PlasmaSpeciesClosureModelFactory.hpp
+  plasma_solver/closure_models/VertexCFD_PlasmaSpeciesClosureModelFactory_TemplateBuilder.hpp
+  plasma_solver/closure_models/VertexCFD_PlasmaSpeciesClosureModelFactoryTestHarness.hpp
+  )
+set(VERTEXCFD_CLOSUREMODEL_HEADERS "${VERTEXCFD_CLOSUREMODEL_HEADERS}" PARENT_SCOPE)
+
+list(APPEND VERTEXCFD_CLOSUREMODEL_SOURCES
+  plasma_solver/closure_models/VertexCFD_Closure_PlasmaSpeciesConvectiveFlux.cpp
+  plasma_solver/closure_models/VertexCFD_Closure_PlasmaSpeciesEOS.cpp
+  plasma_solver/closure_models/VertexCFD_Closure_PlasmaSpeciesTimeDerivative.cpp
+  plasma_solver/closure_models/VertexCFD_PlasmaSpeciesClosureModelFactory.cpp
+  )
+set(VERTEXCFD_CLOSUREMODEL_SOURCES "${VERTEXCFD_CLOSUREMODEL_SOURCES}" PARENT_SCOPE)
+
+if(VertexCFD_ENABLE_TESTING)
+  add_subdirectory(closure_models/unit_test)
+endif()

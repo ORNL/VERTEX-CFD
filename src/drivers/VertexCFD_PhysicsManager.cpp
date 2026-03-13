@@ -1,6 +1,7 @@
 #include "VertexCFD_PhysicsManager.hpp"
 #include "boundary_conditions/VertexCFD_BCStrategy_Factory.hpp"
 #include "closure_models/VertexCFD_ClosureModelFactory_TemplateBuilder.hpp"
+#include "conduction/boundary_conditions/VertexCFD_BCStrategy_ConductionFactory.hpp"
 #include "conduction/closure_models/VertexCFD_ConductionClosureModelFactory_TemplateBuilder.hpp"
 #include "equation_sets/VertexCFD_EquationSet_ConductionFactory.hpp"
 #include "equation_sets/VertexCFD_EquationSet_FluidFactory.hpp"
@@ -8,7 +9,10 @@
 #include "equation_sets/VertexCFD_EquationSet_SolidInductionLessMHDFactory.hpp"
 #include "induction_less_mhd_solver/closure_models/VertexCFD_SolidElectricPotentialClosureModelFactory_TemplateBuilder.hpp"
 #include "linear_solvers/VertexCFD_LinearSolvers_LOWSFactoryBuilder.hpp"
+#include "plasma_solver/closure_models/VertexCFD_PlasmaSpeciesClosureModelFactory_TemplateBuilder.hpp"
 #include "rad_solver/closure_models/VertexCFD_RADClosureModelFactory_TemplateBuilder.hpp"
+
+#include "utils/VertexCFD_Utils_PhysicsManager.hpp"
 
 #ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
 #include "equation_sets/VertexCFD_EquationSet_FullInductionMHDFactory.hpp"
@@ -17,7 +21,6 @@
 #endif
 
 #include <PanzerAdaptersSTK_config.hpp>
-#include <Panzer_BlockedEpetraLinearObjFactory.hpp>
 #include <Panzer_BlockedTpetraLinearObjFactory.hpp>
 #include <Panzer_ClosureModel_Factory_Composite_TemplateBuilder.hpp>
 #include <Panzer_ClosureModel_Factory_TemplateManager.hpp>
@@ -129,10 +132,12 @@ PhysicsManager::PhysicsManager(
                                tangent_param_names);
 
     // FIXME: Everything breaks if our integration order is not consistent, so
-    //        just extract the actaul order from the frist physics block for
-    //        use everywhere else.
+    //        just extract the actual order from the first physics block and
+    //        compare with all others.
     _integration_order
         = _physics_blocks.at(0)->getIntegrationRules().cbegin()->first;
+
+    Utils::checkIntegrationOrder(_integration_order, *physics_params);
 
     // Generate field data to complete the mesh.
     const int num_physics_blocks = _physics_blocks.size();
@@ -160,29 +165,12 @@ PhysicsManager::PhysicsManager(
         conn_manager);
 
     // Toggle on linear algebra type to construct linear object factory
-    const std::string lin_alg_type
-        = user_params->get<std::string>("Linear Algebra Type", "Tpetra");
-    if (lin_alg_type == "Tpetra")
-    {
-        _linear_object_factory = Teuchos::rcp(
-            new panzer::TpetraLinearObjFactory<panzer::Traits,
-                                               double,
-                                               int,
-                                               panzer::GlobalOrdinal>(
-                comm, _dof_manager));
-    }
-    else if (lin_alg_type == "Epetra")
-    {
-        _linear_object_factory = Teuchos::rcp(
-            new panzer::BlockedEpetraLinearObjFactory<panzer::Traits, int>(
-                comm, _dof_manager));
-    }
-    else
-    {
-        throw std::runtime_error(
-            "Invalid linear algebra type. Valid options are 'Tpetra' and "
-            "'Epetra'");
-    }
+    _linear_object_factory = Teuchos::rcp(
+        new panzer::TpetraLinearObjFactory<panzer::Traits,
+                                           double,
+                                           int,
+                                           panzer::GlobalOrdinal>(
+            comm, _dof_manager));
 
     // Linear solver factory.
     auto linear_solver_params = parameter_db->linearSolverParameters();
@@ -190,7 +178,7 @@ PhysicsManager::PhysicsManager(
         linear_solver_params);
 
     // Create boundary conditions.
-    auto bc_params = _parameter_db->boundaryConditionParameters();
+    const auto bc_params = _parameter_db->sortedBoundaryConditions();
     panzer::buildBCs(_boundary_conditions, *bc_params, _global_data);
 
     // Create model evaluator.
@@ -202,8 +190,17 @@ PhysicsManager::PhysicsManager(
                                            _t_init));
 
     // Create BC factory.
-    _bc_factory = Teuchos::rcp(
+    std::vector<Teuchos::RCP<panzer::BCStrategyFactory>> bc_factories;
+    Teuchos::RCP<panzer::BCStrategyFactory> _bc_other_factory = Teuchos::rcp(
         new VertexCFD::BoundaryCondition::Factory<num_space_dim>());
+    Teuchos::RCP<panzer::BCStrategyFactory> _bc_conduction_factory
+        = Teuchos::rcp(
+            new VertexCFD::BoundaryCondition::BCStractegyConductionFactory<
+                num_space_dim>());
+    bc_factories.push_back(_bc_other_factory);
+    bc_factories.push_back(_bc_conduction_factory);
+    _bc_factory_comp
+        = Teuchos::rcp(new panzer::BCFactoryComposite(bc_factories));
 
     // Create NS factory
     auto ns_cm_factory = Teuchos::rcp(
@@ -251,15 +248,29 @@ PhysicsManager::PhysicsManager(
     sfim_cm_factory->buildObjects(sfim_cm_builder);
 #endif
 
+#ifdef VertexCFD_ENABLE_PLASMA_SPECIES
+    // Create plasma species factory
+    auto plm_sp_cm_factory = Teuchos::rcp(
+        new panzer::ClosureModelFactory_TemplateManager<panzer::Traits>());
+    const VertexCFD::ClosureModel::PlasmaSpeciesFactoryTemplateBuilder<num_space_dim>
+        plm_sp_cm_builder;
+    plm_sp_cm_factory->buildObjects(plm_sp_cm_builder);
+#endif
+
     // Initialize composite builder
     panzer::ClosureModelFactoryComposite_TemplateBuilder comp_cm_builder;
     comp_cm_builder.addFactory(ns_cm_factory);
     comp_cm_builder.addFactory(cond_cm_factory);
     comp_cm_builder.addFactory(rad_cm_factory);
     comp_cm_builder.addFactory(solid_ep_cm_factory);
+
 #ifdef VERTEXCFD_ENABLE_FULL_INDUCTION_MHD
     comp_cm_builder.addFactory(fim_cm_factory);
     comp_cm_builder.addFactory(sfim_cm_factory);
+#endif
+
+#ifdef VertexCFD_ENABLE_PLASMA_SPECIES
+    comp_cm_builder.addFactory(plm_sp_cm_factory);
 #endif
 
     // Add composible builder to global builder
@@ -331,11 +342,12 @@ void PhysicsManager::setupModel()
     // Setup model.
     auto closure_params = _parameter_db->closureModelParameters();
     const bool write_graph = user_params->get<bool>("Output Graph");
+
     _model_evaluator->setupModel(_workset_container,
                                  _physics_blocks,
                                  _boundary_conditions,
                                  *_eq_set_factory,
-                                 *_bc_factory,
+                                 *_bc_factory_comp,
                                  *_cm_factory,
                                  *_cm_factory,
                                  *closure_params,
@@ -417,7 +429,7 @@ const std::vector<panzer::BC>& PhysicsManager::boundaryConditions() const
 Teuchos::RCP<panzer::BCStrategyFactory>
 PhysicsManager::boundaryConditionFactory() const
 {
-    return _bc_factory;
+    return _bc_factory_comp;
 }
 
 //---------------------------------------------------------------------------//

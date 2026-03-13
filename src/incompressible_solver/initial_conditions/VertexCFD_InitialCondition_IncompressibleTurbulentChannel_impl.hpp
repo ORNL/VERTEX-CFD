@@ -25,12 +25,10 @@ namespace InitialCondition
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleTurbulentChannel<EvalType, Traits, NumSpaceDim>::
     IncompressibleTurbulentChannel(const Teuchos::ParameterList& ic_params,
-                                   const bool& build_temp_equ,
                                    const panzer::PureBasis& basis)
     : _lagrange_pressure("lagrange_pressure", basis.functional)
     , _temperature("temperature", basis.functional)
     , _basis_name(basis.name())
-    , _solve_temp(build_temp_equ)
     , _nu(ic_params.get<double>("Kinematic Viscosity"))
     , _h(ic_params.get<double>("Half Width"))
     , _Re_tau(ic_params.get<double>("Friction Reynolds Number"))
@@ -43,6 +41,7 @@ IncompressibleTurbulentChannel<EvalType, Traits, NumSpaceDim>::
              basis.cardinality())
     , _nb_modes(3)
     , _U_0(0.0)
+    , _solve_temp(ic_params.isType<double>("Temperature"))
     , _T_init(std::numeric_limits<double>::quiet_NaN())
 {
     // Get number of modes if present (default is 3 modes)
@@ -123,16 +122,17 @@ void IncompressibleTurbulentChannel<EvalType, Traits, NumSpaceDim>::evaluateFiel
 
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
-void IncompressibleTurbulentChannel<EvalType, Traits, NumSpaceDim>::operator()(
+KOKKOS_INLINE_FUNCTION void
+IncompressibleTurbulentChannel<EvalType, Traits, NumSpaceDim>::operator()(
     const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const
 {
     const int cell = team.league_rank();
     const int num_basis = _velocity[0].extent(1);
     const double abs_tol = 1e-10;
 
-    using std::log;
-    using std::pow;
-    using std::sin;
+    using Kokkos::log;
+    using Kokkos::pow;
+    using Kokkos::sin;
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_basis), [&](const int basis) {

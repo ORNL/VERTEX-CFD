@@ -7,10 +7,12 @@ VertexCFD_add_tests(
   RADAdvectionFlux
   RADDiffusionFlux
   RADErrorNorms
-  RADExactSolution
+  RADBADExactSolution
   RADFissionSource
   RADFissionSourceExactSolution
   RADLocalTimeStepSize
   RADReaction
   RADTimeDerivative
+  RADTransmutationSourceExactSolution
+  RADVaporRemovalSource
   )

@@ -23,17 +23,15 @@ namespace InitialCondition
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleLaminarFlow<EvalType, Traits, NumSpaceDim>::IncompressibleLaminarFlow(
-    const Teuchos::ParameterList& ic_params,
-    const bool solve_temp,
-    const panzer::PureBasis& basis)
+    const Teuchos::ParameterList& ic_params, const panzer::PureBasis& basis)
     : _lagrange_pressure("lagrange_pressure", basis.functional)
     , _temperature("temperature", basis.functional)
     , _basis_name(basis.name())
-    , _solve_temp(solve_temp)
     , _min(ic_params.get<double>("Minimum height"))
     , _max(ic_params.get<double>("Maximum height"))
     , _vel_avg(ic_params.get<double>("Average velocity"))
     , _vel_max(num_space_dim == 2 ? 3.0 / 2.0 * _vel_avg : 2.0 * _vel_avg)
+    , _solve_temp(ic_params.isType<double>("Temperature"))
     , _T_init(std::numeric_limits<double>::quiet_NaN())
 {
     this->addEvaluatedField(_lagrange_pressure);

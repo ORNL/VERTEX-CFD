@@ -1,6 +1,8 @@
 #ifndef VERTEXCFD_CLOSUREMODELFACTORY_IMPL_HPP
 #define VERTEXCFD_CLOSUREMODELFACTORY_IMPL_HPP
 
+#include "VertexCFD_Closure_ConstantScalarField.hpp"
+#include "VertexCFD_Closure_ConstantVectorField.hpp"
 #include "VertexCFD_Closure_ElementLength.hpp"
 #include "VertexCFD_Closure_ExternalInterpolation.hpp"
 #include "VertexCFD_Closure_ExternalMagneticField.hpp"
@@ -8,6 +10,7 @@
 #include "VertexCFD_Closure_MetricTensor.hpp"
 #include "VertexCFD_Closure_MetricTensorElementLength.hpp"
 #include "VertexCFD_Closure_SingularValueElementLength.hpp"
+#include "VertexCFD_Closure_VariableOldValue.hpp"
 #include "VertexCFD_Closure_VectorFieldDivergence.hpp"
 #include "VertexCFD_Closure_WallDistance.hpp"
 
@@ -84,7 +87,7 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
     if (lsvof_factory)
     {
         lsvof_factory->buildDefaultClosureModels(
-            ir, closure_model_list, user_params, evaluators);
+            ir, closure_model_list, user_params, global_data, evaluators);
     }
 
     // Incompressible factory model object required for "Navier Stokes"
@@ -94,36 +97,35 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
               : std::nullopt;
     std::string incomp_error_msg = "None\n";
 
-    // Inductionless solver factory object
-    std::optional<InductionlessFactory<EvalType, NumSpaceDim>> inductionless_factory
-        = user_params.isType<bool>("Build Inductionless MHD Equation")
-              ? std::make_optional<InductionlessFactory<EvalType, NumSpaceDim>>()
-              : std::nullopt;
-    std::string ind_less_error_msg = "None\n";
-
     // Get fluid properties for incompressible NS equations: read the Fluid
     // Properties from the closure model list and remove it from the list.
+    bool build_indless_equ = false;
     Teuchos::ParameterList fluid_prop_list;
     if (incomp_factory)
     {
+        // Fluid properties
         fluid_prop_list = closure_model_list.sublist("Fluid Properties");
         closure_model_list.remove("Fluid Properties");
         const bool build_temp_equ
-            = user_params.isType<bool>("Build Temperature Equation")
-                  ? user_params.get<bool>("Build Temperature Equation")
+            = fluid_prop_list.isType<bool>("Build Temperature Equation")
+                  ? fluid_prop_list.get<bool>("Build Temperature Equation")
                   : false;
         const bool build_buoyancy_source
-            = user_params.isType<bool>("Build Buoyancy Source")
-                  ? user_params.get<bool>("Build Buoyancy Source")
+            = fluid_prop_list.isType<bool>("Build Buoyancy Source")
+                  ? fluid_prop_list.get<bool>("Build Buoyancy Source")
+                  : false;
+        build_indless_equ
+            = fluid_prop_list.isType<bool>("Build Inductionless MHD Equation")
+                  ? fluid_prop_list.get<bool>(
+                        "Build Inductionless MHD Equation")
                   : false;
         fluid_prop_list.set<bool>("Build Inductionless MHD Equation",
-                                  inductionless_factory.has_value());
+                                  build_indless_equ);
         fluid_prop_list.set<bool>("Build Temperature Equation", build_temp_equ);
         fluid_prop_list.set<bool>("Build Buoyancy Source",
                                   build_buoyancy_source);
-        user_params.set<Teuchos::ParameterList>("Fluid Properties List",
-                                                fluid_prop_list);
 
+        // Initialize fluid properties
         auto eval = Teuchos::rcp(
             new FluidProperties::IncompressibleFluidProperties<EvalType,
                                                                panzer::Traits>(
@@ -140,32 +142,38 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
         stability_param_list
             = closure_model_list.sublist("Stability Parameters");
         closure_model_list.remove("Stability Parameters");
-        user_params.set<Teuchos::ParameterList>("Stability Parameters",
-                                                stability_param_list);
     }
-    else if (incomp_factory
-             && !closure_model_list.isSublist("Stability Parameters"))
-    {
-        // We need to define an empty list for incompressible factory.
-        user_params.set<Teuchos::ParameterList>("Stability Parameters",
-                                                stability_param_list);
-    }
+
+    // Inductionless solver factory object
+    std::optional<InductionlessFactory<EvalType, NumSpaceDim>> inductionless_factory
+        = build_indless_equ
+              ? std::make_optional<InductionlessFactory<EvalType, NumSpaceDim>>()
+              : std::nullopt;
+    std::string ind_less_error_msg = "None\n";
 
     // Turbulence model parameters
-    const std::string turbulence_model_name
-        = user_params.isType<std::string>("Turbulence Model")
-              ? user_params.get<std::string>("Turbulence Model")
-              : "No Turbulence Model";
-    std::optional<TurbulenceFactory<EvalType, NumSpaceDim>> tm_factory
-        = (turbulence_model_name != "No Turbulence Model")
-              ? std::make_optional<TurbulenceFactory<EvalType, NumSpaceDim>>()
-              : std::nullopt;
-    const bool use_turbulence_model = tm_factory.has_value();
-
-    if (tm_factory)
+    Teuchos::ParameterList turb_params;
+    if (incomp_factory && closure_model_list.isSublist("Turbulence Parameters"))
     {
-        tm_factory->buildClosureModel(
-            ir, global_data, user_params, turbulence_model_name, evaluators);
+        turb_params = closure_model_list.sublist("Turbulence Parameters");
+        closure_model_list.remove("Turbulence Parameters");
+        const std::string turbulence_model_name
+            = turb_params.get<std::string>("Turbulence Model Name");
+        std::optional<TurbulenceFactory<EvalType, NumSpaceDim>> tm_factory
+            = (turbulence_model_name != "No Turbulence Model")
+                  ? std::make_optional<TurbulenceFactory<EvalType, NumSpaceDim>>()
+                  : std::nullopt;
+        turb_params.set("Use Turbulence Model", tm_factory.has_value());
+
+        if (tm_factory)
+        {
+            tm_factory->buildClosureModel(
+                ir, global_data, turb_params, evaluators);
+        }
+    }
+    else
+    {
+        turb_params.set("Use Turbulence Model", false);
     }
 
     // Closure model block in XML input file for `model_id`
@@ -188,9 +196,11 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
                 incomp_factory->buildClosureModel(closure_type,
                                                   ir,
                                                   global_data,
+                                                  fluid_prop_list,
                                                   user_params,
                                                   closure_params,
-                                                  use_turbulence_model,
+                                                  stability_param_list,
+                                                  turb_params,
                                                   found_model,
                                                   incomp_error_msg,
                                                   evaluators);
@@ -202,6 +212,7 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
                                                  ir,
                                                  user_params,
                                                  closure_params,
+                                                 global_data,
                                                  found_model,
                                                  lsvof_error_msg,
                                                  evaluators);
@@ -219,11 +230,37 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
                                                          evaluators);
             }
 
-            if (closure_type == "ExternalMagneticField")
+            if (closure_type == "ConstantScalarField")
+            {
+                const std::string dof_name
+                    = closure_params.get<std::string>("DOF Name");
+                const double dof_value
+                    = closure_params.get<double>("DOF Value");
+
+                auto eval = Teuchos::rcp(
+                    new ConstantScalarField<EvalType, panzer::Traits>(
+                        *ir, dof_name, dof_value));
+                evaluators->push_back(eval);
+                found_model = true;
+            }
+
+            if (closure_type == "ConstantVectorField")
             {
                 auto eval = Teuchos::rcp(
+                    new ConstantVectorField<EvalType, panzer::Traits, num_space_dim>(
+                        *ir, closure_params));
+                evaluators->push_back(eval);
+                found_model = true;
+            }
+
+            if (closure_type == "ExternalMagneticField")
+            {
+                // Get external magnetic field parameters from the user params
+                auto eval = Teuchos::rcp(
                     new ExternalMagneticField<EvalType, panzer::Traits>(
-                        *ir, user_params));
+                        *ir,
+                        user_params.sublist("External Magnetic Field "
+                                            "Parameters")));
                 evaluators->push_back(eval);
                 found_model = true;
             }
@@ -309,6 +346,17 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
                 }
                 found_model = true;
             }
+
+            if (closure_type == "VariableOldValue")
+            {
+                auto eval = Teuchos::rcp(
+                    new VariableOldValue<EvalType, panzer::Traits>(
+                        *ir, closure_params));
+
+                evaluators->push_back(eval);
+
+                found_model = true;
+            }
         }
 
         if (!found_model)
@@ -316,11 +364,14 @@ Factory<EvalType, NumSpaceDim>::buildClosureModels(
             std::string msg = "Closure model " + closure_name
                               + " failed to build.\n";
             msg += "The closure models implemented in VertexCFD are:\n";
+            msg += "ConstantScalarField\n";
+            msg += "ConstantVectorField\n";
             msg += "MeasureElementLength\n";
             msg += "MetricTensor\n";
             msg += "MetricTensorElementLength\n";
             msg += "SingularValueElementLength\n";
             msg += "ThermalConductivity\n";
+            msg += "VariableOldValue\n";
             msg += "VectorFieldDivergence\n";
             msg += "AbsVectorFieldDivergence\n";
             msg += "=================================\n";

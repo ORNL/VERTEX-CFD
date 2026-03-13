@@ -22,6 +22,7 @@ set(UTILS_HEADERS
   )
 
 set(UTILS_SOURCES
+  VertexCFD_Utils_BCStrategy_Defines.cpp
   VertexCFD_Utils_MagneticDim.cpp
   VertexCFD_Utils_MagneticLayout.cpp
   VertexCFD_Utils_PhaseIndex.cpp

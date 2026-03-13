@@ -2,7 +2,6 @@
 #include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConvectiveFluxMachineLearning.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <gtest/gtest.h>
 
@@ -80,20 +79,11 @@ void testEval(const bool unscaled_density)
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Initialize class object to test
-    double rho = 1.0;
+    const double rho = unscaled_density ? 3.0 : 1.0;
     const double nu = 200.0;
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 200.);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", true);
-    if (unscaled_density)
-    {
-        rho = 3.0;
-        fluid_prop_list.set("Density", rho);
-    }
-    fluid_prop_list.set("Thermal conductivity", .5);
-    const double Cp = 100.;
-    fluid_prop_list.set("Specific heat capacity", Cp);
+    Teuchos::ParameterList fluid_params;
+    fluid_params.set("Build Temperature Equation", true);
+    fluid_params.set("Artificial compressibility", 2.0);
     Teuchos::ParameterList closure_params;
     closure_params.set("TensorFlow File",
                        "incompressible_2d_planar_poiseuille_tensorflow."
@@ -105,16 +95,15 @@ void testEval(const bool unscaled_density)
 
     const double H_min = -1.1;
     const double H_max = 1.1;
+    const double Cp = 100.;
     closure_params.set("H min", H_min);
     closure_params.set("H max", H_max);
     const double h = .5 * (H_max - H_min);
     const double S_u = 24000;
     closure_params.set("Momentum source", S_u);
-    closure_params.set("Density", rho);
-    closure_params.set("Kinematic viscosity", nu);
-    closure_params.set("Specific heat capacity", Cp);
-
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    fluid_params.set("Density", rho);
+    fluid_params.set("Kinematic viscosity", nu);
+    fluid_params.set("Specific heat capacity", Cp);
 
     const double U_max = 1.5 * S_u * h * h / 3.0 / nu;
 
@@ -122,7 +111,7 @@ void testEval(const bool unscaled_density)
         new ClosureModel::IncompressibleConvectiveFluxMachineLearning<
             EvalType,
             panzer::Traits,
-            num_space_dim>(ir, fluid_prop, closure_params));
+            num_space_dim>(ir, fluid_params, closure_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_continuity_flux);
     for (int dim = 0; dim < num_space_dim; ++dim)

@@ -20,7 +20,7 @@ namespace BoundaryCondition
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleDirichlet<EvalType, Traits, NumSpaceDim>::IncompressibleDirichlet(
     const panzer::IntegrationRule& ir,
-    const FluidProperties::ConstantFluidProperties& fluid_prop,
+    const Teuchos::ParameterList& fluid_params,
     const Teuchos::ParameterList& bc_params,
     const bool is_edac)
     : _boundary_lagrange_pressure("BOUNDARY_lagrange_pressure", ir.dl_scalar)
@@ -31,7 +31,7 @@ IncompressibleDirichlet<EvalType, Traits, NumSpaceDim>::IncompressibleDirichlet(
     , _lagrange_pressure("lagrange_pressure", ir.dl_scalar)
     , _grad_lagrange_pressure("GRAD_lagrange_pressure", ir.dl_vector)
     , _grad_temperature("GRAD_temperature", ir.dl_vector)
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
     , _is_edac(is_edac)
 {
     // Calculate the coefficients 'a' and 'b' for the linear time ramping

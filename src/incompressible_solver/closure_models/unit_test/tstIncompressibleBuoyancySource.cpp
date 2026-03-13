@@ -2,7 +2,6 @@
 #include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleBuoyancySource.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <gtest/gtest.h>
 
@@ -68,19 +67,11 @@ void testEval()
     if (num_space_dim == 3)
         gravity[2] = 4.0;
     Teuchos::ParameterList user_params;
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Kinematic viscosity", 0.375);
-    fluid_prop_list.set("Artificial compressibility", 2.0);
-    fluid_prop_list.set("Build Temperature Equation", true);
-    fluid_prop_list.set("Thermal conductivity", 0.5);
-    fluid_prop_list.set("Specific heat capacity", 5.0);
-    fluid_prop_list.set("Build Buoyancy Source", true);
-    fluid_prop_list.set("Reference temperature", 300.0);
-    fluid_prop_list.set("Expansion coefficient", 1.0e-2);
-    user_params.set("Build Buoyancy Source", true);
     user_params.set("Gravity", gravity);
 
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    Teuchos::ParameterList fluid_params;
+    fluid_params.set("Reference temperature", 300.0);
+    fluid_params.set("Expansion coefficient", 1.0e-2);
 
     auto deps = Teuchos::rcp(new Dependencies<EvalType>(ir, T));
     test_fixture.registerEvaluator<EvalType>(deps);
@@ -89,7 +80,7 @@ void testEval()
         new ClosureModel::IncompressibleBuoyancySource<EvalType,
                                                        panzer::Traits,
                                                        num_space_dim>(
-            ir, fluid_prop, user_params));
+            ir, fluid_params, user_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_buoyancy_continuity_source);
     test_fixture.registerTestField<EvalType>(eval->_buoyancy_energy_source);
@@ -161,11 +152,12 @@ void testFactory()
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
     const Teuchos::Array<double> gravity(num_space_dim);
     test_fixture.user_params.set("Gravity", gravity);
-    test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0);
+        .set("Artificial compressibility", 2.0)
+        .set("Expansion coefficient", 1.2)
+        .set("Reference temperature", 1.3);
     test_fixture.type_name = "IncompressibleBuoyancySource";
     test_fixture.eval_name = "Incompressible Buoyancy Source "
                              + std::to_string(num_space_dim) + "D";

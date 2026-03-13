@@ -14,7 +14,7 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleWALEEddyViscosity<EvalType, Traits, NumSpaceDim>::
     IncompressibleWALEEddyViscosity(const panzer::IntegrationRule& ir,
-                                    const Teuchos::ParameterList& user_params)
+                                    const Teuchos::ParameterList& turb_params)
     : _element_length("les_element_length", ir.dl_vector)
     , _C_k(0.094)
     , _C_w(0.275)
@@ -22,21 +22,11 @@ IncompressibleWALEEddyViscosity<EvalType, Traits, NumSpaceDim>::
     , _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
 {
     // Check for user-defined coefficients
-    if (user_params.isSublist("Turbulence Parameters"))
-    {
-        Teuchos::ParameterList turb_list
-            = user_params.sublist("Turbulence Parameters");
+    if (turb_params.isType<double>("C_w"))
+        _C_w = turb_params.get<double>("C_w");
 
-        if (turb_list.isType<double>("C_w"))
-        {
-            _C_w = turb_list.get<double>("C_w");
-        }
-
-        if (turb_list.isType<double>("C_k"))
-        {
-            _C_k = turb_list.get<double>("C_k");
-        }
-    }
+    if (turb_params.isType<double>("C_k"))
+        _C_k = turb_params.get<double>("C_k");
 
     // Add dependent fields
     this->addDependentField(_element_length);

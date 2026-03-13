@@ -49,7 +49,7 @@ class RADFissionSourceExactSolution
     Kokkos::Array<PHX::MDField<scalar_type, panzer::Cell, panzer::Point>,
                   VertexCFD::Constants::MAX_NUM_VIEW>
         _exact_species;
-    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _flux;
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _neutron_flux;
 
   private:
     double _xs;

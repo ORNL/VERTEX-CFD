@@ -102,7 +102,9 @@ void FullInductionConducting<EvalType, Traits, NumSpaceDim>::evaluateFields(
     {
         const int fad_size = Kokkos::dimension_scalar(
             _boundary_induced_magnetic_field[0].get_view());
-        bytes = scratch_view_B::shmem_size(
+        bytes = scratch_view_eta::shmem_size(
+            _boundary_induced_magnetic_field[0].extent(1), fad_size);
+        bytes += scratch_view_B::shmem_size(
             _boundary_induced_magnetic_field[0].extent(1), fad_size);
         bytes += scratch_view_gradB::shmem_size(
             _boundary_induced_magnetic_field[0].extent(1),
@@ -111,7 +113,9 @@ void FullInductionConducting<EvalType, Traits, NumSpaceDim>::evaluateFields(
     }
     else
     {
-        bytes = scratch_view_B::shmem_size(
+        bytes = scratch_view_eta::shmem_size(
+            _boundary_induced_magnetic_field[0].extent(1));
+        bytes += scratch_view_B::shmem_size(
             _boundary_induced_magnetic_field[0].extent(1));
         bytes += scratch_view_gradB::shmem_size(
             _boundary_induced_magnetic_field[0].extent(1), num_space_dim);
@@ -132,18 +136,22 @@ FullInductionConducting<EvalType, Traits, NumSpaceDim>::operator()(
     const int cell = team.league_rank();
     const int num_point = _boundary_induced_magnetic_field[0].extent(1);
     const int num_grad_dim = _boundary_grad_induced_magnetic_field[0].extent(2);
+    scratch_view_eta scratch_data_eta;
     scratch_view_B scratch_data_B;
     scratch_view_gradB scratch_data_gradB;
     if constexpr (Sacado::IsADType<scalar_type>::value)
     {
         const int fad_size = Kokkos::dimension_scalar(
             _boundary_induced_magnetic_field[0].get_view());
+        scratch_data_eta
+            = scratch_view_eta(team.team_shmem(), num_point, fad_size);
         scratch_data_B = scratch_view_B(team.team_shmem(), num_point, fad_size);
         scratch_data_gradB = scratch_view_gradB(
             team.team_shmem(), num_point, num_space_dim, fad_size);
     }
     else
     {
+        scratch_data_eta = scratch_view_eta(team.team_shmem(), num_point);
         scratch_data_B = scratch_view_B(team.team_shmem(), num_point);
         scratch_data_gradB
             = scratch_view_gradB(team.team_shmem(), num_point, num_space_dim);
@@ -202,8 +210,8 @@ FullInductionConducting<EvalType, Traits, NumSpaceDim>::operator()(
             // wall
             if (_build_resistive_flux)
             {
-                const scalar_type inv_eta = _magnetic_permeability
-                                            / _resistivity(cell, point);
+                auto&& inv_eta = scratch_data_eta(point);
+                inv_eta = _magnetic_permeability / _resistivity(cell, point);
                 for (int d = 0; d < num_grad_dim; ++d)
                 {
                     for (int fdim = 0; fdim < num_grad_dim; ++fdim)

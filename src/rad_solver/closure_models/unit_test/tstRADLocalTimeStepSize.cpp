@@ -40,11 +40,14 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _velocity_1;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _velocity_2;
 
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _neutron_flux;
+
     Dependencies(const panzer::IntegrationRule& ir,
                  const double u,
                  const double v,
                  const double w,
-                 const Kokkos::Array<double, 3> h)
+                 const Kokkos::Array<double, 3> h,
+                 const std::string neutron_flux_name)
         : _u(u)
         , _v(v)
         , _w(w)
@@ -53,11 +56,14 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         , _velocity_0("velocity_0", ir.dl_scalar)
         , _velocity_1("velocity_1", ir.dl_scalar)
         , _velocity_2("velocity_2", ir.dl_scalar)
+        , _neutron_flux(neutron_flux_name, ir.dl_scalar)
     {
         this->addEvaluatedField(_element_length);
         this->addEvaluatedField(_velocity_0);
         this->addEvaluatedField(_velocity_1);
         this->addEvaluatedField(_velocity_2);
+
+        this->addEvaluatedField(_neutron_flux);
 
         this->setName("RAD LocalTimeStepSize Unit Test Dependencies");
     }
@@ -81,6 +87,8 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
             _velocity_0(c, qp) = _u;
             _velocity_1(c, qp) = _v;
             _velocity_2(c, qp) = _w;
+
+            _neutron_flux(c, qp) = 0.25;
         }
     }
 };
@@ -88,8 +96,10 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
 //---------------------------------------------------------------------------//
 template<class EvalType, int NumSpaceDim>
 void testEval(const bool build_advection = false,
-              const bool build_reaction = false,
-              const bool build_diffusion = false)
+              const bool build_bateman = false,
+              const bool build_diffusion = false,
+              const bool build_transmutation = false,
+              const std::string neutron_flux_name = "")
 {
     // Setup test fixture.
     constexpr int num_space_dim = NumSpaceDim;
@@ -114,24 +124,33 @@ void testEval(const bool build_advection = false,
     species_decay[2] = 1.0;
     species_decay[3] = -0.1;
 
-    auto dep_eval = Teuchos::rcp(new Dependencies<EvalType>(ir, u, v, w, h));
+    Teuchos::Array<double> mic_cross_section(4);
+    mic_cross_section[0] = -2.0;
+    mic_cross_section[1] = 1.0;
+    mic_cross_section[2] = 2.0;
+    mic_cross_section[3] = -0.2;
+
+    auto dep_eval = Teuchos::rcp(
+        new Dependencies<EvalType>(ir, u, v, w, h, neutron_flux_name));
     test_fixture.registerEvaluator<EvalType>(dep_eval);
 
     Teuchos::ParameterList rad_params;
-    rad_params.set("Build Reaction", build_reaction);
+    rad_params.set("Build Reaction Bateman Source", build_bateman);
+    rad_params.set("Build Reaction Transmutation Source", build_transmutation);
     rad_params.set("Build Advection", build_advection);
     rad_params.set("Build Diffusion", build_diffusion);
     rad_params.set("Diffusion Coefficient", 0.0576);
     rad_params.set("Number of Species", 2);
     Teuchos::ParameterList reaction_params;
     reaction_params.set("Species Decay", species_decay);
+    reaction_params.set("Microscopic Cross-Section", mic_cross_section);
     const SpeciesProperties::ConstantSpeciesProperties species_prop(
         rad_params, reaction_params);
 
     // Create test evaluator.
     auto dt_eval = Teuchos::rcp(
         new ClosureModel::RADLocalTimeStepSize<EvalType, panzer::Traits, NumSpaceDim>(
-            ir, species_prop));
+            ir, species_prop, neutron_flux_name));
     test_fixture.registerEvaluator<EvalType>(dt_eval);
 
     // Add required test fields.
@@ -145,19 +164,24 @@ void testEval(const bool build_advection = false,
         = test_fixture.getTestFieldData<EvalType>(dt_eval->_local_dt);
 
     const double exp_adv = num_space_dim == 3 ? 0.09375 : 0.1;
-    const double exp_reac = 1.0;
+    const double exp_bateman = 1.0;
+    const double exp_transmutation = 2.0;
     const double exp_diff = num_space_dim == 3 ? 0.7971938775510204
                                                : 0.8680555555555556;
 
     double exp_val;
     // The logic in the if conditions are based on the expected values.
-    // Reaction has the largest time step. If it is the only term, expected
-    // value should be reaction time step. If there are other terms those need
-    // to be taken into account. If somehow these values are changed, one needs
-    // to update these if conditions. 3 if condition is used that way to avoid
-    // 7 if conditions to cover the all of the possibilities.
-    if (build_reaction)
-        exp_val = exp_reac;
+    // Transmutation Reaction has the largest time step. If it is the only
+    // term, expected value should be Transmutation reaction time step. If
+    // there are other terms those need to be taken into account. If somehow
+    // these values are changed, one needs to update these if conditions. 4 if
+    // conditions are used that way to avoid much more if conditions to cover
+    // the all of the possibilities.
+    if (build_transmutation)
+        exp_val = exp_transmutation;
+
+    if (build_bateman)
+        exp_val = exp_bateman;
 
     if (build_diffusion)
         exp_val = exp_diff;
@@ -171,123 +195,149 @@ void testEval(const bool build_advection = false,
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize2DReaction, Residual)
+TEST(RADLocalTimeStepSizeSize2DBateman, Residual)
 {
-    testEval<panzer::Traits::Residual, 2>(false, true, false);
+    testEval<panzer::Traits::Residual, 2>(false, true, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize2DReaction, Jacobian)
+TEST(RADLocalTimeStepSizeSize2DBateman, Jacobian)
 {
-    testEval<panzer::Traits::Jacobian, 2>(false, true, false);
+    testEval<panzer::Traits::Jacobian, 2>(false, true, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize3DReaction, Residual)
+TEST(RADLocalTimeStepSizeSize3DBateman, Residual)
 {
-    testEval<panzer::Traits::Residual, 3>(false, true, false);
+    testEval<panzer::Traits::Residual, 3>(false, true, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize3DReaction, Jacobian)
+TEST(RADLocalTimeStepSizeSize3DBateman, Jacobian)
 {
-    testEval<panzer::Traits::Jacobian, 3>(false, true, false);
+    testEval<panzer::Traits::Jacobian, 3>(false, true, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
 TEST(RADLocalTimeStepSizeSize2DAdvection, Residual)
 {
-    testEval<panzer::Traits::Residual, 2>(true, false, false);
+    testEval<panzer::Traits::Residual, 2>(true, false, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
 TEST(RADLocalTimeStepSizeSize2DAdvection, Jacobian)
 {
-    testEval<panzer::Traits::Jacobian, 2>(true, false, false);
+    testEval<panzer::Traits::Jacobian, 2>(true, false, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
 TEST(RADLocalTimeStepSizeSize3DAdvection, Residual)
 {
-    testEval<panzer::Traits::Residual, 3>(true, false, false);
+    testEval<panzer::Traits::Residual, 3>(true, false, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
 TEST(RADLocalTimeStepSizeSize3DAdvection, Jacobian)
 {
-    testEval<panzer::Traits::Jacobian, 3>(true, false, false);
+    testEval<panzer::Traits::Jacobian, 3>(true, false, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize2DReactionAdvection, Residual)
+TEST(RADLocalTimeStepSizeSize2DBatemanAdvection, Residual)
 {
-    testEval<panzer::Traits::Residual, 2>(true, true, false);
+    testEval<panzer::Traits::Residual, 2>(true, true, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize2DReactionAdvection, Jacobian)
+TEST(RADLocalTimeStepSizeSize2DBatemanAdvection, Jacobian)
 {
-    testEval<panzer::Traits::Jacobian, 2>(true, true, false);
+    testEval<panzer::Traits::Jacobian, 2>(true, true, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize3DReactionAdvection, Residual)
+TEST(RADLocalTimeStepSizeSize3DBatemanAdvection, Residual)
 {
-    testEval<panzer::Traits::Residual, 3>(true, true, false);
+    testEval<panzer::Traits::Residual, 3>(true, true, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize3DReactionAdvection, Jacobian)
+TEST(RADLocalTimeStepSizeSize3DBatemanAdvection, Jacobian)
 {
-    testEval<panzer::Traits::Jacobian, 3>(true, true, false);
+    testEval<panzer::Traits::Jacobian, 3>(true, true, false, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize2DRAD, Residual)
+TEST(RADLocalTimeStepSizeSize2DBAD, Residual)
 {
-    testEval<panzer::Traits::Residual, 2>(true, true, true);
+    testEval<panzer::Traits::Residual, 2>(true, true, true, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize2DRAD, Jacobian)
+TEST(RADLocalTimeStepSizeSize2DBAD, Jacobian)
 {
-    testEval<panzer::Traits::Jacobian, 2>(true, true, true);
+    testEval<panzer::Traits::Jacobian, 2>(true, true, true, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize3DRAD, Residual)
+TEST(RADLocalTimeStepSizeSize3DBAD, Residual)
 {
-    testEval<panzer::Traits::Residual, 3>(true, true, true);
+    testEval<panzer::Traits::Residual, 3>(true, true, true, false, "");
 }
 
 //---------------------------------------------------------------------------//
-TEST(RADLocalTimeStepSizeSize3DRAD, Jacobian)
+TEST(RADLocalTimeStepSizeSize3DBAD, Jacobian)
 {
-    testEval<panzer::Traits::Jacobian, 3>(true, true, true);
+    testEval<panzer::Traits::Jacobian, 3>(true, true, true, false, "");
 }
 
 //---------------------------------------------------------------------------//
 TEST(RADLocalTimeStepSizeSize2DDiffusion, Residual)
 {
-    testEval<panzer::Traits::Residual, 2>(false, false, true);
+    testEval<panzer::Traits::Residual, 2>(false, false, true, false, "");
 }
 
 //---------------------------------------------------------------------------//
 TEST(RADLocalTimeStepSizeSize2DDiffusion, Jacobian)
 {
-    testEval<panzer::Traits::Jacobian, 2>(false, false, true);
+    testEval<panzer::Traits::Jacobian, 2>(false, false, true, false, "");
 }
 
 //---------------------------------------------------------------------------//
 TEST(RADLocalTimeStepSizeSize3DDiffusion, Residual)
 {
-    testEval<panzer::Traits::Residual, 3>(false, false, true);
+    testEval<panzer::Traits::Residual, 3>(false, false, true, false, "");
 }
 
 //---------------------------------------------------------------------------//
 TEST(RADLocalTimeStepSizeSize3DDiffusion, Jacobian)
 {
-    testEval<panzer::Traits::Jacobian, 3>(false, false, true);
+    testEval<panzer::Traits::Jacobian, 3>(false, false, true, false, "");
+}
+
+//---------------------------------------------------------------------------//
+TEST(RADLocalTimeStepSizeSize2DTransmutation, Residual)
+{
+    testEval<panzer::Traits::Residual, 2>(
+        false, true, false, true, "neutron_flux");
+}
+
+//---------------------------------------------------------------------------//
+TEST(RADLocalTimeStepSizeSize2DTransmutation, Jacobian)
+{
+    testEval<panzer::Traits::Jacobian, 2>(
+        false, true, false, true, "neutron_flux");
+}
+
+//---------------------------------------------------------------------------//
+TEST(RADLocalTimeStepSizeSize3DTBAD, Residual)
+{
+    testEval<panzer::Traits::Residual, 3>(true, true, true, true, "flux");
+}
+
+//---------------------------------------------------------------------------//
+TEST(RADLocalTimeStepSizeSize3DTBAD, Jacobian)
+{
+    testEval<panzer::Traits::Jacobian, 3>(true, true, true, true, "flux");
 }
 
 } // end namespace Test

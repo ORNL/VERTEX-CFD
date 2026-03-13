@@ -7,16 +7,27 @@
 #include "closure_models/VertexCFD_Closure_ConstantVectorField.hpp"
 #include "closure_models/VertexCFD_Closure_MetricTensor.hpp"
 #include "closure_models/VertexCFD_Closure_MetricTensorElementLength.hpp"
+#include "closure_models/VertexCFD_Closure_VariableConvectiveFlux.hpp"
+#include "closure_models/VertexCFD_Closure_VariableOldValue.hpp"
 
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleCLSEpsilon.hpp"
+#include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleCLSLambda.hpp"
+#include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleCLSNonReconstructedNormal.hpp"
+#include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleCLSRegularization.hpp"
+#include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleCLSSign.hpp"
+#include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleCLSTimeDerivative.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFArtificialCompression.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFBubbleExact.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFBuoyancySource.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFConvectiveFlux.hpp"
+#include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFEntropyFluctuation.hpp"
+#include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFEntropyFunction.hpp"
+#include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFEntropyViscosity.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFErrorNorms.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFNthPhaseFraction.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFScalarConvectiveFlux.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFScalarTimeDerivative.hpp"
+#include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFScalarViscousFlux.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFSurfaceTensionForce.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFTimeDerivative.hpp"
 #include "incompressible_lsvof_solver/closure_models/VertexCFD_Closure_IncompressibleLSVOFVariableProperties.hpp"
@@ -41,6 +52,7 @@ void IncompressibleLSVOFFactory<EvalType, NumSpaceDim>::buildClosureModel(
     const Teuchos::RCP<panzer::IntegrationRule>& ir,
     const Teuchos::ParameterList& /*user_params*/,
     const Teuchos::ParameterList& closure_params,
+    const Teuchos::RCP<panzer::GlobalData>& /*global_data*/,
     bool& found_model,
     std::string& error_msg,
     Teuchos::RCP<std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>>>
@@ -111,13 +123,22 @@ void IncompressibleLSVOFFactory<EvalType, NumSpaceDim>::buildClosureModel(
     // If model not found, add to error message and return
     error_msg += "Default IncompressibleLSVOF closure models:\n";
     error_msg += "IncompressibleCLSEpsilon\n";
+    error_msg += "IncompressibleCLSLambda\n";
+    error_msg += "IncompressibleCLSNonReconstructedNormal\n";
+    error_msg += "IncompressibleCLSRegularization\n";
+    error_msg += "IncompressibleCLSSign\n";
+    error_msg += "IncompressibleCLSTimeDerivative\n";
     error_msg += "IncompressibleLocalTimeStepSize\n";
     error_msg += "IncompressibleLSVOFArtificialCompression\n";
     error_msg += "IncompressibleLSVOFBuoyancySource\n";
     error_msg += "IncompressibleLSVOFConvectiveFlux\n";
+    error_msg += "IncompressibleLSVOFEntropyFluctuation\n";
+    error_msg += "IncompressibleLSVOFEntropyFunction\n";
+    error_msg += "IncompressibleLSVOFEntropyViscosity\n";
     error_msg += "IncompressibleLSVOFNthPhaseFraction\n";
     error_msg += "IncompressibleLSVOFScalarConvectiveFlux\n";
     error_msg += "IncompressibleLSVOFSurfaceTensionForce\n";
+    error_msg += "IncompressibleLSVOFScalarViscousFlux\n";
     error_msg += "IncompressibleLSVOFTimeDerivative\n";
     error_msg += "IncompressibleLSVOFVariableProperties\n";
     error_msg += "IncompressibleLSVOFViscousFlux\n";
@@ -135,6 +156,7 @@ void IncompressibleLSVOFFactory<EvalType, NumSpaceDim>::buildDefaultClosureModel
     const Teuchos::RCP<panzer::IntegrationRule>& ir,
     const Teuchos::ParameterList& closure_model_list,
     const Teuchos::ParameterList& user_params,
+    const Teuchos::RCP<panzer::GlobalData>& global_data,
     Teuchos::RCP<std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>>>
         evaluators)
 {
@@ -160,8 +182,8 @@ void IncompressibleLSVOFFactory<EvalType, NumSpaceDim>::buildDefaultClosureModel
 
     // Boolean for solving just LSVOF scalar equations
     const bool build_lsvofmom_equ
-        = user_params.isType<bool>("Build LSVOF Momentum Equation")
-              ? user_params.get<bool>("Build LSVOF Momentum Equation")
+        = lsvof_params.isType<bool>("Build LSVOF Navier-Stokes Equations")
+              ? lsvof_params.get<bool>("Build LSVOF Navier-Stokes Equations")
               : true;
 
     // Number of phases
@@ -251,6 +273,53 @@ void IncompressibleLSVOFFactory<EvalType, NumSpaceDim>::buildDefaultClosureModel
 
                 evaluators->push_back(eval_vof_compress);
 
+                // Entropy Function evaluation
+                const auto eval_entropy_function = Teuchos::rcp(
+                    new IncompressibleLSVOFEntropyFunction<EvalType,
+                                                           panzer::Traits,
+                                                           num_space_dim>(
+                        *ir,
+                        lsvof_params,
+                        phase_fraction_name,
+                        phase_fraction_name + "_equation"));
+
+                evaluators->push_back(eval_entropy_function);
+
+                // Entropy Fluctuation term
+                const auto eval_entropy_fluc = Teuchos::rcp(
+                    new IncompressibleLSVOFEntropyFluctuation<EvalType,
+                                                              panzer::Traits,
+                                                              num_space_dim>(
+                        *ir,
+                        lsvof_params,
+                        phase_fraction_name + "_equation",
+                        global_data));
+
+                evaluators->push_back(eval_entropy_fluc);
+
+                // Entropy Viscosity term
+                const auto eval_entropy_visc = Teuchos::rcp(
+                    new IncompressibleLSVOFEntropyViscosity<EvalType,
+                                                            panzer::Traits,
+                                                            num_space_dim>(
+                        *ir,
+                        lsvof_params,
+                        phase_fraction_name + "_equation",
+                        global_data));
+
+                evaluators->push_back(eval_entropy_visc);
+
+                // Viscous flux
+                const auto eval_vof_visc = Teuchos::rcp(
+                    new IncompressibleLSVOFScalarViscousFlux<EvalType,
+                                                             panzer::Traits,
+                                                             num_space_dim>(
+                        *ir,
+                        phase_fraction_name,
+                        phase_fraction_name + "_equation"));
+
+                evaluators->push_back(eval_vof_visc);
+
                 // TODO: add compressive flux, source terms, etc. as they
                 // are created.
             }
@@ -296,6 +365,19 @@ void IncompressibleLSVOFFactory<EvalType, NumSpaceDim>::buildDefaultClosureModel
             phase_names.push_back(phase_name);
         }
 
+        // Check for interface normal reconstruction
+        const auto type_validator = Teuchos::rcp(
+            new Teuchos::StringToIntegralParameterEntryValidator<
+                LSNormalReconstructionType>(Teuchos::tuple<std::string>("NonRe"
+                                                                        "const"
+                                                                        "ructe"
+                                                                        "d"),
+                                            "NonReconstructed"));
+
+        const LSNormalReconstructionType reconstruction_type
+            = type_validator->getIntegralValue(lsvof_params.get<std::string>(
+                "LS Normal Reconstruction Type"));
+
         // Automatically build metric tensor element length
         const auto eval_mt
             = Teuchos::rcp(new MetricTensor<EvalType, panzer::Traits>(*ir));
@@ -313,18 +395,81 @@ void IncompressibleLSVOFFactory<EvalType, NumSpaceDim>::buildDefaultClosureModel
                 *ir, lsvof_params));
 
         evaluators->push_back(eval_cls_epsilon);
+
+        // Save phi field values from previous stage for time derivative and
+        // convective flux (when Crank-Nicolson option is used)
+        const std::string old_value_type
+            = lsvof_params.get<std::string>("Old Value Type", "LastStage");
+
+        Teuchos::ParameterList old_value_params;
+        old_value_params.set("Field Name", "level_set");
+        old_value_params.set("Old Value Type", old_value_type);
+
+        const auto eval_phi_star
+            = Teuchos::rcp(new VariableOldValue<EvalType, panzer::Traits>(
+                *ir, old_value_params));
+
+        evaluators->push_back(eval_phi_star);
+
+        // Smoothed sign function
+        const auto eval_cls_sign = Teuchos::rcp(
+            new IncompressibleCLSSign<EvalType, panzer::Traits>(*ir));
+
+        evaluators->push_back(eval_cls_sign);
+
+        // Time derivative
+        const auto eval_cls_dqdt = Teuchos::rcp(
+            new IncompressibleCLSTimeDerivative<EvalType, panzer::Traits>(*ir));
+
+        evaluators->push_back(eval_cls_dqdt);
+
+        // Convective flux
+        Teuchos::ParameterList conv_flux_params;
+        conv_flux_params.set("Field Name", "CLS_sign");
+        conv_flux_params.set("Equation Name", "level_set_equation");
+
+        const auto eval_cls_conv = Teuchos::rcp(
+            new VariableConvectiveFlux<EvalType, panzer::Traits, num_space_dim>(
+                *ir, conv_flux_params));
+
+        evaluators->push_back(eval_cls_conv);
+
+        // Regularization parameter, lambda
+        const auto eval_cls_lambda = Teuchos::rcp(
+            new IncompressibleCLSLambda<EvalType, panzer::Traits, num_space_dim>(
+                *ir, lsvof_params, global_data));
+
+        evaluators->push_back(eval_cls_lambda);
+
+        // Interface normal
+        if (reconstruction_type == LSNormalReconstructionType::NonReconstructed)
+        {
+            const auto eval_cls_q = Teuchos::rcp(
+                new IncompressibleCLSNonReconstructedNormal<EvalType,
+                                                            panzer::Traits,
+                                                            num_space_dim>(*ir));
+
+            evaluators->push_back(eval_cls_q);
+        }
+
+        // Regularization term
+        const auto eval_cls_reg = Teuchos::rcp(
+            new IncompressibleCLSRegularization<EvalType,
+                                                panzer::Traits,
+                                                num_space_dim>(*ir));
+
+        evaluators->push_back(eval_cls_reg);
     }
-
-    // Material properties closure model
-    const auto eval_lsvof_props = Teuchos::rcp(
-        new IncompressibleLSVOFVariableProperties<EvalType, panzer::Traits>(
-            *ir, lsvof_params, phase_names));
-
-    evaluators->push_back(eval_lsvof_props);
 
     // Add closure models for Navier-Stokes equations
     if (build_lsvofmom_equ)
     {
+        const auto eval_lsvof_props = Teuchos::rcp(
+            new IncompressibleLSVOFVariableProperties<EvalType, panzer::Traits>(
+                *ir, lsvof_params, phase_names));
+
+        evaluators->push_back(eval_lsvof_props);
+
         const auto eval_ns_dqdt = Teuchos::rcp(
             new IncompressibleLSVOFTimeDerivative<EvalType,
                                                   panzer::Traits,
@@ -344,7 +489,7 @@ void IncompressibleLSVOFFactory<EvalType, NumSpaceDim>::buildDefaultClosureModel
             = Teuchos::rcp(new IncompressibleLSVOFViscousFlux<EvalType,
                                                               panzer::Traits,
                                                               num_space_dim>(
-                *ir, lsvof_params, user_params));
+                *ir, lsvof_params));
 
         evaluators->push_back(eval_ns_visc);
 
@@ -389,12 +534,21 @@ bool IncompressibleLSVOFFactory<EvalType, NumSpaceDim>::isDefaultClosureModel(
     std::vector<std::string> default_closures;
 
     default_closures.push_back("IncompressibleCLSEpsilon");
+    default_closures.push_back("IncompressibleCLSLambda");
+    default_closures.push_back("IncompressibleCLSNonReconstructedNormal");
+    default_closures.push_back("IncompressibleCLSRegularization");
+    default_closures.push_back("IncompressibleCLSSign");
+    default_closures.push_back("IncompressibleCLSTimeDerivative");
     default_closures.push_back("IncompressibleLocalTimeStepSize");
     default_closures.push_back("IncompressibleLSVOFArtificialCompression");
     default_closures.push_back("IncompressibleLSVOFBuoyancySource");
     default_closures.push_back("IncompressibleLSVOFConvectiveFlux");
+    default_closures.push_back("IncompressibleLSVOFEntropyFluctuation");
+    default_closures.push_back("IncompressibleLSVOFEntropyFunction");
+    default_closures.push_back("IncompressibleLSVOFEntropyViscosity");
     default_closures.push_back("IncompressibleLSVOFProperties");
     default_closures.push_back("IncompressibleLSVOFScalarConvectiveFlux");
+    default_closures.push_back("IncompressibleLSVOFScalarViscousFlux");
     default_closures.push_back("IncompressibleLSVOFSurfaceTensionForce");
     default_closures.push_back("IncompressibleLSVOFTimeDerivative");
     default_closures.push_back("IncompressibleLSVOFVariableProperties");

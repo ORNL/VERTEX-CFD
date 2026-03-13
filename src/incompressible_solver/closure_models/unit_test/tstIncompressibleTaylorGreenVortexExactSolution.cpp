@@ -100,7 +100,6 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.type_name = "IncompressibleTaylorGreenVortexExactSolution";
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")

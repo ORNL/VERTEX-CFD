@@ -54,6 +54,20 @@ class LorentzForce : public panzer::EvaluatorWithBaseImpl<Traits>,
     Kokkos::Array<PHX::MDField<const scalar_type, panzer::Cell, panzer::Point>,
                   field_size>
         _ext_magn_field;
+
+    enum TmpVars
+    {
+        B2,
+        B_DOT_U,
+        NUM_TMPS
+    };
+
+    /// View type for shared memory
+    using scratch_view
+        = Kokkos::View<scalar_type**,
+                       typename PHX::DevLayout<scalar_type>::type,
+                       typename PHX::exec_space::scratch_memory_space,
+                       Kokkos::MemoryUnmanaged>;
 };
 
 //---------------------------------------------------------------------------//

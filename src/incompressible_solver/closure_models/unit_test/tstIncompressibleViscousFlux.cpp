@@ -1,8 +1,8 @@
-#include <VertexCFD_EvaluatorTestHarness.hpp>
-#include <closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp>
+#include "VertexCFD_EvaluatorTestHarness.hpp"
+
+#include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousFlux.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include <gtest/gtest.h>
 
@@ -191,35 +191,24 @@ void testEval(const bool unscaled_density,
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Initialize class object to test
-    const double nu = 0.375;
-    const double cp = 0.2;
-    const double beta = 2.0;
-    const double kappa = build_temp_equ ? 0.5 : nan_val;
     const double gamma = build_temp_equ ? 3.0 : nan_val;
 
-    Teuchos::ParameterList fluid_prop_list;
-    fluid_prop_list.set("Density", unscaled_density ? 3.0 : 1.0);
-    fluid_prop_list.set("Kinematic viscosity", nu);
-    fluid_prop_list.set("Artificial compressibility", beta);
-    fluid_prop_list.set("Build Temperature Equation", build_temp_equ);
-    if (build_temp_equ)
-    {
-        fluid_prop_list.set("Thermal conductivity", kappa);
-        fluid_prop_list.set("Specific heat capacity", cp);
-        fluid_prop_list.set("Heat Capacity Ratio", gamma);
-    }
-
-    Teuchos::ParameterList user_params;
-    if (build_turbulence_model && build_temp_equ)
-        user_params.set("Turbulent Prandtl Number", Pr_t);
+    Teuchos::ParameterList fluid_params;
+    fluid_params.set("Artificial compressibility", 2.0);
+    fluid_params.set("Build Temperature Equation", build_temp_equ);
+    fluid_params.set("Heat capacity ratio", gamma);
     if (continuity_model == ContinuityModel::EDAC)
-        user_params.set("Continuity Model", "EDAC");
+        fluid_params.set("Continuity Model", "EDAC");
 
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    Teuchos::ParameterList turb_params;
+    turb_params.set("Use Turbulence Model", build_turbulence_model);
+    if (build_turbulence_model && build_temp_equ)
+        turb_params.set("Turbulent Prandtl Number", Pr_t);
+
     auto eval = Teuchos::rcp(
         new ClosureModel::
             IncompressibleViscousFlux<EvalType, panzer::Traits, num_space_dim>(
-                ir, fluid_prop, user_params, build_turbulence_model));
+                ir, fluid_params, turb_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_continuity_flux);
     for (int dim = 0; dim < num_space_dim; ++dim)
@@ -601,7 +590,6 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)

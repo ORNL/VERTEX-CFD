@@ -59,9 +59,12 @@ void InductionlessFactory<EvalType, NumSpaceDim>::buildClosureModel(
 
     if (closure_type == "HartmannProblemExact")
     {
+        // Get external magnetic field parameters from the user params
         auto eval = Teuchos::rcp(
             new HartmannProblemExact<EvalType, panzer::Traits, num_space_dim>(
-                *ir, closure_params, user_params));
+                *ir,
+                closure_params,
+                user_params.sublist("External Magnetic Field Parameters")));
         evaluators->push_back(eval);
         found_model = true;
     }

@@ -80,7 +80,7 @@ void testEval(const bool calc_flux)
 
     test_fixture.registerEvaluator<EvalType>(eval);
     if (calc_flux)
-        test_fixture.registerTestField<EvalType>(eval->_flux);
+        test_fixture.registerTestField<EvalType>(eval->_neutron_flux);
 
     for (int num = 0; num < 2; ++num)
         test_fixture.registerTestField<EvalType>(eval->_exact_species[num]);
@@ -99,7 +99,7 @@ void testEval(const bool calc_flux)
         if (calc_flux)
         {
             const auto calc_neutron_flux
-                = test_fixture.getTestFieldData<EvalType>(eval->_flux);
+                = test_fixture.getTestFieldData<EvalType>(eval->_neutron_flux);
             EXPECT_NEAR(
                 exp_neutron_flux, fieldValue(calc_neutron_flux, 0, qp), 1e-10);
         }

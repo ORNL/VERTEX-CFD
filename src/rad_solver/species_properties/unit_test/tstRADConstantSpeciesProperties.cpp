@@ -21,6 +21,9 @@ class RADConstantSpeciesPropertiesTest : public ::testing::Test
     virtual void SetUpBateman10Species();
     virtual void SetUpAdvection2Species();
     virtual void SetUpDiffusion2Species();
+    virtual void SetUpFission2Species();
+    virtual void SetUpTransmutation2Species();
+    virtual void SetUpVaporRemoval2Species();
 };
 
 // Set up all variables but density
@@ -30,7 +33,7 @@ void RADConstantSpeciesPropertiesTest::SetUp()
     Teuchos::ParameterList csp_reaction_params;
     const int num_species = 2;
     csp_model_params.set("Number of Species", num_species);
-    csp_model_params.set("Build Reaction", false);
+    csp_model_params.set("Build Reaction Bateman Source", false);
     csp = std::make_unique<ConstantSpeciesProperties>(csp_model_params,
                                                       csp_reaction_params);
 }
@@ -46,7 +49,7 @@ void RADConstantSpeciesPropertiesTest::SetUpBateman2Species()
 
     Teuchos::ParameterList csp_model_params;
     csp_model_params.set("Number of Species", num_species);
-    csp_model_params.set("Build Reaction", true);
+    csp_model_params.set("Build Reaction Bateman Source", true);
 
     Teuchos::ParameterList csp_reaction_params;
     csp_reaction_params.set("Species Decay", species_decay);
@@ -66,7 +69,7 @@ void RADConstantSpeciesPropertiesTest::SetUpBateman10Species()
 
     Teuchos::ParameterList csp_model_params;
     csp_model_params.set("Number of Species", num_species);
-    csp_model_params.set("Build Reaction", true);
+    csp_model_params.set("Build Reaction Bateman Source", true);
 
     Teuchos::ParameterList csp_reaction_params;
     csp_reaction_params.set("Species Decay", species_decay);
@@ -106,12 +109,79 @@ void RADConstantSpeciesPropertiesTest::SetUpDiffusion2Species()
                                                       csp_reaction_params);
 }
 
+// Check fission boolean with 2 species
+void RADConstantSpeciesPropertiesTest::SetUpFission2Species()
+{
+    const int num_species = 2;
+
+    Teuchos::Array<double> num_atom(num_species);
+    for (int i = 0; i < num_species; ++i)
+    {
+        num_atom[i] = i;
+    }
+
+    Teuchos::ParameterList csp_model_params;
+    csp_model_params.set("Number of Species", num_species);
+    csp_model_params.set("Build Fission Source", true);
+
+    Teuchos::ParameterList csp_reaction_params;
+    csp_reaction_params.set("Number of atoms per species", num_atom);
+    csp_reaction_params.set("Fission Cross-Section", 0.5);
+
+    csp = std::make_unique<ConstantSpeciesProperties>(csp_model_params,
+                                                      csp_reaction_params);
+}
+
+// Check transmutation boolean with 2 species
+void RADConstantSpeciesPropertiesTest::SetUpTransmutation2Species()
+{
+    const int num_species = 2;
+
+    Teuchos::Array<double> mic_cross_sec(num_species * num_species);
+    for (int i = 0; i < num_species * num_species; ++i)
+    {
+        mic_cross_sec[i] = i;
+    }
+
+    Teuchos::ParameterList csp_model_params;
+    csp_model_params.set("Number of Species", num_species);
+    csp_model_params.set("Build Reaction Transmutation Source", true);
+
+    Teuchos::ParameterList csp_reaction_params;
+    csp_reaction_params.set("Microscopic Cross-Section", mic_cross_sec);
+
+    csp = std::make_unique<ConstantSpeciesProperties>(csp_model_params,
+                                                      csp_reaction_params);
+}
+
+// Check vapor removal boolean with 2 species
+void RADConstantSpeciesPropertiesTest::SetUpVaporRemoval2Species()
+{
+    const int num_species = 2;
+
+    Teuchos::Array<double> multiplier(num_species);
+    for (int i = 0; i < num_species; ++i)
+    {
+        multiplier[i] = i;
+    }
+
+    Teuchos::ParameterList csp_model_params;
+    csp_model_params.set("Number of Species", num_species);
+    csp_model_params.set("Build Vapor Removal Source", true);
+
+    Teuchos::ParameterList csp_reaction_params;
+    csp_reaction_params.set("Vapor Removal Ratio Multiplier", multiplier);
+
+    csp = std::make_unique<ConstantSpeciesProperties>(csp_model_params,
+                                                      csp_reaction_params);
+}
+
 // Without Reaction term
 TEST_F(RADConstantSpeciesPropertiesTest, non_reaction)
 {
     RADConstantSpeciesPropertiesTest::SetUp();
     const bool reaction_expect = false;
-    const bool reaction = csp->buildReaction();
+    const bool reaction = csp->buildBateman();
     EXPECT_EQ(reaction_expect, reaction);
 }
 
@@ -180,6 +250,73 @@ TEST_F(RADConstantSpeciesPropertiesTest, diffusion_2spe)
     EXPECT_EQ(diffusion_expect, diffusion);
     EXPECT_EQ(diff_coef_expect, diffusion_coef);
     EXPECT_EQ(num_species_expect, num_species);
+}
+
+// Fission only
+TEST_F(RADConstantSpeciesPropertiesTest, fission_2spe)
+{
+    RADConstantSpeciesPropertiesTest::SetUpFission2Species();
+    const bool fission_expect = true;
+    const int num_species_expect = 2;
+    const double fission_cross_section_expect = 0.5;
+    const auto atoms_per_species = csp->atomsPerSpecies();
+    const bool fission = csp->buildFissionSource();
+    const double fission_cross_section = csp->fissionCrossSection();
+    const int num_species = csp->numSpecies();
+    EXPECT_EQ(fission_expect, fission);
+    EXPECT_EQ(fission_cross_section_expect, fission_cross_section);
+    EXPECT_EQ(num_species_expect, num_species);
+
+    Teuchos::Array<double> atoms_per_species_expect(num_species);
+    for (int i = 0; i < num_species; ++i)
+    {
+        atoms_per_species_expect[i] = i;
+        EXPECT_EQ(atoms_per_species_expect[i], atoms_per_species(i));
+    }
+}
+
+// Transmutation only
+TEST_F(RADConstantSpeciesPropertiesTest, transmutation_2spe)
+{
+    RADConstantSpeciesPropertiesTest::SetUpTransmutation2Species();
+    const bool transmutation_expect = true;
+    const int num_species_expect = 2;
+    const auto mic_cross_sec = csp->microscopicCrossSection();
+    const bool transmutation = csp->buildTransmutationSource();
+    const int num_species = csp->numSpecies();
+    EXPECT_EQ(transmutation_expect, transmutation);
+    EXPECT_EQ(num_species_expect, num_species);
+
+    Teuchos::Array<double> mic_cross_sec_exp(num_species * num_species);
+    for (int i = 0; i < num_species; ++i)
+    {
+        for (int j = 0; j < num_species; ++j)
+        {
+            mic_cross_sec_exp[num_species * i + j] = num_species * i + j;
+            EXPECT_EQ(mic_cross_sec_exp[num_species * i + j],
+                      mic_cross_sec(i, j));
+        }
+    }
+}
+
+// Vapor removal only
+TEST_F(RADConstantSpeciesPropertiesTest, vapor_removal_2spe)
+{
+    RADConstantSpeciesPropertiesTest::SetUpVaporRemoval2Species();
+    const bool vapor_removal_expect = true;
+    const int num_species_expect = 2;
+    const auto multiplier = csp->vaporRemovalRatioMultiplier();
+    const bool vapor_removal = csp->buildVaporRemovalSource();
+    const int num_species = csp->numSpecies();
+    EXPECT_EQ(vapor_removal_expect, vapor_removal);
+    EXPECT_EQ(num_species_expect, num_species);
+
+    Teuchos::Array<double> multiplier_expect(num_species);
+    for (int i = 0; i < num_species; ++i)
+    {
+        multiplier_expect[i] = i;
+        EXPECT_EQ(multiplier_expect[i], multiplier(i));
+    }
 }
 
 //---------------------------------------------------------------------------//

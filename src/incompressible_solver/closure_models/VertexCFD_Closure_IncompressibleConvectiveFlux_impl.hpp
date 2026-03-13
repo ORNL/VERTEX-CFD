@@ -15,12 +15,10 @@ namespace ClosureModel
 //---------------------------------------------------------------------------//
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleConvectiveFlux<EvalType, Traits, NumSpaceDim>::
-    IncompressibleConvectiveFlux(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& user_params,
-        const std::string& flux_prefix,
-        const std::string& field_prefix)
+    IncompressibleConvectiveFlux(const panzer::IntegrationRule& ir,
+                                 const Teuchos::ParameterList& fluid_params,
+                                 const std::string& flux_prefix,
+                                 const std::string& field_prefix)
     : _continuity_flux(flux_prefix + "CONVECTIVE_FLUX_continuity", ir.dl_vector)
     , _energy_flux(flux_prefix + "CONVECTIVE_FLUX_energy", ir.dl_vector)
     , _energy_source("NON_CONSERVATIVE_SOURCE_energy", ir.dl_scalar)
@@ -29,18 +27,18 @@ IncompressibleConvectiveFlux<EvalType, Traits, NumSpaceDim>::
     , _cp("specific_heat_capacity", ir.dl_scalar)
     , _temperature(field_prefix + "temperature", ir.dl_scalar)
     , _grad_temp("GRAD_temperature", ir.dl_vector)
-    , _beta(fluid_prop.artificialCompressibility())
-    , _solve_temp(fluid_prop.solveTemperature())
+    , _beta(fluid_params.get<double>("Artificial compressibility"))
+    , _solve_temp(fluid_params.get<bool>("Build Temperature Equation"))
     , _continuity_model(ConModel::AC)
 {
     // Get continuity model type
-    if (user_params.isType<std::string>("Continuity Model"))
+    if (fluid_params.isType<std::string>("Continuity Model"))
     {
         const auto type_validator = Teuchos::rcp(
             new Teuchos::StringToIntegralParameterEntryValidator<ConModel>(
                 Teuchos::tuple<std::string>("AC", "EDAC", "EDACTempNC"), "AC"));
         _continuity_model = type_validator->getIntegralValue(
-            user_params.get<std::string>("Continuity Model"));
+            fluid_params.get<std::string>("Continuity Model"));
     }
 
     // Evaluated fields

@@ -62,8 +62,6 @@ IncompressibleViscousHeat<EvalType, Traits, NumSpaceDim>::operator()(
 
     Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
-            _viscous_heat_continuity_source(cell, point) = 0.0;
-
             // Reset energy source to zero
             _viscous_heat_energy_source(cell, point) = 0.0;
 
@@ -72,10 +70,10 @@ IncompressibleViscousHeat<EvalType, Traits, NumSpaceDim>::operator()(
                 for (int j = 0; j < num_space_dim; ++j)
                 {
                     // Calculate deformation tensor component
-                    const scalar_type e_ij
-                        = 0.5
-                          * (_grad_velocity[j](cell, point, i)
-                             + _grad_velocity[i](cell, point, j));
+                    auto&& e_ij = _viscous_heat_continuity_source(cell, point);
+                    e_ij = 0.5
+                           * (_grad_velocity[j](cell, point, i)
+                              + _grad_velocity[i](cell, point, j));
 
                     // Add contribution from each dimension to energy source
                     _viscous_heat_energy_source(cell, point)
@@ -86,6 +84,9 @@ IncompressibleViscousHeat<EvalType, Traits, NumSpaceDim>::operator()(
                 // No momentum contribution for this source term
                 _viscous_heat_momentum_source[i](cell, point) = 0.0;
             }
+
+            // Continuity equation
+            _viscous_heat_continuity_source(cell, point) = 0.0;
         });
 }
 

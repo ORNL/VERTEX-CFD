@@ -43,6 +43,9 @@ option(VertexCFD_ENABLE_TENSORFLOW "Whether to build with Tensorflow support" OF
 if (VertexCFD_ENABLE_TENSORFLOW)
   find_package(TensorFlow REQUIRED)
   add_compile_definitions(VERTEXCFD_HAVE_TENSORFLOW)
+  set(VertexCFD_HAS_TENSORFLOW 1)
+else()
+  set(VertexCFD_HAS_TENSORFLOW 0)
 endif()
 
 find_package(MPI REQUIRED)
@@ -74,6 +77,9 @@ option(VertexCFD_ENABLE_ARBORX "Whether to build with ArborX support" OFF)
 if (VertexCFD_ENABLE_ARBORX)
   find_package(ArborX REQUIRED)
   add_compile_definitions(VERTEXCFD_HAVE_ARBORX)
+  set(VertexCFD_HAS_ARBORX 1)
+else()
+  set(VertexCFD_HAS_ARBORX 0)
 endif()
 
 find_package(Python COMPONENTS Interpreter Development.Module)
@@ -186,6 +192,7 @@ message(STATUS "VertexCFD Revision = '${VertexCFD_GIT_COMMIT_HASH}'")
 ## Set up flags for optional VERTEX-CFD physics components
 ##---------------------------------------------------------------------------##
 option(VertexCFD_ENABLE_FULL_INDUCTION_MHD "Build full induction MHD solver" ON)
+option(VertexCFD_ENABLE_PLASMA_SPECIES "Build plasma species solver" ON)
 
 ##---------------------------------------------------------------------------##
 ## Library

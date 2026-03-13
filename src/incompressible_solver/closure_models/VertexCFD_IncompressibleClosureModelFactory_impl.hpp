@@ -22,7 +22,6 @@
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousFlux.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousHeat.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_IncompressibleClosureModelFactory.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include "closure_models/VertexCFD_Closure_MethodManufacturedSolution.hpp"
 #include "closure_models/VertexCFD_Closure_MethodManufacturedSolutionSource.hpp"
@@ -37,9 +36,11 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     const std::string& closure_type,
     const Teuchos::RCP<panzer::IntegrationRule>& ir,
     const Teuchos::RCP<panzer::GlobalData>& global_data,
+    const Teuchos::ParameterList& fluid_params,
     const Teuchos::ParameterList& user_params,
     const Teuchos::ParameterList& closure_params,
-    const bool use_turbulence_model,
+    const Teuchos::ParameterList& stability_params,
+    const Teuchos::ParameterList& turb_params,
     bool& found_model,
     std::string& error_msg,
     Teuchos::RCP<std::vector<Teuchos::RCP<PHX::Evaluator<panzer::Traits>>>>
@@ -47,24 +48,13 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
 {
     // Define local variables
     constexpr int num_space_dim = NumSpaceDim;
-    const Teuchos::RCP<PHX::Evaluator<panzer::Traits>> eval;
-
-    // Fluid properties
-    const Teuchos::ParameterList fluid_prop_list
-        = user_params.sublist("Fluid Properties List");
-    const FluidProperties::ConstantFluidProperties incompressible_fluidprop_params
-        = FluidProperties::ConstantFluidProperties(fluid_prop_list);
-
-    // Stability parameter list
-    const Teuchos::ParameterList stability_param_list
-        = user_params.sublist("Stability Parameters");
 
     // Closure models
     if (closure_type == "IncompressibleTimeDerivative")
     {
         auto eval = Teuchos::rcp(
             new IncompressibleTimeDerivative<EvalType, panzer::Traits, num_space_dim>(
-                *ir, incompressible_fluidprop_params));
+                *ir, fluid_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -73,7 +63,9 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleLiftDrag<EvalType, panzer::Traits, num_space_dim>(
-                *ir, user_params, use_turbulence_model));
+                *ir,
+                closure_params,
+                turb_params.get<bool>("Use Turbulence Model")));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -82,7 +74,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleConvectiveFlux<EvalType, panzer::Traits, num_space_dim>(
-                *ir, incompressible_fluidprop_params, user_params));
+                *ir, fluid_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -94,7 +86,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
             new IncompressibleConvectiveFluxMachineLearning<EvalType,
                                                             panzer::Traits,
                                                             num_space_dim>(
-                *ir, incompressible_fluidprop_params, closure_params));
+                *ir, fluid_params, closure_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -106,10 +98,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleViscousFlux<EvalType, panzer::Traits, num_space_dim>(
-                *ir,
-                incompressible_fluidprop_params,
-                user_params,
-                use_turbulence_model));
+                *ir, fluid_params, turb_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -118,7 +107,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleGradDiv<EvalType, panzer::Traits, num_space_dim>(
-                *ir, stability_param_list));
+                *ir, stability_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -137,10 +126,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleConstantSource<EvalType, panzer::Traits, num_space_dim>(
-                *ir,
-                incompressible_fluidprop_params,
-                global_data,
-                closure_params));
+                *ir, fluid_params, global_data, closure_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -149,7 +135,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleBuoyancySource<EvalType, panzer::Traits, num_space_dim>(
-                *ir, incompressible_fluidprop_params, user_params));
+                *ir, fluid_params, user_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -189,7 +175,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleErrorNorms<EvalType, panzer::Traits, num_space_dim>(
-                *ir, user_params));
+                *ir, fluid_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -235,7 +221,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleTauSUPG<EvalType, panzer::Traits, num_space_dim>(
-                *ir, incompressible_fluidprop_params, closure_params));
+                *ir, fluid_params, closure_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -244,7 +230,7 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
     {
         auto eval = Teuchos::rcp(
             new IncompressibleSUPGFlux<EvalType, panzer::Traits, num_space_dim>(
-                *ir, incompressible_fluidprop_params, closure_params));
+                *ir, fluid_params, closure_params));
         evaluators->push_back(eval);
         found_model = true;
     }
@@ -274,10 +260,10 @@ void IncompressibleFactory<EvalType, NumSpaceDim>::buildClosureModel(
 
     if (closure_type == "MethodManufacturedSolutionSource")
     {
-        bool build_viscous_flux = false;
-        if (user_params.isType<bool>("Build Viscous Flux"))
+        bool build_viscous_flux = true;
+        if (fluid_params.isType<bool>("Build Viscous Flux"))
         {
-            build_viscous_flux = user_params.get<bool>("Build Viscous Flux");
+            build_viscous_flux = fluid_params.get<bool>("Build Viscous Flux");
         }
         auto eval
             = Teuchos::rcp(new MethodManufacturedSolutionSource<EvalType,

@@ -17,9 +17,9 @@ template<class EvalType, class Traits>
 RADFissionSource<EvalType, Traits>::RADFissionSource(
     const panzer::IntegrationRule& ir,
     const SpeciesProperties::ConstantSpeciesProperties& species_prop,
-    const std::string& flux_name)
+    const std::string& neutron_flux_name)
     : _num_species(species_prop.numSpecies())
-    , _flux(flux_name, ir.dl_scalar)
+    , _neutron_flux(neutron_flux_name, ir.dl_scalar)
     , _gamma(Kokkos::ViewAllocateWithoutInitializing("atoms_per_species"),
              _num_species)
     , _xs(species_prop.fissionCrossSection())
@@ -39,7 +39,7 @@ RADFissionSource<EvalType, Traits>::RADFissionSource(
                                        "diffusion_equation_");
 
     // Dependent fields
-    this->addDependentField(_flux);
+    this->addDependentField(_neutron_flux);
 
     this->setName("RAD Fission Source Term");
 }
@@ -66,8 +66,9 @@ KOKKOS_INLINE_FUNCTION void RADFissionSource<EvalType, Traits>::operator()(
         Kokkos::TeamThreadRange(team, 0, num_point), [&](const int point) {
             for (int num = 0; num < _num_species; ++num)
             {
-                _fission_source[num](cell, point)
-                    = _flux(cell, point) * _gamma[num] * _xs / _avagadro;
+                _fission_source[num](cell, point) = _neutron_flux(cell, point)
+                                                    * _gamma[num] * _xs
+                                                    / _avagadro;
             }
         });
 }

@@ -1,7 +1,6 @@
 #include "VertexCFD_EvaluatorTestHarness.hpp"
 #include "closure_models/unit_test/VertexCFD_ClosureModelFactoryTestHarness.hpp"
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 #include "turbulence_models/closure_models/VertexCFD_Closure_IncompressibleChienKEpsilonSource.hpp"
 
 #include <Panzer_GlobalData.hpp>
@@ -117,16 +116,15 @@ void testEval()
     pl.addEntry<EvalType>("Friction Velocity - friction_velocity", entry);
 
     // User parameters
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters")
-        .set<double>("Boundary Surface Area", 10000.0);
+    Teuchos::ParameterList turb_params;
+    turb_params.set<double>("Boundary Surface Area", 10000.0);
 
     // Initialize and register
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleChienKEpsilonSource<EvalType,
                                                             panzer::Traits,
                                                             NumSpaceDim>(
-            ir, global_data, user_params));
+            ir, global_data, turb_params));
 
     // Initialize and register
     test_fixture.registerEvaluator<EvalType>(eval);

@@ -172,12 +172,10 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Inductionless MHD Equation", true);
-    test_fixture.user_params.set("Build Temperature Equation", false);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 2.0)
-        .set("Artificial compressibility", 2.0);
+        .set("Build Inductionless MHD Equation", true);
     test_fixture.type_name = "LorentzForce";
     test_fixture.eval_name = "Electric Potential Lorentz Force "
                              + std::to_string(num_space_dim) + "D";

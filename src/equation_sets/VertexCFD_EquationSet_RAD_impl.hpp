@@ -51,11 +51,19 @@ RAD<EvalType>::RAD(const Teuchos::RCP<Teuchos::ParameterList>& params,
         "Model ID", "", "Closure model id associated with this equation set");
     valid_parameters.set("Basis Order", 1, "Order of the basis");
     valid_parameters.set("Integration Order", 2, "Order of the integration");
-    valid_parameters.set("Build Reaction", false, "Reaction boolean");
+    valid_parameters.set("Build Reaction Bateman Source",
+                         false,
+                         "Reaction boolean with Bateman term");
     valid_parameters.set("Build Advection", false, "Advection boolean");
     valid_parameters.set("Build Diffusion", false, "Diffusion boolean");
     valid_parameters.set(
         "Build Fission Source", false, "Fission source boolean");
+    valid_parameters.set("Build Reaction Transmutation Source",
+                         false,
+                         "Reaction boolean with Transmutation term");
+    valid_parameters.set("Build Vapor Removal Source",
+                         false,
+                         "Vapor removal source term boolean");
     valid_parameters.set("Number of Species", 1, "Number of species");
 
     params->validateParametersAndSetDefaults(valid_parameters);
@@ -65,10 +73,14 @@ RAD<EvalType>::RAD(const Teuchos::RCP<Teuchos::ParameterList>& params,
     const int integration_order
         = params->get<int>("Integration Order", basis_order + 1);
     const std::string model_id = params->get<std::string>("Model ID");
-    _build_reaction = params->get<bool>("Build Reaction", false);
+    _build_bateman = params->get<bool>("Build Reaction Bateman Source", false);
     _build_advection = params->get<bool>("Build Advection", false);
     _build_diffusion = params->get<bool>("Build Diffusion", false);
     _build_fission_source = params->get<bool>("Build Fission Source", false);
+    _build_transmutation
+        = params->get<bool>("Build Reaction Transmutation Source", false);
+    _build_vapor_removal
+        = params->get<bool>("Build Vapor Removal Source", false);
     const int _num_species = params->get<int>("Number of Species", 1);
 
     // Initialize equation names and variable names for
@@ -173,7 +185,7 @@ void RAD<EvalType>::buildAndRegisterEquationSetEvaluators(
             equ_name, "DQDT", 1.0, residual_operator_names);
 
         // Reaction term residual
-        if (_build_reaction)
+        if (_build_bateman || _build_transmutation)
         {
             add_basis_time_scalar_residual(
                 equ_name, "REACTION_TERM", -1.0, residual_operator_names);
@@ -198,6 +210,13 @@ void RAD<EvalType>::buildAndRegisterEquationSetEvaluators(
         {
             add_basis_time_scalar_residual(
                 equ_name, "FISSION_SOURCE", -1.0, residual_operator_names);
+        }
+
+        // Vapor removal source residual
+        if (_build_vapor_removal)
+        {
+            add_basis_time_scalar_residual(
+                equ_name, "REMOVAL_SOURCE", -1.0, residual_operator_names);
         }
 
         // Build and register residuals

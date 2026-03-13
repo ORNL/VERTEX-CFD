@@ -116,17 +116,15 @@ void testEval(const double omega,
     test_fixture.registerEvaluator<EvalType>(deps);
 
     // Create parameter list for user-defined constants
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters")
-        .sublist("SST K-Omega Parameters")
-        .set("a_1", 0.41);
+    Teuchos::ParameterList turb_params;
+    turb_params.set("a_1", 0.41);
 
     // Initialize and register
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleSSTEddyViscosity<EvalType,
                                                          panzer::Traits,
                                                          NumSpaceDim>(
-            ir, user_params, OnBoundary));
+            ir, turb_params, OnBoundary));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_nu_t);
     test_fixture.registerTestField<EvalType>(eval->_sst_blending_function);

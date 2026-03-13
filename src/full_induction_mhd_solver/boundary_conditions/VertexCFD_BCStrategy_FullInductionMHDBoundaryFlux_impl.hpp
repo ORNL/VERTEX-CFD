@@ -5,17 +5,21 @@
 #include "boundary_conditions/VertexCFD_BoundaryState_ViscousPenaltyParameter.hpp"
 #include "boundary_conditions/VertexCFD_Integrator_BoundaryGradBasisDotVector.hpp"
 
+#include "closure_models/VertexCFD_Closure_ConstantScalarField.hpp"
+#include "closure_models/VertexCFD_Closure_ExternalMagneticField.hpp"
+
 #include "incompressible_solver/boundary_conditions/VertexCFD_IncompressibleBoundaryState_Factory.hpp"
 
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleConvectiveFlux.hpp"
 #include "incompressible_solver/closure_models/VertexCFD_Closure_IncompressibleViscousFlux.hpp"
-
 #include "incompressible_solver/fluid_properties/VertexCFD_Closure_IncompressibleFluidProperties.hpp"
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
 
 #include "full_induction_mhd_solver/boundary_conditions/VertexCFD_FullInductionBoundaryState_Factory.hpp"
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConvectiveFlux.hpp"
+#include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionConvectiveMomentumFlux.hpp"
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_InductionResistiveFlux.hpp"
+#include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_MagneticPressure.hpp"
+#include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_TotalMagneticField.hpp"
 #include "full_induction_mhd_solver/closure_models/VertexCFD_Closure_TotalMagneticFieldGradient.hpp"
 #include "full_induction_mhd_solver/mhd_properties/VertexCFD_FullInductionMHDProperties.hpp"
 
@@ -49,14 +53,6 @@ FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::FullInductionMHDBoundaryFlu
     _internal_interface = bc.params()->isType<bool>("Fluid/Solid Interface")
                               ? bc.params()->get<bool>("Fluid/Solid Interface")
                               : false;
-
-    // For now, throw an error on interfaces as the logic for solid regions
-    // does not exist yet
-    if (_internal_interface)
-    {
-        throw std::runtime_error(
-            "Fluid/Solid Interface not yet enabled for Full Induction MHD");
-    }
 }
 
 //---------------------------------------------------------------------------//
@@ -107,20 +103,19 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::setup(
         _equ_dof_ns_pair.insert({"momentum_" + ds, "velocity_" + ds});
     }
 
-    // Initialize equation names and variables for FIM
-    if (_build_full_induction_model)
+    // Initialize equation names and variables for FIM. The induced magnetic
+    // field DOFs are required even on interfaces to evaluate the magnetic flux
+    // contribution to the momentum equations.
+    for (int d = 0; d < num_space_dim; ++d)
     {
-        for (int d = 0; d < num_space_dim; ++d)
-        {
-            const std::string ds = std::to_string(d);
-            _equ_dof_fim_pair.insert(
-                {"induction_" + ds, "induced_magnetic_field_" + ds});
-        }
-        if (build_magn_corr)
-        {
-            _equ_dof_fim_pair.insert({"magnetic_correction_potential",
-                                      "scalar_magnetic_potential"});
-        }
+        const std::string ds = std::to_string(d);
+        _equ_dof_fim_pair.insert(
+            {"induction_" + ds, "induced_magnetic_field_" + ds});
+    }
+    if (build_magn_corr)
+    {
+        _equ_dof_fim_pair.insert(
+            {"magnetic_correction_potential", "scalar_magnetic_potential"});
     }
 
     // Initialize parent class variables (only needed with one set of
@@ -141,7 +136,7 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvalua
     std::unordered_map<std::string, std::vector<std::string>> eq_vct_map;
 
     // Get integration rule for closure models
-    const auto ir = this->integrationRule();
+    const auto& ir = this->integrationRule();
 
     // Create degree of freedom and gradients for NS equations
     for (auto& pair : _equ_dof_ns_pair)
@@ -159,23 +154,21 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvalua
     this->registerSideNormals(fm, side_pb);
 
     // Fluid properties: model id is stored in a sublist
-    Teuchos::ParameterList fluid_prop_list
+    Teuchos::ParameterList fluid_params
         = closure_models.sublist(_incompressible_model_id)
               .sublist("Fluid Properties");
 
-    fluid_prop_list.set<bool>("Build Temperature Equation", false);
-    fluid_prop_list.set<bool>("Build Buoyancy Source", false);
-    fluid_prop_list.set<bool>("Build Inductionless MHD Equation", false);
-
-    const FluidProperties::ConstantFluidProperties fluid_prop(fluid_prop_list);
+    fluid_params.set<bool>("Build Temperature Equation", false);
+    fluid_params.set<bool>("Build Buoyancy Source", false);
+    fluid_params.set<bool>("Build Inductionless MHD Equation", false);
 
     auto eval = Teuchos::rcp(
         new FluidProperties::IncompressibleFluidProperties<EvalType,
                                                            panzer::Traits>(
-            *ir, fluid_prop_list));
+            *ir, fluid_params));
     this->template registerEvaluator<EvalType>(fm, eval);
 
-    // Create boundary state operators for NS equations and EP equation
+    // Create boundary state operators for NS equations
     // Get bc sublist
     const auto bc_params = *(this->m_bc.params());
 
@@ -183,13 +176,10 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvalua
     const auto ns_bc_sublist = bc_params.isSublist("Navier-Stokes")
                                    ? bc_params.sublist("Navier-Stokes")
                                    : bc_params;
-    auto incomp_ns_boundary_state_op
-        = IncompressibleBoundaryStateFactory<EvalType,
-                                             panzer::Traits,
-                                             num_space_dim>::create(*ir,
-                                                                    ns_bc_sublist,
-                                                                    user_data,
-                                                                    fluid_prop);
+    auto incomp_ns_boundary_state_op = IncompressibleBoundaryStateFactory<
+        EvalType,
+        panzer::Traits,
+        num_space_dim>::create(*ir, ns_bc_sublist, fluid_params);
     this->template registerEvaluator<EvalType>(fm, incomp_ns_boundary_state_op);
 
     // First-order flux //
@@ -199,7 +189,7 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvalua
         new ClosureModel::IncompressibleConvectiveFlux<EvalType,
                                                        panzer::Traits,
                                                        num_space_dim>(
-            *ir, fluid_prop, user_data, "BOUNDARY_", "BOUNDARY_"));
+            *ir, fluid_params, "BOUNDARY_", "BOUNDARY_"));
     this->template registerEvaluator<EvalType>(fm, convective_flux_op);
 
     for (auto& pair : _equ_dof_ns_pair)
@@ -228,23 +218,16 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvalua
         }
 
         // Create boundary fluxes to be used with the penalty method
-        for (auto& pair : this->bnd_prefix)
+        for (const auto& [flux_prefix, gradient_prefix] : this->bnd_prefix)
         {
-            // Prefix names
-            const std::string flux_prefix = pair.first;
-            const std::string gradient_prefix = pair.second;
-
-            const bool turb_model = false;
-            auto viscous_flux_op = Teuchos::rcp(
+            // TOFIX: Set dummy turbulence model parameter list
+            Teuchos::ParameterList turb_params;
+            turb_params.set("Use Turbulence Model", false);
+            const auto viscous_flux_op = Teuchos::rcp(
                 new ClosureModel::IncompressibleViscousFlux<EvalType,
                                                             panzer::Traits,
                                                             num_space_dim>(
-                    *ir,
-                    fluid_prop,
-                    user_data,
-                    turb_model,
-                    flux_prefix,
-                    gradient_prefix));
+                    *ir, fluid_params, turb_params, flux_prefix, gradient_prefix));
             this->template registerEvaluator<EvalType>(fm, viscous_flux_op);
         }
 
@@ -257,30 +240,56 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvalua
     }
 
     // Full Induction Model boundary fluxes
+    const auto full_induction_params
+        = closure_models.sublist(_induction_model_id)
+              .sublist("Full Induction MHD Properties");
+    const MHDProperties::FullInductionMHDProperties mhd_props(
+        full_induction_params);
+
+    // Add total magnetic field and magnetic pressure closures, which are
+    // always required for the momentum equation fluxes. For interfaces, build
+    // total magnetic field with no prefix, otherwise use the "BOUNDARY_"
+    // prefix to ensure the boundary values are used as appropriate.
+    const auto ext_magn_field_op = Teuchos::rcp(
+        new ClosureModel::ExternalMagneticField<EvalType, panzer::Traits>(
+            *ir, user_data.sublist("External Magnetic Field Parameters")));
+    this->template registerEvaluator<EvalType>(fm, ext_magn_field_op);
+
+    const std::string tot_magn_field_prefix
+        = _build_full_induction_model ? "BOUNDARY_" : "";
+
+    const auto tot_magn_field_op = Teuchos::rcp(
+        new ClosureModel::TotalMagneticField<EvalType, panzer::Traits, num_space_dim>(
+            *ir, tot_magn_field_prefix));
+    this->template registerEvaluator<EvalType>(fm, tot_magn_field_op);
+
+    const auto magn_press_op = Teuchos::rcp(
+        new ClosureModel::MagneticPressure<EvalType, panzer::Traits>(
+            *ir, mhd_props));
+    this->template registerEvaluator<EvalType>(fm, magn_press_op);
+
+    // Contribution to momentum convective fluxes from induction is always
+    // included
+    const auto induction_mtm_flux_op = Teuchos::rcp(
+        new ClosureModel::InductionConvectiveMomentumFlux<EvalType,
+                                                          panzer::Traits,
+                                                          num_space_dim>(
+            *ir, mhd_props, "BOUNDARY_"));
+    this->template registerEvaluator<EvalType>(fm, induction_mtm_flux_op);
+
+    // Build fluxes for induction equations on external boundaries
     if (_build_full_induction_model)
     {
-        const auto full_induction_params
-            = closure_models.sublist(_induction_model_id)
-                  .sublist("Full Induction MHD Properties");
-        const MHDProperties::FullInductionMHDProperties mhd_props(
-            full_induction_params);
-
         // Register boundary conditions for the induciton equations
         const auto fim_boundary_state_op = FullInductionBoundaryStateFactory<
             EvalType,
             panzer::Traits,
             num_space_dim>::create(*ir,
                                    bc_params.sublist("Full Induction Model"),
-                                   user_data,
                                    mhd_props);
+        this->template registerEvaluator<EvalType>(fm, fim_boundary_state_op);
 
-        for (std::size_t i = 0; i < fim_boundary_state_op.size(); ++i)
-        {
-            this->template registerEvaluator<EvalType>(
-                fm, fim_boundary_state_op[i]);
-        }
-
-        auto induction_flux_op = Teuchos::rcp(
+        const auto induction_flux_op = Teuchos::rcp(
             new ClosureModel::InductionConvectiveFlux<EvalType,
                                                       panzer::Traits,
                                                       num_space_dim>(
@@ -295,6 +304,11 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvalua
 
         if (mhd_props.buildResistiveFlux())
         {
+            const auto resistivity_op = Teuchos::rcp(
+                new ClosureModel::ConstantScalarField<EvalType, panzer::Traits>(
+                    *ir, "resistivity", mhd_props.resistivity()));
+            this->template registerEvaluator<EvalType>(fm, resistivity_op);
+
             for (auto& pair_fim : _equ_dof_fim_pair)
             {
                 // Register penalty and resistive gradient operators for each
@@ -304,12 +318,9 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvalua
                         pair_fim, fm, side_pb, bc_params);
 
                 // Create boundary fluxes to be used with the penalty method
-                for (auto& pair_bnd :
-                     BoundaryFluxBase<EvalType, NumSpaceDim>::bnd_prefix)
+                for (const auto& [flux_prefix, gradient_prefix] :
+                     this->bnd_prefix)
                 {
-                    const std::string flux_prefix = pair_bnd.first;
-                    const std::string gradient_prefix = pair_bnd.second;
-
                     // Need total magnetic field symmetry and penalty gradients
                     const auto tot_magn_field_grad_op = Teuchos::rcp(
                         new ClosureModel::TotalMagneticFieldGradient<
@@ -341,10 +352,13 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::buildAndRegisterEvalua
     }
 
     // Compose total residual for FIM equations
-    for (auto& pair : _equ_dof_fim_pair)
+    if (_build_full_induction_model)
     {
-        BoundaryFluxBase<EvalType, NumSpaceDim>::registerResidual(
-            pair, eq_vct_map, fm, side_pb);
+        for (auto& pair : _equ_dof_fim_pair)
+        {
+            BoundaryFluxBase<EvalType, NumSpaceDim>::registerResidual(
+                pair, eq_vct_map, fm, side_pb);
+        }
     }
 }
 
@@ -362,37 +376,14 @@ void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::
         this->registerScatterOperator(pair, fm, side_pb, lof);
     }
 
-    for (auto& pair : _equ_dof_fim_pair)
+    if (_build_full_induction_model)
     {
-        BoundaryFluxBase<EvalType, NumSpaceDim>::registerScatterOperator(
-            pair, fm, side_pb, lof);
+        for (auto& pair : _equ_dof_fim_pair)
+        {
+            BoundaryFluxBase<EvalType, NumSpaceDim>::registerScatterOperator(
+                pair, fm, side_pb, lof);
+        }
     }
-}
-
-//---------------------------------------------------------------------------//
-template<class EvalType, int NumSpaceDim>
-void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::
-    buildAndRegisterGatherAndOrientationEvaluators(
-        PHX::FieldManager<panzer::Traits>& fm,
-        const panzer::PhysicsBlock& side_pb,
-        const panzer::LinearObjFactory<panzer::Traits>& lof,
-        const Teuchos::ParameterList& user_data) const
-{
-    side_pb.buildAndRegisterGatherAndOrientationEvaluators(fm, lof, user_data);
-}
-
-//---------------------------------------------------------------------------//
-template<class EvalType, int NumSpaceDim>
-void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::postRegistrationSetup(
-    typename panzer::Traits::SetupData, PHX::FieldManager<panzer::Traits>&)
-{
-}
-
-//---------------------------------------------------------------------------//
-template<class EvalType, int NumSpaceDim>
-void FullInductionMHDBoundaryFlux<EvalType, NumSpaceDim>::evaluateFields(
-    typename panzer::Traits::EvalData)
-{
 }
 
 //---------------------------------------------------------------------------//

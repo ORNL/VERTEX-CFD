@@ -14,7 +14,7 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleSSTEddyViscosity<EvalType, Traits, NumSpaceDim>::
     IncompressibleSSTEddyViscosity(const panzer::IntegrationRule& ir,
-                                   const Teuchos::ParameterList& user_params,
+                                   const Teuchos::ParameterList& turb_params,
                                    bool on_wall_boundary)
     : _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
     , _turb_specific_dissipation_rate("turb_specific_dissipation_rate",
@@ -33,32 +33,15 @@ IncompressibleSSTEddyViscosity<EvalType, Traits, NumSpaceDim>::
     , _sst_blending_function("sst_blending_function", ir.dl_scalar)
 {
     // Check for user-defined coefficients or parameters
-    if (user_params.isSublist("Turbulence Parameters"))
-    {
-        const Teuchos::ParameterList turb_list
-            = user_params.sublist("Turbulence Parameters");
+    if (turb_params.isType<double>("beta_star"))
+        _beta_star = turb_params.get<double>("beta_star");
 
-        if (turb_list.isSublist("SST K-Omega Parameters"))
-        {
-            const Teuchos::ParameterList sst_list
-                = turb_list.sublist("SST K-Omega Parameters");
+    if (turb_params.isType<double>("a_1"))
+        _a_1 = turb_params.get<double>("a_1");
 
-            if (sst_list.isType<double>("beta_star"))
-            {
-                _beta_star = sst_list.get<double>("beta_star");
-            }
+    if (turb_params.isType<double>("sigma_w2"))
+        _sigma_w2 = turb_params.get<double>("sigma_w2");
 
-            if (sst_list.isType<double>("a_1"))
-            {
-                _a_1 = sst_list.get<double>("a_1");
-            }
-
-            if (turb_list.isType<double>("sigma_w2"))
-            {
-                _sigma_w2 = turb_list.get<double>("sigma_w2");
-            }
-        }
-    }
     // Add dependent fields
     this->addDependentField(_turb_kinetic_energy);
     this->addDependentField(_turb_specific_dissipation_rate);

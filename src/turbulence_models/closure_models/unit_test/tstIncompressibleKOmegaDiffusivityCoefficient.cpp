@@ -67,13 +67,8 @@ void testEval()
     const double sigma_w = 0.65;
 
     // Create parameter list for user-defined constants
-    Teuchos::ParameterList user_params;
-    user_params.sublist("Turbulence Parameters")
-        .sublist("K-Omega Parameters")
-        .set<double>("sigma_k", sigma_k);
-    user_params.sublist("Turbulence Parameters")
-        .sublist("K-Omega Parameters")
-        .set<double>("sigma_w", sigma_w);
+    Teuchos::ParameterList turb_params;
+    turb_params.set<double>("sigma_k", sigma_k).set<double>("sigma_w", sigma_w);
 
     // Fluid properties
     const double nu = 0.25;
@@ -87,7 +82,7 @@ void testEval()
     auto eval = Teuchos::rcp(
         new ClosureModel::IncompressibleKOmegaDiffusivityCoefficient<
             EvalType,
-            panzer::Traits>(ir, user_params));
+            panzer::Traits>(ir, turb_params));
     test_fixture.registerEvaluator<EvalType>(eval);
     test_fixture.registerTestField<EvalType>(eval->_diffusivity_var_k);
     test_fixture.registerTestField<EvalType>(eval->_diffusivity_var_w);

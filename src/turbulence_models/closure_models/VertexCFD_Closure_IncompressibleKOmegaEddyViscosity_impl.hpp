@@ -14,7 +14,7 @@ namespace ClosureModel
 template<class EvalType, class Traits, int NumSpaceDim>
 IncompressibleKOmegaEddyViscosity<EvalType, Traits, NumSpaceDim>::
     IncompressibleKOmegaEddyViscosity(const panzer::IntegrationRule& ir,
-                                      const Teuchos::ParameterList& user_params)
+                                      const Teuchos::ParameterList& turb_params)
     : _turb_kinetic_energy("turb_kinetic_energy", ir.dl_scalar)
     , _turb_specific_dissipation_rate("turb_specific_dissipation_rate",
                                       ir.dl_scalar)
@@ -23,27 +23,16 @@ IncompressibleKOmegaEddyViscosity<EvalType, Traits, NumSpaceDim>::
     , _nu_t("turbulent_eddy_viscosity", ir.dl_scalar)
 {
     // Check for user-defined coefficients or parameters
-    if (user_params.isSublist("Turbulence Parameters"))
+    if (turb_params.isType<double>("C_lim"))
     {
-        const Teuchos::ParameterList turb_list
-            = user_params.sublist("Turbulence Parameters");
-
-        if (turb_list.isSublist("K-Omega Parameters"))
-        {
-            const Teuchos::ParameterList k_w_list
-                = turb_list.sublist("K-Omega Parameters");
-
-            if (k_w_list.isType<double>("C_lim"))
-            {
-                _C_lim = k_w_list.get<double>("C_lim");
-            }
-
-            if (k_w_list.isType<double>("beta_star"))
-            {
-                _beta_star = k_w_list.get<double>("beta_star");
-            }
-        }
+        _C_lim = turb_params.get<double>("C_lim");
     }
+
+    if (turb_params.isType<double>("beta_star"))
+    {
+        _beta_star = turb_params.get<double>("beta_star");
+    }
+
     // Add dependent fields
     this->addDependentField(_turb_kinetic_energy);
     this->addDependentField(_turb_specific_dissipation_rate);

@@ -136,15 +136,11 @@ void testFactory()
 {
     constexpr int num_space_dim = NumSpaceDim;
     ClosureModelFactoryTestFixture<EvalType> test_fixture;
-    test_fixture.user_params.set("Build Inductionless MHD Equation", true);
-    test_fixture.user_params.set("Build Temperature Equation", true);
     test_fixture.closure_params.sublist(test_fixture.model_id)
         .sublist("Fluid Properties")
         .set("Kinematic viscosity", 0.1)
-        .set("Artificial compressibility", 2.0)
         .set("Electrical conductivity", 3.0)
-        .set("Thermal conductivity", 0.5)
-        .set("Specific heat capacity", 0.6);
+        .set("Build Inductionless MHD Equation", true);
     test_fixture.type_name = "JouleHeatingSource";
     test_fixture.eval_name = "Joule Heating Source Term "
                              + std::to_string(num_space_dim) + "D";

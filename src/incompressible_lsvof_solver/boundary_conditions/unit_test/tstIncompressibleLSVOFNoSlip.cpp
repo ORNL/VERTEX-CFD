@@ -24,6 +24,13 @@ enum class ContinuityModel
     EDAC
 };
 //---------------------------------------------------------------------------//
+// LSVOF model types
+enum class LSVOFModel
+{
+    VOF,
+    CLS
+};
+//---------------------------------------------------------------------------//
 // Test data dependencies.
 template<class EvalType>
 struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
@@ -33,6 +40,7 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
 
     double _phi, _u_0, _u_1, _u_2;
     ContinuityModel _continuity_model;
+    LSVOFModel _lsvof_model;
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _lagrange_pressure;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _velocity_0;
@@ -41,6 +49,8 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _alpha_0;
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _alpha_1;
+
+    PHX::MDField<scalar_type, panzer::Cell, panzer::Point> _level_set;
 
     PHX::MDField<scalar_type, panzer::Cell, panzer::Point, panzer::Dim> _normals;
 
@@ -59,18 +69,21 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
                  double u_0,
                  double u_1,
                  double u_2,
-                 const ContinuityModel continuity_model)
+                 const ContinuityModel continuity_model,
+                 const LSVOFModel lsvof_model)
         : _phi(phi)
         , _u_0(u_0)
         , _u_1(u_1)
         , _u_2(u_2)
         , _continuity_model(continuity_model)
+        , _lsvof_model(lsvof_model)
         , _lagrange_pressure("lagrange_pressure", ir.dl_scalar)
         , _velocity_0("velocity_0", ir.dl_scalar)
         , _velocity_1("velocity_1", ir.dl_scalar)
         , _velocity_2("velocity_2", ir.dl_scalar)
         , _alpha_0("alpha_salt", ir.dl_scalar)
         , _alpha_1("alpha_lime", ir.dl_scalar)
+        , _level_set("level_set", ir.dl_scalar)
         , _normals("Side Normal", ir.dl_vector)
         , _grad_velocity_0("GRAD_velocity_0", ir.dl_vector)
         , _grad_velocity_1("GRAD_velocity_1", ir.dl_vector)
@@ -82,8 +95,15 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         this->addEvaluatedField(_velocity_1);
         this->addEvaluatedField(_velocity_2);
 
-        this->addEvaluatedField(_alpha_0);
-        this->addEvaluatedField(_alpha_1);
+        if (_lsvof_model == LSVOFModel::VOF)
+        {
+            this->addEvaluatedField(_alpha_0);
+            this->addEvaluatedField(_alpha_1);
+        }
+        else if (_lsvof_model == LSVOFModel::CLS)
+        {
+            this->addEvaluatedField(_level_set);
+        }
 
         this->addEvaluatedField(_normals);
 
@@ -103,8 +123,15 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
         _velocity_0.deep_copy(_u_0);
         _velocity_1.deep_copy(_u_1);
         _velocity_2.deep_copy(_u_2);
-        _alpha_0.deep_copy(0.123);
-        _alpha_1.deep_copy(0.456);
+        if (_lsvof_model == LSVOFModel::VOF)
+        {
+            _alpha_0.deep_copy(0.123);
+            _alpha_1.deep_copy(0.456);
+        }
+        else if (_lsvof_model == LSVOFModel::CLS)
+        {
+            _level_set.deep_copy(42.1);
+        }
 
         Kokkos::parallel_for(
             "incompressible lsvof no slip test dependencies",
@@ -141,7 +168,8 @@ struct Dependencies : public PHX::EvaluatorWithBaseImpl<panzer::Traits>,
 
 //---------------------------------------------------------------------------//
 template<class EvalType, int NumSpaceDim>
-void testEval(const ContinuityModel continuity_model)
+void testEval(const ContinuityModel continuity_model,
+              const LSVOFModel lsvof_model)
 {
     // Test fixture
     constexpr int num_space_dim = NumSpaceDim;
@@ -170,7 +198,7 @@ void testEval(const ContinuityModel continuity_model)
     const double v = 0.5;
     const double w = num_space_dim == 3 ? 0.125 : nan_val;
     const auto dep_eval = Teuchos::rcp(new Dependencies<EvalType>(
-        *test_fixture.ir, phi, u, v, w, continuity_model));
+        *test_fixture.ir, phi, u, v, w, continuity_model, lsvof_model));
     test_fixture.registerEvaluator<EvalType>(dep_eval);
 
     // Create phase array
@@ -185,11 +213,18 @@ void testEval(const ContinuityModel continuity_model)
 
     test_fixture.registerEvaluator<EvalType>(phase_vec);
 
+    const std::string lsvof_model_name
+        = (lsvof_model == LSVOFModel::VOF) ? "VOF" : "CLS";
+
     // Create no slip evaluator.
     auto no_slip_eval = Teuchos::rcp(
         new BoundaryCondition::
             IncompressibleLSVOFNoSlip<EvalType, panzer::Traits, num_space_dim>(
-                *test_fixture.ir, num_lsvof_dofs, continuity_model_name, true));
+                *test_fixture.ir,
+                num_lsvof_dofs,
+                lsvof_model_name,
+                continuity_model_name,
+                true));
     test_fixture.registerEvaluator<EvalType>(no_slip_eval);
 
     // Add required test fields.
@@ -209,9 +244,16 @@ void testEval(const ContinuityModel continuity_model)
             no_slip_eval->_boundary_grad_lagrange_pressure);
     }
 
-    test_fixture.registerTestField<EvalType>(no_slip_eval->_boundary_alphas);
-
-    // Evaluate incompressible free slip
+    if (lsvof_model_name == "VOF")
+    {
+        test_fixture.registerTestField<EvalType>(
+            no_slip_eval->_boundary_alphas);
+    }
+    else if (lsvof_model_name == "CLS")
+    {
+        test_fixture.registerTestField<EvalType>(no_slip_eval->_boundary_phi);
+    }
+    // Evaluate incompressible LSVOF no-slip
     test_fixture.evaluate<EvalType>();
 
     // Expected values
@@ -242,9 +284,6 @@ void testEval(const ContinuityModel continuity_model)
     auto boundary_lagrange_pressure_result
         = test_fixture.getTestFieldData<EvalType>(
             no_slip_eval->_boundary_lagrange_pressure);
-
-    auto boundary_alphas = test_fixture.getTestFieldData<EvalType>(
-        no_slip_eval->_boundary_alphas);
 
     // Loop over quadrature points and mesh dimension
     const int num_point = boundary_lagrange_pressure_result.extent(1);
@@ -299,10 +338,23 @@ void testEval(const ContinuityModel continuity_model)
             }
         }
 
-        for (int phase = 0; phase < num_lsvof_dofs; ++phase)
+        if (lsvof_model_name == "VOF")
         {
-            EXPECT_DOUBLE_EQ(exp_alphas[phase],
-                             fieldValue(boundary_alphas, 0, qp, phase));
+            auto boundary_alphas = test_fixture.getTestFieldData<EvalType>(
+                no_slip_eval->_boundary_alphas);
+
+            for (int phase = 0; phase < num_lsvof_dofs; ++phase)
+            {
+                EXPECT_DOUBLE_EQ(exp_alphas[phase],
+                                 fieldValue(boundary_alphas, 0, qp, phase));
+            }
+        }
+        else if (lsvof_model_name == "CLS")
+        {
+            auto boundary_phi = test_fixture.getTestFieldData<EvalType>(
+                no_slip_eval->_boundary_phi);
+
+            EXPECT_DOUBLE_EQ(42.1, fieldValue(boundary_phi, 0, qp));
         }
     }
 }
@@ -331,35 +383,52 @@ struct EvaluationTest : public testing::TestWithParam<ContinuityModel>
     };
 };
 
+//---------------------------------------------------------------------------//
 // 2-D incompressible lsvof no slip
-TEST_P(EvaluationTest, residual2D)
+TEST_P(EvaluationTest, VOFResidual2D)
 {
     ContinuityModel continuity_model;
     continuity_model = GetParam();
-    testEval<panzer::Traits::Residual, 2>(continuity_model);
+    testEval<panzer::Traits::Residual, 2>(continuity_model, LSVOFModel::VOF);
 }
 
-TEST_P(EvaluationTest, jacobian2D)
+TEST_P(EvaluationTest, VOFJacobian2D)
 {
     ContinuityModel continuity_model;
     continuity_model = GetParam();
-    testEval<panzer::Traits::Jacobian, 2>(continuity_model);
+    testEval<panzer::Traits::Jacobian, 2>(continuity_model, LSVOFModel::VOF);
+}
+
+//---------------------------------------------------------------------------//
+// 2-D incompressible CLS no slip
+TEST_P(EvaluationTest, CLSResidual2D)
+{
+    ContinuityModel continuity_model;
+    continuity_model = GetParam();
+    testEval<panzer::Traits::Residual, 2>(continuity_model, LSVOFModel::CLS);
+}
+
+TEST_P(EvaluationTest, CLSJacobian2D)
+{
+    ContinuityModel continuity_model;
+    continuity_model = GetParam();
+    testEval<panzer::Traits::Jacobian, 2>(continuity_model, LSVOFModel::CLS);
 }
 
 //---------------------------------------------------------------------------//
 // 3-D incompressible lsvof no slip
-TEST_P(EvaluationTest, residual3D)
+TEST_P(EvaluationTest, VOFResidual3D)
 {
     ContinuityModel continuity_model;
     continuity_model = GetParam();
-    testEval<panzer::Traits::Residual, 3>(continuity_model);
+    testEval<panzer::Traits::Residual, 3>(continuity_model, LSVOFModel::VOF);
 }
 
-TEST_P(EvaluationTest, jacobian3D)
+TEST_P(EvaluationTest, VOFJacobian3D)
 {
     ContinuityModel continuity_model;
     continuity_model = GetParam();
-    testEval<panzer::Traits::Jacobian, 3>(continuity_model);
+    testEval<panzer::Traits::Jacobian, 3>(continuity_model, LSVOFModel::VOF);
 }
 
 //---------------------------------------------------------------------------//

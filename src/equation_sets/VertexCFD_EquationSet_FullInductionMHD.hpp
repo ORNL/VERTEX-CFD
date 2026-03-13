@@ -42,6 +42,7 @@ class FullInductionMHD : public panzer::EquationSet_DefaultImpl<EvalType>
     std::unordered_map<std::string, std::string> _equ_dof_fim_pair;
     std::unordered_map<std::string, std::unordered_map<std::string, bool>>
         _equ_source_term;
+    bool _build_convective_flux;
     bool _build_resistive_flux;
 };
 

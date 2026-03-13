@@ -1,0 +1,263 @@
+<ParameterList>
+
+  <ParameterList name="Mesh">
+    <Parameter name="Mesh Input Type" type="string" value="Inline"/>
+    <ParameterList name="Inline">
+      <Parameter name="Element Type" type="string" value="Quad4"/>
+      <ParameterList name="Mesh">
+        <Parameter name="X Blocks" type="int" value="1"/>
+        <Parameter name="Y Blocks" type="int" value="1"/>
+        <Parameter name="X Elements" type="int" value="20"/>
+        <Parameter name="Y Elements" type="int" value="20"/>
+        <Parameter name="X0" type="double" value="0.0"/>
+        <Parameter name="Y0" type="double" value="0.0"/>
+        <Parameter name="Xf" type="double" value="1.0"/>
+        <Parameter name="Yf" type="double" value="2.0"/>
+      </ParameterList> <!-- Mesh -->
+    </ParameterList> <!-- Inline -->
+  </ParameterList> <!-- Mesh -->
+
+  <ParameterList name="Solution Output">
+    <Parameter name="Exodus Output File" type="string" value="incompressible_cls_2d_rising_bubble_solution.exo"/>
+    <Parameter name="Exodus Write Frequency" type="int" value="250"/>
+    <ParameterList name="Cell Average Quantities">
+      <Parameter name="eblock-0_0" type="string" value="CLS_sign, CLS_lambda, CLS_epsilon, density"/>
+    </ParameterList> <!-- Cell Average Quantities -->
+    <ParameterList name="Cell Average Vectors">
+      <Parameter name="eblock-0_0" type="string" value="element_length, GRAD_level_set, CLS_interface_normal, REG_level_set_equation"/>
+    </ParameterList> <!-- Cell Average Vectors -->
+  </ParameterList> <!-- Solution Output -->
+
+  <ParameterList name="Scalar Response Output">
+    <Parameter name="Output Frequency" type="int" value="1"/>
+    <ParameterList name="Level Set Magnitude">
+      <Parameter name="Field Name" type="string" value="level_set_magnitude"/>
+      <Parameter name="Element Blocks" type="string" value="eblock-0_0"/>
+    </ParameterList> <!-- Level Set Magnitude -->
+    <ParameterList name="Max Dphi">
+      <Parameter name="Field Name" type="string" value="d_level_set"/>
+      <Parameter name="Element Blocks" type="string" value="eblock-0_0"/>
+    </ParameterList> <!-- Max Dphi -->
+  </ParameterList> <!-- Scalar Response Output -->
+
+  <ParameterList name="Block ID to Physics ID Mapping">
+    <Parameter name="eblock-0_0" type="string" value="FluidPhysicsBlock"/>
+  </ParameterList> <!-- Block ID to Physics ID Mapping -->
+
+  <ParameterList name="Physics Blocks">
+    <ParameterList name="FluidPhysicsBlock">
+      <ParameterList>
+        <Parameter name="Type" type="string" value="IncompressibleLSVOF"/>
+        <Parameter name="Basis Order" type="int" value="1"/>
+        <Parameter name="Integration Order" type="int" value="2"/>
+        <Parameter name="Model ID" type="string" value="fluids"/>
+        <ParameterList name="LSVOF_Properties">
+          <Parameter name="Build LSVOF Navier-Stokes Equations" type="bool" value="true"/>
+          <Parameter name="Build LSVOF Surface Tension" type="bool" value="false"/>
+          <Parameter name="LSVOF Model" type="string" value="CLS"/>
+          <Parameter name="C_alpha" type="double" value="1.5"/>
+          <Parameter name="Number of Phases" type="int" value="2"/>
+          <Parameter name="Mixture Artificial Compressibility" type="double" value="100.0"/>
+          <ParameterList name="Phase 1">
+            <Parameter name="Phase Name" type="string" value="air"/>
+            <Parameter name="Density" type="double" value="100.0"/>
+            <Parameter name="Dynamic viscosity" type="double" value="1.0"/>
+          </ParameterList> <!-- Phase 1 -->
+          <ParameterList name="Phase 2">
+            <Parameter name="Phase Name" type="string" value="water"/>
+            <Parameter name="Density" type="double" value="1000.0"/>
+            <Parameter name="Dynamic viscosity" type="double" value="10.0"/>
+          </ParameterList> <!-- Phase 2 -->
+        </ParameterList> <!-- LSVOF_Properties -->
+      </ParameterList> <!-- -->
+    </ParameterList> <!-- FluidPhysicsBlock -->
+  </ParameterList> <!-- Physics Blocks -->
+
+  <ParameterList name="User Data">
+    <Parameter name="Output Graph" type="bool" value="false"/>
+    <Parameter name="Workset Size" type="int" value="1024"/>
+    <Parameter name="CFL" type="double" value="0.33"/>
+    <Parameter name="Gravity" type="Array(double)" value="{0, -0.98}"/>
+  </ParameterList> <!-- User Data -->
+
+  <ParameterList name="Boundary Conditions">
+    <ParameterList>
+      <Parameter name="Sideset ID" type="string" value="bottom, top, left, right"/>
+      <Parameter name="Element Block ID" type="string" value="eblock-0_0"/>
+      <Parameter name="Strategy" type="string" value="IncompressibleLSVOFBoundaryFlux"/>
+      <ParameterList name="Data">
+        <Parameter name="Type" type="string" value="No-Slip"/>
+      </ParameterList> <!-- Data -->
+    </ParameterList> <!-- -->
+  </ParameterList> <!-- Boundary Conditions -->
+
+  <ParameterList name="Initial Conditions">
+    <ParameterList name="eblock-0_0">
+      <ParameterList name="IncompressibleLSVOFBubble1">
+        <Parameter name="Type" type="string" value="IncompressibleLSVOFBubble"/>
+        <Parameter name="LSVOF Model Type" type="string" value="CLS"/>
+        <Parameter name="Phase Name" type="string" value="alpha_1"/>
+        <Parameter name="Bubble Radius" type="double" value="0.25"/>
+        <Parameter name="Bubble Location" type="Array(double)" value="{0.5, 0.5}"/>
+        <Parameter name="Inside Bubble" type="bool" value="false"/>
+      </ParameterList> <!-- IncompressibleLSVOFBubble1 -->
+      <ParameterList name="Constant Lagrange Pressure">
+        <Parameter name="Type" type="string" value="Constant"/>
+        <Parameter name="Equation Set Name" type="string" value="lagrange_pressure"/>
+        <Parameter name="Value" type="double" value="0.0"/>
+      </ParameterList> <!-- Constant Lagrange Pressure -->
+      <ParameterList name="Constant Velocity 0">
+        <Parameter name="Type" type="string" value="Constant"/>
+        <Parameter name="Equation Set Name" type="string" value="velocity_0"/>
+        <Parameter name="Value" type="double" value="0.0"/>
+      </ParameterList> <!-- Constant Velocity 0 -->
+      <ParameterList name="Constant Velocity 1">
+        <Parameter name="Type" type="string" value="Constant"/>
+        <Parameter name="Equation Set Name" type="string" value="velocity_1"/>
+        <Parameter name="Value" type="double" value="0.0"/>
+      </ParameterList> <!-- Constant Velocity 1 -->
+    </ParameterList> <!-- eblock-0_0 -->
+  </ParameterList> <!-- Initial Conditions -->
+
+  <ParameterList name="Closure Models">
+    <ParameterList name="fluids">
+      <Parameter name="Closure Factory Type" type="string" value="LSVOF"/>
+      <ParameterList name="LSVOF_Properties">
+        <Parameter name="Type" type="string" value="IncompressibleLSVOFVariableProperties"/>
+        <Parameter name="LSVOF Model" type="string" value="CLS"/>
+        <Parameter name="Build LSVOF Navier-Stokes Equations" type="bool" value="true"/>
+        <Parameter name="Build LSVOF Surface Tension" type="bool" value="false"/>
+        <Parameter name="Number of Phases" type="int" value="2"/>
+        <Parameter name="LS Normal Reconstruction Type" type="string" value="NonReconstructed"/>
+        <Parameter name="Regularization Coefficient" type="double" value="10.0"/>
+        <Parameter name="Old Value Type" type="string" value="LastStage"/>
+        <Parameter name="Interface Thickness Coefficient" type="double" value="1.5"/>
+        <Parameter name="Domain Volume" type="double" value="1.0"/>
+        <Parameter name="Mixture Artificial Compressibility" type="double" value="100.0"/>
+        <ParameterList name="Phase 1">
+          <Parameter name="Phase Name" type="string" value="air"/>
+          <Parameter name="Density" type="double" value="100.0"/>
+          <Parameter name="Dynamic viscosity" type="double" value="1.0"/>
+        </ParameterList> <!-- Phase 1 -->
+        <ParameterList name="Phase 2">
+          <Parameter name="Phase Name" type="string" value="water"/>
+          <Parameter name="Density" type="double" value="1000.0"/>
+          <Parameter name="Dynamic viscosity" type="double" value="10.0"/>
+        </ParameterList> <!-- Phase 2 -->
+      </ParameterList> <!-- LSVOF_Properties -->
+    </ParameterList> <!-- fluids -->
+  </ParameterList> <!-- Closure Models -->
+
+  <ParameterList name="Linear Solver">
+    <Parameter name="Linear Solver Type" type="string" value="Belos"/>
+    <Parameter name="Preconditioner Type" type="string" value="Ifpack2"/>
+    <ParameterList name="Linear Solver Types">
+      <ParameterList name="Amesos2">
+        <ParameterList name="VerboseObject">
+          <Parameter name="Verbosity Level" type="string" value="none"/>
+        </ParameterList> <!-- VerboseObject -->
+      </ParameterList> <!-- Amesos2 -->
+      <ParameterList name="Belos">
+        <ParameterList name="VerboseObject">
+          <Parameter name="Verbosity Level" type="string" value="none"/>
+        </ParameterList> <!-- VerboseObject -->
+      </ParameterList> <!-- Belos -->
+    </ParameterList> <!-- Linear Solver Types -->
+    <ParameterList name="Preconditioner Types">
+      <ParameterList name="Ifpack2">
+        <Parameter name="Prec Type" type="string" value="Amesos2"/>
+        <Parameter name="Overlap" type="int" value="2"/>
+        <ParameterList name="VerboseObject">
+          <Parameter name="Verbosity Level" type="string" value="none"/>
+        </ParameterList> <!-- VerboseObject -->
+      </ParameterList> <!-- Ifpack2 -->
+    </ParameterList> <!-- Preconditioner Types -->
+  </ParameterList> <!-- Linear Solver -->
+
+  <ParameterList name="Tempus">
+    <Parameter name="Integrator Name" type="string" value="Default Integrator"/>
+    <ParameterList name="Default Integrator">
+      <Parameter name="Integrator Type" type="string" value="Integrator Basic"/>
+      <Parameter name="Stepper Name" type="string" value="Default Stepper"/>
+      <ParameterList name="Solution History">
+        <Parameter name="Storage Type" type="string" value="Undo"/>
+        <Parameter name="Storage Limit" type="int" value="2"/>
+      </ParameterList> <!-- Solution History -->
+      <ParameterList name="Time Step Control">
+        <Parameter name="Initial Time" type="double" value="0.0"/>
+        <Parameter name="Final Time" type="double" value="3.0"/>
+        <Parameter name="Final Time Index" type="int" value="3000"/>
+        <Parameter name="Minimum Time Step" type="double" value="1.0e-3"/>
+        <Parameter name="Initial Time Step" type="double" value="1.0e-3"/>
+        <Parameter name="Maximum Time Step" type="double" value="1.0e-3"/>
+        <Parameter name="Minimum Order" type="int" value="1"/>
+        <Parameter name="Initial Order" type="int" value="1"/>
+        <Parameter name="Maximum Order" type="int" value="2"/>
+        <Parameter name="Maximum Absolute Error" type="double" value="1.0e-8"/>
+        <Parameter name="Maximum Relative Error" type="double" value="1.0e-8"/>
+        <Parameter name="Integrator Step Type" type="string" value="Constant"/>
+        <Parameter name="Maximum Number of Stepper Failures" type="int" value="10"/>
+        <Parameter name="Maximum Number of Consecutive Stepper Failures" type="int" value="5"/>
+      </ParameterList> <!-- Time Step Control -->
+    </ParameterList> <!-- Default Integrator -->
+    <ParameterList name="Default Stepper">
+      <Parameter name="Stepper Type" type="string" value="Backward Euler"/>
+      <Parameter name="Solver Name" type="string" value="Default Solver"/>
+      <Parameter name="Zero Initial Guess" type="bool" value="false"/>
+      <ParameterList name="Default Solver">
+        <ParameterList name="NOX">
+          <ParameterList name="Direction">
+            <Parameter name="Method" type="string" value="Newton"/>
+            <ParameterList name="Newton">
+              <Parameter name="Forcing Term Method" type="string" value="Constant"/>
+              <Parameter name="Rescue Bad Newton Solve" type="bool" value="1"/>
+              <ParameterList name="Stratimikos Linear Solver">
+                <ParameterList name="NOX Stratimikos Options">
+                </ParameterList>
+              </ParameterList> <!-- Stratimikos Linear Solver -->
+            </ParameterList> <!-- Newton -->
+          </ParameterList> <!-- Direction -->
+          <ParameterList name="Line Search">
+            <Parameter name="Method" type="string" value="Full Step"/>
+            <ParameterList name="Full Step">
+              <Parameter name="Full Step" type="double" value="1"/>
+            </ParameterList> <!-- Full Step -->
+          </ParameterList> <!-- Line Search -->
+          <Parameter name="Nonlinear Solver" type="string" value="Line Search Based"/>
+          <ParameterList name="Printing">
+            <Parameter name="Output Precision" type="int" value="3"/>
+            <Parameter name="Output Processor" type="int" value="0"/>
+            <ParameterList name="Output Information">
+              <Parameter name="Error" type="bool" value="1"/>
+              <Parameter name="Warning" type="bool" value="1"/>
+              <Parameter name="Outer Iteration" type="bool" value="0"/>
+              <Parameter name="Parameters" type="bool" value="0"/>
+              <Parameter name="Details" type="bool" value="0"/>
+              <Parameter name="Linear Solver Details" type="bool" value="0"/>
+              <Parameter name="Stepper Iteration" type="bool" value="0"/>
+              <Parameter name="Stepper Details" type="bool" value="0"/>
+              <Parameter name="Stepper Parameters" type="bool" value="0"/>
+            </ParameterList> <!-- Output Information -->
+          </ParameterList> <!-- Printing -->
+          <ParameterList name="Solver Options">
+            <Parameter name="Status Test Check Type" type="string" value="Minimal"/>
+          </ParameterList> <!-- Solver Options -->
+          <ParameterList name="Status Tests">
+            <Parameter name="Test Type" type="string" value="Combo"/>
+            <Parameter name="Combo Type" type="string" value="OR"/>
+            <Parameter name="Number of Tests" type="int" value="2"/>
+            <ParameterList name="Test 0">
+              <Parameter name="Test Type" type="string" value="NormF"/>
+              <Parameter name="Tolerance" type="double" value="1.0e-8"/>
+            </ParameterList> <!-- Test 0 -->
+            <ParameterList name="Test 1">
+              <Parameter name="Test Type" type="string" value="MaxIters"/>
+              <Parameter name="Maximum Iterations" type="int" value="100"/>
+            </ParameterList> <!-- Test 1 -->
+          </ParameterList> <!-- Status Tests -->
+        </ParameterList> <!-- NOX -->
+      </ParameterList> <!-- Default Solver -->
+    </ParameterList> <!-- Default Stepper -->
+  </ParameterList> <!-- Tempus -->
+
+</ParameterList><!--(Unnamed)-->

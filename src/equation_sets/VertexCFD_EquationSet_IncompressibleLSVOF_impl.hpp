@@ -55,7 +55,7 @@ IncompressibleLSVOF<EvalType>::IncompressibleLSVOF(
     Teuchos::ParameterList& lsvof_params = params->sublist("LSVOF_Properties");
 
     _build_lsvofmom_equ
-        = params->get<bool>("Build LSVOF Navier-Stokes Equations", true);
+        = lsvof_params.get<bool>("Build LSVOF Navier-Stokes Equations", true);
 
     _lsvof_model_name = lsvof_params.get<std::string>("LSVOF Model");
 
@@ -260,6 +260,9 @@ void IncompressibleLSVOF<EvalType>::buildAndRegisterEquationSetEvaluators(
                                          "ARTIFICIAL_COMPRESSION",
                                          -1.0,
                                          residual_operator_names);
+
+            add_grad_basis_time_residual(
+                equ_name, "VISCOUS_FLUX", 1.0, residual_operator_names);
         }
         else if (_lsvof_model_name == "CLS")
         {

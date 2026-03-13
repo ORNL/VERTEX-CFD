@@ -29,7 +29,7 @@ class IncompressibleErrorNorms : public panzer::EvaluatorWithBaseImpl<Traits>,
     static constexpr int num_space_dim = NumSpaceDim;
 
     IncompressibleErrorNorms(const panzer::IntegrationRule& ir,
-                             const Teuchos::ParameterList& user_params);
+                             const Teuchos::ParameterList& fluid_params);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 

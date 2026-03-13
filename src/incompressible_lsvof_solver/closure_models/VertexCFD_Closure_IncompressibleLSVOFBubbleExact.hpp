@@ -43,6 +43,14 @@ class IncompressibleLSVOFBubbleExact
         const Kokkos::TeamPolicy<PHX::exec_space>::member_type& team) const;
 
   private:
+    enum LSVOFModelType
+    {
+        VOF,
+        CLS
+    };
+
+    LSVOFModelType _lsvof_model_type;
+
     std::string _dof_name;
     double _radius;
     Kokkos::Array<double, num_space_dim> _location;

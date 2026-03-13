@@ -1,8 +1,6 @@
 #ifndef VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLENOSLIP_HPP
 #define VERTEXCFD_BOUNDARYSTATE_INCOMPRESSIBLENOSLIP_HPP
 
-#include "incompressible_solver/fluid_properties/VertexCFD_ConstantFluidProperties.hpp"
-
 #include <Panzer_Dimension.hpp>
 #include <Panzer_Evaluator_WithBaseImpl.hpp>
 
@@ -28,11 +26,10 @@ class IncompressibleNoSlip : public panzer::EvaluatorWithBaseImpl<Traits>,
     using scalar_type = typename EvalType::ScalarT;
     static constexpr int num_space_dim = NumSpaceDim;
 
-    IncompressibleNoSlip(
-        const panzer::IntegrationRule& ir,
-        const FluidProperties::ConstantFluidProperties& fluid_prop,
-        const Teuchos::ParameterList& bc_params,
-        const bool is_edac);
+    IncompressibleNoSlip(const panzer::IntegrationRule& ir,
+                         const Teuchos::ParameterList& fluid_params,
+                         const Teuchos::ParameterList& bc_params,
+                         const bool is_edac);
 
     void evaluateFields(typename Traits::EvalData workset) override;
 
