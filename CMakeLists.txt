@@ -96,7 +96,7 @@ endif()
 kokkos_check( DEVICES ${VERTEXCFD_KOKKOS_DEVICE_TYPE} )
 
 # ensure that we can use lambdas if we are using cuda.
-if(${VERTEXCFD_KOKKOS_DEVICE_TYPE} STREQUAL "CUDA")
+if(${VERTEXCFD_KOKKOS_DEVICE_TYPE} STREQUAL "CUDA" AND Kokkos_VERSION VERSION_LESS 4.1)
   kokkos_check(OPTIONS CUDA_LAMBDA)
 endif()
 
