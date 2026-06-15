@@ -1,4 +1,5 @@
-[!IMPORTANT]
+> [!CAUTION]
+> This GitHub repository is no longer maintained. New and existing users of Vertex-CFD can access the latest version of the code through the ORNL GitLab repository: [ORNL GitLab repository](https://code.ornl.gov/mxd/vertex-cfd/-/tree/mxd/update?ref_type=heads&utm_source=chatgpt.com). Questions or comments should be directed to [Marco Delchini](https://www.ornl.gov/staff-profile/marco-delchini?page=0&utm_source=chatgpt.com).
 
 `Vertex-CFD` is a free, open source computational fluid dynamics (CFD) and multiphysics code released by Oak Ridge National Laboratory. It is based upon Trilinos, an open source finite element library released by Sandia National Laboratory. `Vertex-CFD` was developed with performance portability as the primary goal, and as such is compatible with a variety of CPU and GPU computing architectures. `Vertex-CFD` currently supports single phase, incompressible flow, with options to include RANS and LES turbulence modeling, heat transfer, and magnetohydrodynamics. The governing equations are discretized using an implicit continuous Galerkin finite element framework and solved in a monolithic fashion using efficient numerical solvers inherited from the Trilinos ecosystem.
 
