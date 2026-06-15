@@ -1,7 +1,0 @@
-#include "utils/VertexCFD_Utils_ExplicitTemplateInstantiation.hpp"
-
-#include "VertexCFD_BoundaryState_MethodManufacturedSolution.hpp"
-#include "VertexCFD_BoundaryState_MethodManufacturedSolution_impl.hpp"
-
-VERTEXCFD_INSTANTIATE_TEMPLATE_CLASS_EVAL_TRAITS_NUMSPACEDIM(
-    VertexCFD::BoundaryCondition::MethodManufacturedSolution)

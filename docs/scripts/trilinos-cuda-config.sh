@@ -1,0 +1,75 @@
+#!/bin/bash
+# This is a sample Trilinos configuration script for Albany on perlmutter
+
+source trilinos-cuda-env.sh
+
+# Cleanup old cmake files
+rm -rf CMake*
+
+# Set Trilinos build path
+BUILD_DIR=`pwd`
+
+# EDIT: Change this based on your NVCC WRAPPER location
+NVCC_WRAPPER=<PATH TO NVCC WRAPPER DIRECTORY>
+
+# EDIT: Change with path to Trilinos source directory
+TRILINOS_SOURCE_DIR=<PATH TO TRILINOS SOURCE DIRECTORY>
+
+# EDIT: Change with path to boost
+BOOST_DIR=<PATH TO BOOST DIRECTORY>
+
+TRILINOS_INSTALL_DIR=<DESIRED TRILINOS INSTALLATION DIRECTORY>
+
+export CRAYPE_LINK_TYPE=dynamic
+export CRAY_CPU_TARGET=x86-64
+
+cmake \
+  -D CMAKE_C_COMPILER=cc \
+  -D CMAKE_CXX_COMPILER=${NVCC_WRAPPER} \
+  -D CMAKE_Fortran_COMPILER=ftn \
+\
+  -D CMAKE_INSTALL_PREFIX:PATH=${TRILINOS_INSTALL_DIR} \
+  -D CMAKE_BUILD_TYPE:STRING=RELEASE \
+\
+  -D BUILD_SHARED_LIBS=ON \
+  -D Trilinos_ENABLE_ALL_PACKAGES=ON \
+  -D Trilinos_ENABLE_SECONDARY_TESTED_CODE=ON \
+  -D Trilinos_ENABLE_EXPLICIT_INSTANTIATION=ON \
+  -D Trilinos_ENABLE_PyTrilinos=OFF \
+  -D Trilinos_SHOW_DEPRECATED_WARNINGS=OFF \
+  -D TPL_ENABLE_MPI=ON \
+  -D TPL_Netcdf_PARALLEL=FALSE \
+\
+  -D TPL_ENABLE_HDF5:STRING=ON \
+  -D HDF5_INCLUDE_DIRS:PATH=${HDF5_DIR}/include \
+  -D HDF5_LIBRARY_DIRS:PATH=${HDF5_DIR}/lib\
+\
+  -D TPL_ENABLE_Netcdf=ON \
+  -D Netcdf_INCLUDE_DIRS:PATH=${NETCDF_DIR}/include \
+  -D Netcdf_LIBRARY_DIRS:PATH=${NETCDF_DIR}/lib \
+\
+  -D Kokkos_ENABLE_CUDA:BOOL=ON \
+  -D Kokkos_ENABLE_CUDA_LAMBDA:BOOL=ON \
+  -D Kokkos_ENABLE_CUDA_UVM:BOOL=OFF \
+  -D Kokkos_ENABLE_IMPL_CUDA_MALLOC_ASYNC:BOOL=OFF \
+\
+  -D TPL_ENABLE_Boost:BOOL=ON \
+  -D TPL_ENABLE_BoostLib=ON \
+  -D Boost_INCLUDE_DIRS:PATH=${BOOST_DIR}/include \
+  -D Boost_LIBRARY_DIRS:PATH=${BOOST_DIR}/lib \
+\
+  -D TPL_ENABLE_Krino=OFF \
+  -D TPL_ENABLE_Matio=OFF \
+  -D TPL_ENABLE_CGNS=OFF \
+  -D TPL_ENABLE_METIS=ON \
+  -D TPL_ENABLE_ParMETIS=ON \
+  -D Trilinos_ENABLE_Stokhos:BOOL=OFF \
+\
+  -D TPL_ENABLE_SuperLU:BOOL=OFF \
+  -D ML_ENABLE_SuperLU:BOOL=OFF \
+  -D TPL_ENABLE_BLAS:BOOL=ON \
+  -D TPL_BLAS_LIBRARIES:STRING="${CRAY_PE_LIBSCI_PREFIX_DIR}/lib/libsci_gnu.so" \
+  -D TPL_ENABLE_LAPACK:BOOL=ON \
+  -D TPL_LAPACK_LIBRARIES:STRING="${CRAY_PE_LIBSCI_PREFIX_DIR}/lib/libsci_gnu.so" \
+\
+${TRILINOS_SOURCE_DIR}

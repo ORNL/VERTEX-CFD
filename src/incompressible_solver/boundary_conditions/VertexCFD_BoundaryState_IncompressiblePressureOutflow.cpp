@@ -1,7 +1,0 @@
-#include "utils/VertexCFD_Utils_ExplicitTemplateInstantiation.hpp"
-
-#include "VertexCFD_BoundaryState_IncompressiblePressureOutflow.hpp"
-#include "VertexCFD_BoundaryState_IncompressiblePressureOutflow_impl.hpp"
-
-VERTEXCFD_INSTANTIATE_TEMPLATE_CLASS_EVAL_TRAITS_NUMSPACEDIM(
-    VertexCFD::BoundaryCondition::IncompressiblePressureOutflow)

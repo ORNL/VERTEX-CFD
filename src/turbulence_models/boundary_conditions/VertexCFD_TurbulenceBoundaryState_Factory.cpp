@@ -1,6 +1,0 @@
-#include "utils/VertexCFD_Utils_ExplicitTemplateInstantiation.hpp"
-
-#include "turbulence_models/boundary_conditions/VertexCFD_TurbulenceBoundaryState_Factory.hpp"
-
-VERTEXCFD_INSTANTIATE_TEMPLATE_CLASS_EVAL_TRAITS_NUMSPACEDIM(
-    VertexCFD::BoundaryCondition::TurbulenceBoundaryStateFactory)

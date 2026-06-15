@@ -1,0 +1,63 @@
+title: VERTEX-CFD
+description: VERTEX-CFD is a performance portable software package for computational fluid dynamics (CFD) simulations on CPU or GPU architectures.
+baseurl: "/VERTEX-CFD"
+url: "https://ORNL.github.io"
+repository: ORNL/VERTEX-CFD
+
+#show_downloads: true
+#google_analytics:
+#theme: jekyll-theme-minimal
+
+permalink: pretty
+
+remote_theme: just-the-docs/just-the-docs
+
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+  - jekyll-feed
+
+compress_html:
+  blanklines: true
+
+# Override purple (default) to ORNL green
+color_scheme: ornl_green
+
+logo: docs/figures/vertex_cfd_heated_flow_logo.png
+
+# External navigation links
+nav_external_links:
+  - title: VERTEX-CFD on GitHub
+    url: "https://github.com/ORNL/VERTEX-CFD"
+
+# Aux links for the upper right navigation
+aux_links:
+  "VERTEX-CFD on GitHub":
+    - "https://github.com/ORNL/VERTEX-CFD"
+
+# Makes Aux links open in a new tab. Default is false
+aux_links_new_tab: false
+
+# Enable callouts in markdown    
+callouts_level: quiet # or loud
+callouts:
+  highlight:
+    color: yellow
+  important:
+    title: Important
+    color: blue
+  new:
+    title: New
+    color: green
+  note:
+    title: Note
+    color: purple
+  warning:
+    title: Warning
+    color: red
+  custom:
+    title: Note
+    color: ornl_green
+
+sass:
+  custom_stylesheet: _sass/custom/custom.scss

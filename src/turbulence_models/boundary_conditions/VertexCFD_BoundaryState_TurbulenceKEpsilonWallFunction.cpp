@@ -1,7 +1,0 @@
-#include "utils/VertexCFD_Utils_ExplicitTemplateInstantiation.hpp"
-
-#include "VertexCFD_BoundaryState_TurbulenceKEpsilonWallFunction.hpp"
-#include "VertexCFD_BoundaryState_TurbulenceKEpsilonWallFunction_impl.hpp"
-
-VERTEXCFD_INSTANTIATE_TEMPLATE_CLASS_EVAL_TRAITS_NUMSPACEDIM(
-    VertexCFD::BoundaryCondition::TurbulenceKEpsilonWallFunction)
